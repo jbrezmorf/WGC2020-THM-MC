@@ -8,9 +8,19 @@
 \usepackage{hyperref}       % hyperlinks
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
-\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsfonts,amsmath} % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
+\usepackage[bbgreekl]{mathbbol} % for blackboard \sigma
+
+
+
+\renewcommand{\div}{\operatorname{div}}
+\newcommand{\eq}[1]{\begin{equation}#1\end{equation}}
+\newcommand{\nn}{\vc n}
+\newcommand{\uu}{\vc u}
+\newcommand{\vc}[1]{\boldsymbol{#1}}
+\newcommand{\xx}{\vc x}
 
 
 \title{Stochastic modeling of EGS using continuum-fracture approach and multilevel Monte Carlo}
@@ -63,33 +73,117 @@
 
 Rock type: granite, gneiss or mica schist \cite{capova} % zula, rula, svor
 
+Liquid: water
+
 \begin{tabular}{|l|c|c|c|}
 \hline
- & rock & fractures \\\hline
-Density & & \\
-Hydraulic conductivity [$m.s^{-1}$] & $10^{-9}$ \cite{sperl-trckova} & $10^{-3}$ \\
-Young modulus [GPa] & 50 \cite{ljunggren} & $50\times 10^{-9}$ \\
-Poisson's ratio [-] & 0.25 \cite{ljunggren} & 0.25 \\
+ & rock & fractures & liquid\\\hline
+Density $\varrho$ [kg.m${}^{-3}$] & 2700 & 2700 & 1000 \\
+Hydraulic conductivity $k$ [m.s${}^{-1}$] & $10^{-9}$ \cite{sperl-trckova} & $10^{-3}$ & ---\\
+Porosity $\vartheta$ [--] & $5\times10^{-3}$ \cite{intera} & $5\times10^{-2}$ & --- \\
+Compressibility $\beta$ [Pa${}^{-1}$] & $2\times10^{-11}$ \cite{zisman} & $2\times10^{-11}$ & $5\times10^{-10}$ \\
+Storativity $S$ [m${}^{-1}$] & $2\times10^{-7}$ & $2\times10^{-7}$ & --- \\
+Cross-section $\delta$ [m] & --- & $10^{-6}$ & --- \\
+\hline
+Young modulus $G$ [Pa] & $50\times10^9$ \cite{ljunggren} & 50 & --- \\
+Poisson's ratio $\nu$ [--] & 0.25 \cite{ljunggren} & 0.25 & --- \\
+Biot's coefficient $\alpha$ [--] & 1 & 1 & --- \\
+\hline
+Heat capacity $c$ [J.kg${}^{-1}$.K${}^{-1}$] & 790 & 790 & 4000 \\
+Thermal conductivity $\lambda$ [W.m${}^{-1}$.K${}^{-1}$] & 2.5 & 2.5 & 0.5 \\
 \hline
 \end{tabular}
 
-\subsection{Parameters of EGS site}
+Storativity is calculated as follows \cite{brace-et-al}:
+\[ S = \varrho_l g(\beta_r + \vartheta\beta_l), \]
+where $g$ is the constant of gravity, which gives approximately the same values both for rock and fractures.
 
-Well depth: approx. 5 km\\
-Well radius: approx. 15 cm\\
-Distance of injection and production well: \\
-Pressure difference / water flux: 60 l/s
+\subsection{Parameters of EGS site and model geometry}
 
+Number of wells: 2 \\
+Depth: 5 km \\
+Distance: 200 m \\
+Radius: 15 cm \\
+Length of open part of wells: 60 m \\
+
+% Pressure difference / water flux: 60 l/s
+
+In our model we consider the cube $600 \times 600 \times 600$ m around the lower well ends, from which two cylinders of radius 10 m and height 60 m are removed.
+These represent the surrounding of the open well parts.
+The reason for using 10 m radius instead of the real well radius is to keep the number of necessary mesh elements reasonable.
+The wells are connected by three fractures, two of them intersecting the cylinders and one intersecting the first two fractures.
+
+On the surface of the artificial cylinders we shall extrapolate the value of piezometric head using the following idea: Given value $H_w$ of piezometric head at the well surface (with radius $r_w$) we assume that the piezometric head in the vicinity of the well is the function of the distance $d_w$ to the well axis:
+\eq{\label{eq:H_log} H(\xx) = H_w\frac{\log d_w(|\xx|)}{\log r_w}. }
+Then, on the surface of the cylinder at radius $r_c$ we impose the Robin condition in the Darcy flow equation:
+\eq{\label{eq:H_robin} k\nabla H\cdot\nn = \sigma(H-H_w), }
+where $\nn$ stands for the unit outward normal vector.
+From \eqref{eq:H_log} and \eqref{eq:H_robin} we obtain the transition coefficient
+\[ \sigma = \frac{k}{r_c}\left|\frac{\log r_c}{\log r_w}\right| \]
+whose value depends on the hydraulic conductivity.
+
+
+\subsection{Hydro-mechanical model}
+\label{sc:hm_model}
+
+In the first model scenario the fluid is injected to both wells in order to open the preexisting fractures.
+The result is the modified cross-section of fractures.
+For simplicity we stimulate both wells simultaneously which produces very similar result in the change of fracture cross-section as if the wells were stimulated one by one.
+The liquid is injected for 1 day under the pressure 100 MPa (which corresponds to piezometric head $10^4$ m).
+
+Initial condition: zero piezometric head
+
+Boundary conditions:
+\begin{itemize}
+\item piezometric head $10^4$ m on surface of wells (including the intersections with fractures)
+\item piezometric head 0 m on lateral sides of the box (MOZNA BY MELO BYT I NAHORE A DOLE?)
+\item no fluid flow through bottom and top part of the box and fracture tips
+\item zero displacement on bottom part of the box
+\item zero traction elsewhere
+\end{itemize}
+
+We use the Biot poroelasticity equations in the 3d continuum and 2d network of fractures. By dimension reduction of the Biot equations we obtain fluxes and forces which couple the rock with the lower dimensional fractures:
+\[ \partial_t(Sp + \alpha\div\uu) - k\Delta p = 0,\qquad -\mu\div(\nabla\uu+\nabla\uu^\top) - \lambda\nabla\div\uu + \alpha\varrho g\nabla H = 0. \]
+Here $p=H-x_3$ is the pressure head [m], $\uu$ is the displacement [m], $\mu$ and $\lambda$ are the Lamé parameters [Pa].
+...
+
+
+\subsection{Thermo-hydraulic model}
+
+The second scenario corresponds to operation of the EGS within 30 years after hydraulic stimulation performed according to Sec. \ref{sc:hm_model}.
+The fluid is continuously injected into one well and pumped out of the second one under the pressure difference 20 MPa and with inlet temperature $15\ ^\circ$C.
+
+Initial condition:
+temperature corresponding to $10\ ^\circ$C at the Earth surface and geothermal gradient $30\ ^\circ$C.km${}^{-1}$
+
+Boundary conditions:
+\begin{itemize}
+\item piezometric head $\pm10^3$ m on surface of wells ($+$ on the injection well, $-$ on the production well)
+\item piezometric head 0 m on lateral sides of the box (MOZNA BY MELO BYT I NAHORE A DOLE?)
+\item no flux on bottom and top part of the box and on fracture tips
+\item temperature $15\ ^\circ$C on surface of injection well (ZDE BY SE MELA UDELAT APROXIMACE DIRICHLETA ROBINEM PODOBNE JAKO V PROUDENI Z NEJAKEHO ANALYTICKEHO RESENI)
+\item initial temperature on lateral sides of the box where fluid flows into the box
+\item no heat flux through bottom and top part of the box and fracture tips
+\end{itemize}
+
+We use the following system of heat equation and steady-state Darcy flow with coupling terms connecting the rock to the fractures:
+\[ ... \]
 
 
 \begin{thebibliography}{9}
 
-\bibitem{capova} L. Čápová. Specification of the geothermic model in the
-environs of several selected boreholes. Diploma thesis, Charles University in Prague, 2013.
+\bibitem{brace-et-al} W. F. Brace,  J. B. Walsh, W. T. Grango.  Permeability of Granite Under High Pressure, J. Geophys. Res. 73(6):2225--2236, 1968.
 
-\bibitem{sperl-trckova} Jan ŠPERL and Jiřina TRČKOVÁ. PERMEABILITY AND POROSITY OF ROCKS AND THEIR RELATIONSHIP BASED ON LABORATORY TESTING. Acta Geodyn. Geomater., Vol. 5, No. 1 (149), 41-47, 2008.
+\bibitem{capova} L. Čápová. Specification of the geothermic model in the environs of several selected boreholes. Diploma thesis, Charles University in Prague, 2013.
 
-\bibitem{ljunggren} Christer  Ljunggren et al. Mechanical properties of granitic rocks from Gide\aa, Sweden. Technical Report 85-06, SKB, 1985.
+\bibitem{intera} INTERA Environmental Consultants, Inc. Porosity, Permeability,  and Their  Relationship  in  
+Granite,  Basalt, and Tuff. Accession  DE83-011519, NTIS, Springfield, Virginia, 1983.
+
+\bibitem{sperl-trckova} J. Šperl, J. Trčková. Permeability and porosity of rocks and their relationship based on laboratory testing. Acta Geodyn. Geomater. 5(149):41--47, 2008.
+
+\bibitem{ljunggren} C. Ljunggren, O. Stephansson, O. Alm, H. Hakami, U. Mattila. Mechanical properties of granitic rocks from Gide\aa, Sweden. Technical Report 85-06, SKB, 1985.
+
+\bibitem{zisman} W. A. Zisman. Compressibility and anisotropy of rocks at and near the Earth's surface. Proceedings of the National Academy of Sciences of the United States of America, 19(7):666--679, 1933.
 
 \end{thebibliography}
 
