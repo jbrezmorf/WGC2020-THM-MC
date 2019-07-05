@@ -1,0 +1,106 @@
+flow123d_version: 2.0.0
+problem: !Coupling_Sequential
+  description: Hydraulic stimulation of fractures connecting two open well ends
+  mesh:
+    mesh_file: three_frac_symmetric.msh
+    regions:
+      - !Union
+        name: fractures
+        regions: [ left_fr, right_fr, center_fr ]
+  flow_equation: !Coupling_Iterative
+    input_fields:
+      - region: BULK
+        biot_alpha: 1
+    time:
+      end_time: 86400 # 1 day
+    iteration_parameter: 0.5 # affects convergence of HM coupling (defaults to 1, lower value sometimes helps)
+    a_tol: 0
+    r_tol: 1e-7
+    flow_equation: !Flow_Richards_LMH
+        output_specific:
+        nonlinear_solver:
+          linear_solver: !Petsc
+            options: -ksp_type preonly -pc_type lu
+        n_schurs: 2
+        input_fields:
+          - region: box
+            conductivity: 1e-9
+            storativity: 2e-7
+            init_piezo_head: 0    # piezometric head is shifted so that at the center of wells the pressure height is zero
+          - region: fractures
+            cross_section: 1e-6
+            conductivity: 1e-3
+            storativity: 2e-7
+            init_piezo_head: 0
+
+          - region: .left_fr_left_well
+            bc_type: total_flux
+            bc_piezo_head: !FieldFormula
+              value: 1e4
+            bc_robin_sigma: !FieldFormula # computed using analytic solution near well as: conductivity*|ln(mesh radius)|/mesh radius/|ln(well radius)|
+              value: -1e-3*log(10)/10/log(0.15)
+          - region: .left_well
+            bc_type: total_flux
+            bc_piezo_head: !FieldFormula
+              value: 1e4
+            bc_robin_sigma: !FieldFormula
+              value: -1e-9*log(10)/10/log(0.15)
+
+          - region: .right_fr_right_well
+            bc_type: total_flux
+            bc_piezo_head: !FieldFormula
+              value: 1e4
+            bc_robin_sigma: !FieldFormula
+              value: -1e-3*log(10)/10/log(0.15)
+          - region: .right_well
+            bc_type: total_flux
+            bc_piezo_head: !FieldFormula
+              value: 1e4
+            bc_robin_sigma: !FieldFormula
+              value: -1e-9*log(10)/10/log(0.15)
+
+          - region: [ .side_x0, .side_x1, .side_y0, .side_y1 ]
+            bc_type: dirichlet
+            bc_piezo_head: 0
+        output:
+          fields:
+            - piezo_head_p0
+            - pressure_p0
+            - velocity_p0
+            - region_id
+        balance:
+          cumulative: true
+        output_stream: 
+          format: !vtk
+            variant: ascii
+    mechanics_equation:
+        output_stream:
+          file: mechanics.pvd
+          format: !gmsh
+            variant: ascii
+        output:
+          fields:
+            - displacement
+            - stress
+            - cross_section_updated
+            - region_id
+        solver: !Petsc
+          a_tol: 0
+          r_tol: 1e-14
+#          options: -ksp_type preonly -pc_type lu  # does not work in parallel
+        input_fields:
+          - region: box
+            young_modulus: 50e9
+            poisson_ratio: 0.25
+            load: [ 0, 0, -1 ]  # gravity force
+          - region: fractures
+            young_modulus: 50e0
+            poisson_ratio: 0.25
+            load: [ 0, 0, -1 ]
+
+          - region: [ .side_z0 ]
+            bc_type: displacement
+            bc_displacement: 0
+          - region: [ .side_x0, .side_x1, .side_y0, .side_y1 ]
+            bc_type: displacement_n  # lateral sides can move in vertical direction
+            bc_displacement: 0
