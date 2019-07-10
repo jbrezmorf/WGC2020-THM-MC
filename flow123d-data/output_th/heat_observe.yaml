@@ -1,0 +1,72 @@
+# Observation file: heat
+time_unit: s
+time_unit_in_seconds: 1
+points:
+  - name: obs_0
+    init_point: [ 90.875 , -4.0910000000000002 , -17.826000000000001 ]
+    snap_dim: 4
+    snap_region: right_fr
+    observe_point: [ 90.875127235904571 , -4.0910126682158392 , -17.82576302091346 ]
+data:
+  - time: 0
+    temperature: [ 433.68477289062736 ]
+  - time: 31557600
+    temperature: [ 431.54349685721462 ]
+  - time: 63115200
+    temperature: [ 427.83537993218005 ]
+  - time: 94672800
+    temperature: [ 422.84180775244698 ]
+  - time: 126230400
+    temperature: [ 417.33452885526845 ]
+  - time: 157788000
+    temperature: [ 411.84900929029936 ]
+  - time: 189345600
+    temperature: [ 406.66115657042081 ]
+  - time: 220903200
+    temperature: [ 401.88247338183135 ]
+  - time: 252460800
+    temperature: [ 397.53728022859741 ]
+  - time: 284018400
+    temperature: [ 393.60834787760137 ]
+  - time: 315576000
+    temperature: [ 390.06113508216771 ]
+  - time: 347133600
+    temperature: [ 386.85595655476578 ]
+  - time: 378691200
+    temperature: [ 383.95375154409084 ]
+  - time: 410248800
+    temperature: [ 381.31856412275215 ]
+  - time: 441806400
+    temperature: [ 378.91838289983087 ]
+  - time: 473364000
+    temperature: [ 376.72519729185785 ]
+  - time: 504921600
+    temperature: [ 374.71470890979168 ]
+  - time: 536479200
+    temperature: [ 372.86591735447121 ]
+  - time: 568036800
+    temperature: [ 371.16068596325925 ]
+  - time: 599594400
+    temperature: [ 369.58333479363324 ]
+  - time: 631152000
+    temperature: [ 368.12027889021874 ]
+  - time: 662709600
+    temperature: [ 366.75971570732213 ]
+  - time: 694267200
+    temperature: [ 365.49135911944563 ]
+  - time: 725824800
+    temperature: [ 364.30621491168949 ]
+  - time: 757382400
+    temperature: [ 363.19639200439923 ]
+  - time: 788940000
+    temperature: [ 362.15494390346697 ]
+  - time: 820497600
+    temperature: [ 361.17573545864366 ]
+  - time: 852055200
+    temperature: [ 360.25333070110412 ]
+  - time: 883612800
+    temperature: [ 359.38289819967179 ]
+  - time: 915170400
+    temperature: [ 358.5601309733882 ]
+  - time: 946728000
+    temperature: [ 357.78117851216393 ]

@@ -11,7 +11,7 @@ problem: !Coupling_Sequential
     output_specific:
     nonlinear_solver:
       linear_solver: !Petsc
-        a_tol: 0
+        a_tol: 1e-14
         r_tol: 1e-14
 #        options: -ksp_type preonly -pc_type lu
     n_schurs: 2
@@ -24,34 +24,30 @@ problem: !Coupling_Sequential
         cross_section: !FieldFE  # loaded from HM simulation
           mesh_data_file: output_hm/mechanics.msh
           field_name: cross_section_updated
-          default_value: 1e-6
+          default_value: 1e-3
           read_time_shift: 86400
         conductivity: 1e-3
         init_piezo_head: 0
 
       - region: .left_fr_left_well
         bc_type: total_flux
-        bc_piezo_head: !FieldFormula
-          value: 1e3
+        bc_piezo_head: 1e2
         bc_robin_sigma: !FieldFormula # -conductivity*ln(mesh radius)/mesh radius/ln(well radius)
           value: -1e-3*log(10)/10/log(0.15)
       - region: .left_well
         bc_type: total_flux
-        bc_piezo_head: !FieldFormula
-          value: 1e3
+        bc_piezo_head: 1e2
         bc_robin_sigma: !FieldFormula
           value: -1e-9*log(10)/10/log(0.15)
 
       - region: .right_fr_right_well
         bc_type: total_flux
-        bc_piezo_head: !FieldFormula
-          value: -1e3
+        bc_piezo_head: -1e2
         bc_robin_sigma: !FieldFormula
           value: -1e-3*log(10)/10/log(0.15)
       - region: .right_well
         bc_type: total_flux
-        bc_piezo_head: !FieldFormula
-          value: -1e3
+        bc_piezo_head: -1e2
         bc_robin_sigma: !FieldFormula
           value: -1e-9*log(10)/10/log(0.15)
 
@@ -77,10 +73,10 @@ problem: !Coupling_Sequential
       cumulative: true
     input_fields:
       - region: BULK
-        fluid_density: 1000.0
+        fluid_density: 1000
         fluid_heat_capacity: 4000
         fluid_heat_conductivity: 0.5
-        solid_density: 2700.0
+        solid_density: 2700
         solid_heat_capacity: 790
         solid_heat_conductivity: 2.5
         init_temperature: !FieldFormula
@@ -115,7 +111,7 @@ problem: !Coupling_Sequential
       times:
         - step: 31557600       # 1 yr
     solver: !Petsc
-      a_tol: 0
+      a_tol: 1e-14
       r_tol: 1e-14
     time:
       end_time: 946728000       # 30 yr
