@@ -51,10 +51,6 @@ problem: !Coupling_Sequential
         bc_robin_sigma: !FieldFormula
           value: -1e-9*log(10)/10/log(0.15)
 
-      - region: [ .side_x0, .side_x1, .side_y0, .side_y1 ]
-        bc_type: dirichlet
-        bc_piezo_head: 0
-
     output:
       fields:
         - piezo_head_p0

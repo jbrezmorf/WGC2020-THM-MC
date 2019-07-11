@@ -9,64 +9,64 @@ points:
     observe_point: [ 90.875127235904571 , -4.0910126682158392 , -17.82576302091346 ]
 data:
   - time: 0
-    temperature: [ 433.68477289062736 ]
+    temperature: [ 433.68477289062741 ]
   - time: 31557600
-    temperature: [ 431.54349685721462 ]
+    temperature: [ 431.54294379306219 ]
   - time: 63115200
-    temperature: [ 427.83537993218005 ]
+    temperature: [ 427.83357103142475 ]
   - time: 94672800
-    temperature: [ 422.84180775244698 ]
+    temperature: [ 422.83881036901687 ]
   - time: 126230400
-    temperature: [ 417.33452885526845 ]
+    temperature: [ 417.33071824271451 ]
   - time: 157788000
-    temperature: [ 411.84900929029936 ]
+    temperature: [ 411.84481101249867 ]
   - time: 189345600
-    temperature: [ 406.66115657042081 ]
+    temperature: [ 406.65693436966268 ]
   - time: 220903200
-    temperature: [ 401.88247338183135 ]
+    temperature: [ 401.87850358355655 ]
   - time: 252460800
-    temperature: [ 397.53728022859741 ]
+    temperature: [ 397.53375977410673 ]
   - time: 284018400
-    temperature: [ 393.60834787760137 ]
+    temperature: [ 393.60541088512343 ]
   - time: 315576000
-    temperature: [ 390.06113508216771 ]
+    temperature: [ 390.05886881388119 ]
   - time: 347133600
-    temperature: [ 386.85595655476578 ]
+    temperature: [ 386.85441431535298 ]
   - time: 378691200
-    temperature: [ 383.95375154409084 ]
+    temperature: [ 383.95296239343065 ]
   - time: 410248800
-    temperature: [ 381.31856412275215 ]
+    temperature: [ 381.318539963521 ]
   - time: 441806400
-    temperature: [ 378.91838289983087 ]
+    temperature: [ 378.91912357926748 ]
   - time: 473364000
-    temperature: [ 376.72519729185785 ]
+    temperature: [ 376.72669425748597 ]
   - time: 504921600
-    temperature: [ 374.71470890979168 ]
+    temperature: [ 374.71694782955933 ]
   - time: 536479200
-    temperature: [ 372.86591735447121 ]
+    temperature: [ 372.8688799993954 ]
   - time: 568036800
-    temperature: [ 371.16068596325925 ]
+    temperature: [ 371.16435156432476 ]
   - time: 599594400
-    temperature: [ 369.58333479363324 ]
+    temperature: [ 369.58768102181318 ]
   - time: 631152000
-    temperature: [ 368.12027889021874 ]
+    temperature: [ 368.12528256559585 ]
   - time: 662709600
-    temperature: [ 366.75971570732213 ]
+    temperature: [ 366.76535331145567 ]
   - time: 694267200
-    temperature: [ 365.49135911944563 ]
+    temperature: [ 365.4976071644594 ]
   - time: 725824800
-    temperature: [ 364.30621491168949 ]
+    temperature: [ 364.31305020400112 ]
   - time: 757382400
-    temperature: [ 363.19639200439923 ]
+    temperature: [ 363.20379183082639 ]
   - time: 788940000
-    temperature: [ 362.15494390346697 ]
+    temperature: [ 362.16288615969205 ]
   - time: 820497600
-    temperature: [ 361.17573545864366 ]
+    temperature: [ 361.18419873516717 ]
   - time: 852055200
-    temperature: [ 360.25333070110412 ]
+    temperature: [ 360.2622943371897 ]
   - time: 883612800
-    temperature: [ 359.38289819967179 ]
+    temperature: [ 359.39234231384444 ]
   - time: 915170400
-    temperature: [ 358.5601309733882 ]
+    temperature: [ 358.57003647633417 ]
   - time: 946728000
-    temperature: [ 357.78117851216393 ]
+    temperature: [ 357.79152710676345 ]
