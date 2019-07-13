@@ -1,0 +1,6 @@
+[submodule "MLMC"]
+	path = MLMC
+	url = git@github.com:GeoMop/MLMC.git
+[submodule "dfn"]
+	path = dfn
+	url = git@github.com:GeoMop/dfn.git
