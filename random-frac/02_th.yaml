@@ -1,0 +1,113 @@
+flow123d_version: 2.0.0
+problem: !Coupling_Sequential
+  description: Heat transfer in EGS after stimulation of fractures
+  mesh:
+    mesh_file: three_frac_symmetric.msh
+    regions:
+      - !Union
+        name: fractures
+        regions: [ left_fr, right_fr, center_fr ]
+  flow_equation: !Flow_Darcy_MH
+    output_specific:
+    nonlinear_solver:
+      linear_solver: !Petsc
+        a_tol: 1e-14
+        r_tol: 1e-14
+#        options: -ksp_type preonly -pc_type lu
+    n_schurs: 2
+    input_fields:
+      - region: box   # we assume steady flow, hence storativity is not set
+        conductivity: 1e-9
+        init_piezo_head: 0
+
+      - region: fractures
+        cross_section: !FieldFE  # loaded from HM simulation
+          mesh_data_file: output_hm/mechanics.msh
+          field_name: cross_section_updated
+          default_value: 1e-3
+          read_time_shift: 86400
+        conductivity: 1e-3
+        init_piezo_head: 0
+
+      - region: .left_fr_left_well
+        bc_type: total_flux
+        bc_piezo_head: 1e2
+        bc_robin_sigma: !FieldFormula # -conductivity*ln(mesh radius)/mesh radius/ln(well radius)
+          value: -1e-3*log(10)/10/log(0.15)
+      - region: .left_well
+        bc_type: total_flux
+        bc_piezo_head: 1e2
+        bc_robin_sigma: !FieldFormula
+          value: -1e-9*log(10)/10/log(0.15)
+
+      - region: .right_fr_right_well
+        bc_type: total_flux
+        bc_piezo_head: -1e2
+        bc_robin_sigma: !FieldFormula
+          value: -1e-3*log(10)/10/log(0.15)
+      - region: .right_well
+        bc_type: total_flux
+        bc_piezo_head: -1e2
+        bc_robin_sigma: !FieldFormula
+          value: -1e-9*log(10)/10/log(0.15)
+
+    output:
+      fields:
+        - piezo_head_p0
+        - pressure_p0
+        - velocity_p0
+        - region_id
+        - cross_section
+    balance:
+      cumulative: true
+    output_stream: 
+      format: !vtk
+        variant: ascii
+
+  heat_equation: !Heat_AdvectionDiffusion_DG
+    balance:
+      cumulative: true
+    input_fields:
+      - region: BULK
+        fluid_density: 1000
+        fluid_heat_capacity: 4000
+        fluid_heat_conductivity: 0.5
+        solid_density: 2700
+        solid_heat_capacity: 790
+        solid_heat_conductivity: 2.5
+        init_temperature: !FieldFormula
+          value: 10-(z-5000)/5000*150+273.15  # geothermal gradient 30 K/km, temperature 10 C at surface (5 km above well end)
+      - region: box
+        porosity: 5e-3   # value of porosity does not influence the results
+      - region: fractures
+        porosity: 5e-2
+
+      - region:
+          - .left_fr_left_well
+          - .left_well
+        bc_type: dirichlet  # dirichlet is not optimal, temperature 15 C at left "well" should be extrapolated from the well radius and artificial mesh radius
+        bc_temperature: !FieldFormula
+          value: 15+273.15
+      - region: [ .side_x0, .side_x1, .side_y0, .side_y1, .side_z0 ]
+        bc_type: inflow
+        bc_temperature: !FieldFormula
+          value: 10-(z-5000)/5000*150+273.15
+    output_stream:
+      file: heat
+      format: !vtk
+        variant: ascii
+      observe_points:
+        - point: [ 90.875, -4.091, -17.826 ]   # observe temperature at intersection of right fracture and right "well"
+          snap_region: right_fr
+    output:
+      fields:
+        - temperature
+        - region_id
+      observe_fields: temperature
+      times:
+        - step: 31557600       # 1 yr
+    solver: !Petsc
+      a_tol: 1e-14
+      r_tol: 1e-14
+    time:
+      end_time: 946728000       # 30 yr
