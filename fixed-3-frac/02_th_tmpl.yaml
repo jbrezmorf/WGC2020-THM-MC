@@ -2,7 +2,7 @@ flow123d_version: 2.0.0
 problem: !Coupling_Sequential
   description: Heat transfer in EGS after stimulation of fractures
   mesh:
-    mesh_file: three_frac_symmetric.msh
+    mesh_file: <mesh>
     regions:
       - !Union
         name: fractures
@@ -25,7 +25,8 @@ problem: !Coupling_Sequential
           mesh_data_file: output_hm/mechanics.msh
           field_name: cross_section_updated
           default_value: 1e-3
-          read_time_shift: 86400
+          # ???
+          read_time_shift: [1, 'd']   # 86400
         conductivity: 1e-3
         init_piezo_head: 0
 
@@ -105,9 +106,9 @@ problem: !Coupling_Sequential
         - region_id
       observe_fields: temperature
       times:
-        - step: 31557600       # 1 yr
+        - {step: 1, time_unit: 'y'}      # 31557600       # 1 yr
     solver: !Petsc
       a_tol: 1e-14
       r_tol: 1e-14
     time:
-      end_time: 946728000       # 30 yr
+      end_time: [30, 'y'] #946728000       # 30 yr

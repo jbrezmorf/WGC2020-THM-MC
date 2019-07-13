@@ -1,0 +1,21 @@
+# The flow executable and arguments to use.
+flow_executable:
+  - ../../flow123d_JB/bin/fterm
+  - --no-term
+  - dbg
+  - run
+
+# parameters substituted into the HM model template
+hm_params:
+    # The mesh to use in both simulations.
+    #mesh: three_frac_symmetric.msh
+    mesh: three_frac_symmetric_5000el.msh
+
+
+
+# parameters substituted into the TH model template
+th_params:
+    # The mesh to use in both simulations.
+    #mesh: three_frac_symmetric.msh
+    mesh: three_frac_symmetric_5000el.msh
+
