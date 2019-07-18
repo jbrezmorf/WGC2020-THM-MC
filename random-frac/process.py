@@ -8,18 +8,22 @@ import subprocess
 import yaml
 import attr
 import numpy as np
+import collections
 # import matplotlib.pyplot as plt
 
-from gmsh_api import gmsh
-from gmsh_api import options
 import fracture
 
+# TODO:
+# - enforce creation of empty physical groups, or creation of empty regions in the flow input
+# - speedup mechanics
+
 @attr.s(auto_attribs=True)
-class ValueDesctription:
+class ValueDescription:
     time: float
     position: str
     quantity: str
     unit: str
+
 
 
 def substitute_placeholders(file_in, file_out, params):
@@ -42,23 +46,83 @@ def substitute_placeholders(file_in, file_out, params):
         dst.write(text)
     return used_params
 
+def to_polar(x, y, z):
+    rho = np.sqrt(x ** 2 + y ** 2)
+    phi = np.arctan2(y, x)
+    if z > 0:
+        phi += np.pi
+    return (phi, rho)
 
-def prepare_mesh(config_dict):
+def plot_fr_orientation(fractures):
+    family_dict = collections.defaultdict(list)
+    for fr in fractures:
+        x, y, z = fracture.FisherOrientation.rotate(np.array([0,0,1]), axis=fr.rotation_axis, angle=fr.rotation_angle)[0]
+        family_dict[fr.region].append([
+            to_polar(z, y, x),
+            to_polar(z, x, -y),
+            to_polar(y, x, z)
+            ])
+
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(1, 3, subplot_kw=dict(projection='polar'))
+    for name, data in family_dict.items():
+        # data shape = (N, 3, 2)
+        data = np.array(data)
+        for i, ax in enumerate(axes):
+            phi = data[:, i, 0]
+            r = data[:, i, 1]
+            c = ax.scatter(phi, r, cmap='hsv', alpha=0.75, label=name)
+    axes[0].set_title("X-view, Z-north")
+    axes[1].set_title("Y-view, Z-north")
+    axes[2].set_title("Z-view, Y-north")
+    for ax in axes:
+        ax.set_theta_zero_location("N")
+        ax.set_theta_direction(-1)
+        ax.set_ylim(0, 1)
+    fig.legend(loc = 1)
+    fig.savefig("fracture_orientation.pdf")
+    plt.close(fig)
+    #plt.show()
+
+def generate_fractures(config_dict):
     geom = config_dict["geometry"]
     dimensions = geom["box_dimensions"]
     well_z0, well_z1 = geom["well_openning"]
+    well_length = well_z1 - well_z0
     well_r = geom["well_effective_radius"]
     well_dist = geom["well_distance"]
 
     # generate fracture set
-    volume = np.product(dimensions)
+    fracture_box = [1.5 * well_dist, 1.5 * well_length, 1.5 * well_length]
+    volume = np.product(fracture_box)
     pop = fracture.Population(volume)
     pop.initialize(geom["fracture_stats"])
     pop.set_sample_range([1, well_dist], max_sample_size=geom["n_frac_limit"])
     print("total mean size: ", pop.mean_size())
-    fractures = pop.sample()
+    pos_gen = fracture.UniformBoxPosition(fracture_box)
+    fractures = pop.sample(pos_distr=pos_gen, keep_nonempty=True)
+    for fr in fractures:
+        fr.region = "fr"
+    used_families = set((f.region for f in fractures))
+    for model in ["hm_params", "th_params"]:
+        model_dict = config_dict[model]
+        model_dict["fracture_regions"] = list(used_families)
+        model_dict["left_well_fracture_regions"] = [".{}_left_well".format(f) for f in used_families]
+        model_dict["right_well_fracture_regions"] = [".{}_right_well".format(f) for f in used_families]
+    return fractures
 
-    factory = gmsh.GeometryOCC("three_frac_symmetric", verbose=True)
+def prepare_mesh(config_dict, fractures):
+    geom = config_dict["geometry"]
+    dimensions = geom["box_dimensions"]
+    well_z0, well_z1 = geom["well_openning"]
+    well_length = well_z1 - well_z0
+    well_r = geom["well_effective_radius"]
+    well_dist = geom["well_distance"]
+    mesh_name = config_dict["mesh_name"]
+
+    from gmsh_api import gmsh
+    from gmsh_api import options
+    factory = gmsh.GeometryOCC(mesh_name, verbose=True)
     gopt = options.Geometry()
     gopt.Tolerance = 1e-5
     gopt.ToleranceBoolean = 1e-3
@@ -123,39 +187,51 @@ def prepare_mesh(config_dict):
     factory.remove_duplicate_entities()
     factory.write_brep()
 
-    min_el_size = well_r / 20
+    min_el_size = well_r / 30
     fracture_el_size = np.max(dimensions) / 20
     max_el_size = np.max(dimensions) / 10
 
-    fractures_fr.set_mesh_step(200)
+    fractures_fr.set_mesh_step(20)
     # fracture_el_size = field.constant(100, 10000)
     # frac_el_size_only = field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
     # field.set_mesh_step_field(frac_el_size_only)
 
     mesh = options.Mesh()
-    mesh.ToleranceInitialDelaunay = 0.0001
+    mesh.ToleranceInitialDelaunay = 0.01
     mesh.CharacteristicLengthFromPoints = True
     mesh.CharacteristicLengthFromCurvature = True
     mesh.CharacteristicLengthExtendFromBoundary = 1
     mesh.CharacteristicLengthMin = min_el_size
     mesh.CharacteristicLengthMax = max_el_size
-    mesh.MinimumCurvePoints = 12
+    mesh.MinimumCurvePoints = 2
 
     factory.make_mesh(mesh_groups)
     factory.write_mesh(format=gmsh.MeshFormat.msh2)
+    os.rename(mesh_name + ".msh2", mesh_name + ".msh")
+    #factory.show()
+    return mesh_name + ".msh"
 
-    factory.show()
-
-
-def compute_hm(config_dict):
+def call_flow(config_dict, param_key):
     """
-    :param config_dict: Parsed config.yaml. see key comments there.
+    Redirect sstdout and sterr, return true on succesfull run.
+    :param arguments:
+    :return:
     """
-    substitute_placeholders('01_hm_tmpl.yaml', '01_hm.yaml', config_dict['hm_params'])
-    arguments = config_dict['flow_executable'].copy()
-    arguments.extend(['--output_dir', 'output_hm', '01_hm.yaml'])
+    params = config_dict[param_key]
+    fname = params["in_file"]
+    substitute_placeholders(fname + '_tmpl.yaml', fname + '.yaml', params)
+    arguments = config_dict["_aux_flow_path"].copy()
+    arguments.extend(['--output_dir', 'output_th', fname + ".yaml"])
     print("Running: ", " ".join(arguments))
-    subprocess.call(arguments)
+    with open(fname + "_stdout", "w") as stdout:
+        with open(fname + "_stderr", "w") as stderr:
+            completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
+
+    status =  completed.returncode == 0
+    print("Exit status: ", status)
+
+
+
 
 def prepare_th_input(config_dict):
     """
@@ -164,23 +240,14 @@ def prepare_th_input(config_dict):
     """
     pass
 
-def compute_th(config_dict):
-    """
-    :param config_dict: Parsed config.yaml. see key comments there.
-    """
-    substitute_placeholders('02_th_tmpl.yaml', '02_th.yaml', config_dict['th_params'])
-    arguments = config_dict['flow_executable'].copy()
-    arguments.extend(['--output_dir', 'output_th', '02_th.yaml'])
-    print("Running: ", " ".join(arguments))
-    subprocess.call(arguments)
 
 def get_result_description():
     """
     :return:
     """
     end_time = 30
-    values = [ [ValueDesctription(time=t, position="extraction_well", quantity="power", unit="MW"),
-                ValueDesctription(time=t, position="extraction_well", quantity="temperature", unit="Celsius deg.")
+    values = [ [ValueDescription(time=t, position="extraction_well", quantity="power", unit="MW"),
+                ValueDescription(time=t, position="extraction_well", quantity="temperature", unit="Celsius deg.")
                 ] for t in np.linspace(0, end_time, 0.1)]
     power_series, temp_series = zip(*values)
     return power_series + temp_series
@@ -213,8 +280,6 @@ def extract_results(config_dict):
     :param config_dict: Parsed config.yaml. see key comments there.
     : return
     """
-    abs_zero_temp = 273.15
-    year_sec = 60 * 60 * 24 *365
     bc_regions = ['.left_fr_left_well', '.left_well', '.right_fr_right_well', '.right_well']
     out_regions = bc_regions[2:]
     with open("output_th/energy_balance.yaml", "r") as f:
@@ -227,7 +292,13 @@ def extract_results(config_dict):
         flux_times, reg_fluxes = extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
     sum_flux = sum(reg_fluxes)
     avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+    return temp_times, avg_temp, power_times, power_series
 
+def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
+    abs_zero_temp = 273.15
+    year_sec = 60 * 60 * 24 * 365
+
+    import matplotlib.pyplot as plt
     fig, ax1 = plt.subplots()
     temp_color = 'red'
     ax1.set_xlabel('time [y]')
@@ -256,17 +327,32 @@ def sample(tag, config_dict):
         pass
     os.mkdir(sample_dir)
     os.chdir(sample_dir)
+    for f in config_dict["copy_files"]:
+        shutil.copyfile("../../" + f, f)
+    flow_exec = config_dict["flow_executable"].copy()
+    flow_exec[0] = "../../" + flow_exec[0]
+    config_dict["_aux_flow_path"] = flow_exec
 
-    prepare_mesh(config_dict)
-    #compute_hm(config_dict)
-    #prepare_th_input(config_dict)
-    #compute_th(config_dict)
-    #extract_results(config_dict)
+    fractures = generate_fractures(config_dict)
+    # plot_fr_orientation(fractures)
+    mesh_file = prepare_mesh(config_dict, fractures)
+    #shutil.copyfile("../../random_frac_full_reg.msh",  mesh_file)
+    config_dict["hm_params"]["mesh"] = mesh_file
+    config_dict["th_params"]["mesh"] = mesh_file
 
-    #os.chdir(root_dir)
+    hm_succeed = call_flow(config_dict, 'hm_params')
+    th_succeed = False
+    if hm_succeed:
+        prepare_th_input(config_dict)
+        th_succeed = call_flow(config_dict, 'th_params')
+        if th_succeed:
+            series = extract_results(config_dict)
+            plot_exchanger_evolution(*series)
+    os.chdir(root_dir)
 
 
 if __name__ == "__main__":
+    np.random.seed(1)
     with open("config.yaml", "r") as f:
         config_dict = yaml.safe_load(f)
 

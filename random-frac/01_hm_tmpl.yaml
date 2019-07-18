@@ -6,7 +6,13 @@ problem: !Coupling_Sequential
     regions:
       - !Union
         name: fractures
-        regions: [ left_fr, right_fr, center_fr ]
+        regions: <fracture_regions>
+      - !Union
+        name: .left_well_fr
+        regions: <left_well_fracture_regions>
+      - !Union
+        name: .right_well_fr
+        regions: <right_well_fracture_regions>
   flow_equation: !Coupling_Iterative
     input_fields:
       - region: BULK
@@ -36,7 +42,7 @@ problem: !Coupling_Sequential
             storativity: 2e-7
             init_piezo_head: 0
 
-          - region: .left_fr_left_well
+          - region: .left_well_fr
             bc_type: total_flux
             bc_piezo_head: 1e3
             bc_robin_sigma: !FieldFormula # computed using analytic solution near well as: conductivity*|ln(mesh radius)|/mesh radius/|ln(well radius)|
@@ -47,7 +53,7 @@ problem: !Coupling_Sequential
             bc_robin_sigma: !FieldFormula
               value: -1e-9*log(10)/10/log(0.15)
 
-          - region: .right_fr_right_well
+          - region: .right_well_fr
             bc_type: total_flux
             bc_piezo_head: 1e3
             bc_robin_sigma: !FieldFormula

@@ -5,6 +5,8 @@ flow_executable:
   - dbg
   - run
 
+copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml]
+
 geometry:
   # depth of the center of the box and of the coordinate system
   center_depth: 5000
@@ -13,7 +15,7 @@ geometry:
   # z range of the well opening
   well_openning: [-50, 50]
   # effective well radius (cut off from the geometry)
-  well_effective_radius: 5
+  well_effective_radius: 10
   # horizontal distance of the well axes
   well_distance: 200
   # upper limit on the number of fractures
@@ -61,12 +63,16 @@ geometry:
           r_max: 564
           p_32: 0.543
 
+# base of the mesh file name
+mesh_name: random_fractures
+
 
 # parameters substituted into the HM model template
 hm_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: three_frac_symmetric_5000el.msh
+    mesh: random_fractures.msh
+    in_file: 01_hm
 
 
 
@@ -74,5 +80,5 @@ hm_params:
 th_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: three_frac_symmetric_5000el.msh
-
+    mesh: random_fractures.msh
+    in_file: 02_th
