@@ -104,14 +104,14 @@ Number of wells: 2 \\
 Depth: 5 km \\
 Distance: 200 m \\
 Well radius: $\rho = 15$ cm \\
-Length of open part of wells: $l=60$ m \\
+Length of open part of wells: $L=60$ m \\
 
 % Pressure difference / water flux: 60 l/s
 
 
 In our model, we consider pair of vertical wells with the radius $\rho=0.15$ m in the distance $D=200$ m. The open part of the length $L=60$ m is in the depth $5000$ m. The cube $600 \times 600 \times 600$ m around open part is considered as the computing domain. 
 
-{\bf The test geometry:}The wells are connected by three fractures, two of them intersecting the cylinders and one intersecting the first two fractures.
+{\bf The test geometry:} The wells are connected by three fractures, two of them intersecting the cylinders and one intersecting the first two fractures.
 
 \subsection{Analytical models in the vicinity of the wells}
 In order to keep mesh size treatable, we replace the Dirichlet boundary condition for the pressure applied on the open part of the well by the Robin type condition:
@@ -130,7 +130,7 @@ The flux through the cylinder of the radius $r$ and the length $L$ is the consta
 \]
 where we have used the Darcy law with the conductivity $k$. Now we use the analytical solution to fit the Robin type boundary condition:
 \[
-    Q = 2\pi R l \sigma (h(\rho) - h(R)) = 2\pi R l \sigma \alpha \log(R/\rho),
+    Q = 2\pi R L \sigma (h(\rho) - h(R)) = 2\pi R L \sigma \alpha \log(R/\rho),
 \]
 which combined with previous equality determines $\sigma$ as:
 \[ 
