@@ -1,9 +1,14 @@
 # The flow executable and arguments to use.
+# JB:
 flow_executable:
   - ../../flow123d_JB/bin/fterm
   - --no-term
   - dbg
   - run
+
+# Charon:
+# flow_executable:
+#   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml]
 
