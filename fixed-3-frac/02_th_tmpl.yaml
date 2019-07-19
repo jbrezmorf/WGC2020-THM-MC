@@ -17,40 +17,43 @@ problem: !Coupling_Sequential
     n_schurs: 2
     input_fields:
       - region: box   # we assume steady flow, hence storativity is not set
-        conductivity: 1e-9
+        conductivity: <bulk_conductivity>
         init_piezo_head: 0
 
       - region: fractures
         cross_section: !FieldFE  # loaded from HM simulation
-          mesh_data_file: output_hm/mechanics.msh
+          mesh_data_file: output_hm/th_input.msh
           field_name: cross_section_updated
           default_value: 1e-3
-          # ???
-          read_time_shift: [1, 'd']   # 86400
-        conductivity: 1e-3
+#          read_time_shift: [1, 'd']   # 86400
+#        conductivity: <fr_conductivity>
+        conductivity: !FieldFE  # loaded from HM simulation
+          mesh_data_file: output_hm/th_input.msh
+          field_name: conductivity
+          default_value: <fr_conductivity>
         init_piezo_head: 0
 
       - region: .left_fr_left_well
         bc_type: total_flux
         bc_piezo_head: 1e2
-        bc_robin_sigma: !FieldFormula # -conductivity*ln(mesh radius)/mesh radius/ln(well radius)
-          value: -1e-3*log(10)/10/log(0.15)
+        bc_robin_sigma: !FieldFormula
+          value: <fr_conductivity> / (10*log(10/0.15)) # cca 5.5e-5
       - region: .left_well
         bc_type: total_flux
         bc_piezo_head: 1e2
         bc_robin_sigma: !FieldFormula
-          value: -1e-9*log(10)/10/log(0.15)
+          value: <bulk_conductivity> / (10*log(10/0.15))
 
       - region: .right_fr_right_well
         bc_type: total_flux
         bc_piezo_head: -1e2
         bc_robin_sigma: !FieldFormula
-          value: -1e-3*log(10)/10/log(0.15)
+          value: <fr_conductivity> / (10*log(10/0.15))
       - region: .right_well
         bc_type: total_flux
         bc_piezo_head: -1e2
         bc_robin_sigma: !FieldFormula
-          value: -1e-9*log(10)/10/log(0.15)
+          value: <bulk_conductivity> / (10*log(10/0.15))
 
     output:
       fields:

@@ -1,8 +1,15 @@
+import sys
+sys.path.append('../MLMC/src')
+
 import subprocess
 import yaml
 import attr
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
+
+import MLMC.src.gmsh_io as gmsh_io
+
 
 @attr.s(auto_attribs=True)
 class ValueDesctription:
@@ -33,7 +40,6 @@ def substitute_placeholders(file_in, file_out, params):
     return used_params
 
 
-
 def compute_hm(config_dict):
     """
     :param config_dict: Parsed config.yaml. see key comments there.
@@ -44,12 +50,64 @@ def compute_hm(config_dict):
     print("Running: ", " ".join(arguments))
     subprocess.call(arguments)
 
+
 def prepare_th_input(config_dict):
     """
     Prepare FieldFE input file for the TH simulation.
     :param config_dict: Parsed config.yaml. see key comments there.
     """
-    pass
+    # pass
+    # we have to read region names from the input mesh
+    # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
+    #
+    # is_bc_region = {}
+    # for name, (id, _) in input_mesh.physical.items():
+    #     unquoted_name = name.strip("\"'")
+    #     is_bc_region[id] = (unquoted_name[0] == '.')
+
+    # read mesh and mechanichal output data
+    mesh = gmsh_io.GmshIO('output_hm/mechanics.msh')
+
+    n_bulk = len(mesh.elements)
+    ele_ids = np.zeros(n_bulk, dtype=int)
+    for i, id_bulk in zip(range(n_bulk), mesh.elements.items()):
+        ele_ids[i] = id_bulk[0]
+
+    init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
+    init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
+    init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
+
+    field_cs = mesh.element_data['cross_section_updated'][1]
+
+    K = np.zeros((n_bulk, 1), dtype=float)
+    cs = np.zeros((n_bulk, 1), dtype=float)
+    for i, valcs in zip(range(n_bulk), field_cs[1].values()):
+        cs_el = valcs[0]
+        cs[i, 0] = cs_el
+        if cs_el != 1.0:    # if cross_section == 1, i.e. 3d bulk
+            K[i, 0] = init_fr_K * (cs_el*cs_el) / (init_fr_cs*init_fr_cs)
+        else:
+            K[i, 0] = init_bulk_K
+
+    # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
+    th_input_file = 'output_hm/th_input.msh'
+    with open(th_input_file, "w") as fout:
+        mesh.write_ascii(fout)
+        mesh.write_element_data(fout, ele_ids, 'conductivity', K)
+        mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs)
+
+    # create field for K (copy cs)
+    # posun dat K do casu 0
+    # read original K = oK (define in config yaml)
+    # read original cs = ocs (define in config yaml)
+    # compute K = oK * (cs/ocs)^2
+    # write K
+
+    # posun dat cs do casu 0
+    # write cs
+
+    # mesh.element_data.
+
 
 def compute_th(config_dict):
     """
@@ -60,6 +118,7 @@ def compute_th(config_dict):
     arguments.extend(['--output_dir', 'output_th', '02_th.yaml'])
     print("Running: ", " ".join(arguments))
     subprocess.call(arguments)
+
 
 def get_result_description():
     """
@@ -94,6 +153,7 @@ def extract_time_series(yaml_stream, regions, extract):
     times.sort()
     series = [np.array(region_series) for region_series in reg_series.values()]
     return np.array(times), series
+
 
 def extract_results(config_dict):
     """
@@ -132,12 +192,10 @@ def extract_results(config_dict):
     plt.show()
 
 
-
-
 if __name__ == "__main__":
     with open("config.yaml", "r") as f:
         config_dict = yaml.safe_load(f)
-    #compute_hm(config_dict)
-    #prepare_th_input(config_dict)
-    #compute_th(config_dict)
+    compute_hm(config_dict)
+    prepare_th_input(config_dict)
+    compute_th(config_dict)
     extract_results(config_dict)
