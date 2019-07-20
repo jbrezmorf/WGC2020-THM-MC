@@ -101,6 +101,8 @@ def generate_fractures(config_dict):
     print("total mean size: ", pop.mean_size())
     pos_gen = fracture.UniformBoxPosition(fracture_box)
     fractures = pop.sample(pos_distr=pos_gen, keep_nonempty=True)
+    #fracture.fr_intersect(fractures)
+
     for fr in fractures:
         fr.region = "fr"
     used_families = set((f.region for f in fractures))
@@ -111,6 +113,43 @@ def generate_fractures(config_dict):
         model_dict["right_well_fracture_regions"] = [".{}_right_well".format(f) for f in used_families]
     return fractures
 
+
+def create_fractures_rectangles(gmsh_geom, fractures, base_shape: 'ObjectSet'):
+    # From given fracture date list 'fractures'.
+    # transform the base_shape to fracture objects
+    # fragment fractures by their intersections
+    # return dict: fracture.region -> GMSHobject with corresponding fracture fragments
+    shapes = []
+    for i, fr in enumerate(fractures):
+        shape = base_shape.copy()
+        print("fr: ", i, "tag: ", shape.dim_tags)
+        shape = shape.scale([fr.rx, fr.ry, 1]) \
+            .rotate(axis=fr.rotation_axis, angle=fr.rotation_angle) \
+            .translate(fr.centre) \
+            .set_region(fr.region)
+
+        shapes.append(shape)
+
+    fracture_fragments = gmsh_geom.fragment(*shapes)
+    return fracture_fragments
+
+
+def create_fractures_polygons(gmsh_geom, fractures):
+    # From given fracture date list 'fractures'.
+    # transform the base_shape to fracture objects
+    # fragment fractures by their intersections
+    # return dict: fracture.region -> GMSHobject with corresponding fracture fragments
+    frac_obj = fracture.Fractures(fractures)
+    frac_obj.snap_vertices_and_edges()
+    shapes = []
+    for fr, square in zip(fractures, frac_obj.squares):
+        shape = gmsh_geom.make_polygon(square).set_region(fr.region)
+        shapes.append(shape)
+
+    fracture_fragments = gmsh_geom.fragment(*shapes)
+    return fracture_fragments
+
+
 def prepare_mesh(config_dict, fractures):
     geom = config_dict["geometry"]
     dimensions = geom["box_dimensions"]
@@ -119,13 +158,19 @@ def prepare_mesh(config_dict, fractures):
     well_r = geom["well_effective_radius"]
     well_dist = geom["well_distance"]
     mesh_name = config_dict["mesh_name"]
+    mesh_file = mesh_name + ".msh"
+    fracture_mesh_step = 20
+
+    if os.path.isfile(mesh_file):
+        return mesh_file
+
 
     from gmsh_api import gmsh
     from gmsh_api import options
     factory = gmsh.GeometryOCC(mesh_name, verbose=True)
     gopt = options.Geometry()
-    gopt.Tolerance = 1e-5
-    gopt.ToleranceBoolean = 1e-3
+    gopt.Tolerance = 0.0001
+    gopt.ToleranceBoolean = 0.001
     # gopt.MatchMeshTolerance = 1e-1
 
     # Main box
@@ -137,9 +182,9 @@ def prepare_mesh(config_dict, fractures):
         side_z0=side_z.copy().translate([0, 0, -dimensions[2] / 2]),
         side_z1=side_z.copy().translate([0, 0, +dimensions[2] / 2]),
         side_y0=side_y.copy().translate([0, 0, -dimensions[1] / 2]).rotate([-1, 0, 0], np.pi / 2),
-        side_y1=side_y.copy().translate([0, 0, -dimensions[1] / 2]).rotate([-1, 0, 0], np.pi / 2),
+        side_y1=side_y.copy().translate([0, 0, +dimensions[1] / 2]).rotate([-1, 0, 0], np.pi / 2),
         side_x0=side_x.copy().translate([0, 0, -dimensions[0] / 2]).rotate([0, 1, 0], np.pi / 2),
-        side_x1=side_x.copy().translate([0, 0, -dimensions[0] / 2]).rotate([0, 1, 0], np.pi / 2)
+        side_x1=side_x.copy().translate([0, 0, +dimensions[0] / 2]).rotate([0, 1, 0], np.pi / 2)
     )
     for name, side in sides.items():
         side.modify_regions(name)
@@ -157,8 +202,10 @@ def prepare_mesh(config_dict, fractures):
     b_left_well = left_well.get_boundary()
 
     print("n fractures:", len(fractures))
-    fractures = factory.make_fractures(fractures, factory.rectangle())
+    fractures = create_fractures_rectangles(factory, fractures, factory.rectangle())
+    #fractures = create_fractures_polygons(factory, fractures)
     fractures_group = factory.group(*fractures)
+    fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
 
     # drilled box and its boundary
     box_drilled = box.cut(left_well, right_well)
@@ -182,54 +229,194 @@ def prepare_mesh(config_dict, fractures):
     b_fr_right_well = b_fractures.select_by_intersect(b_right_well).modify_regions("{}_right_well")
     b_fractures = factory.group(b_fr_left_well, b_fr_right_well, b_fractures_box)
     mesh_groups = [*box_all, fractures_fr, b_fractures]
+    #fractures_fr.set_mesh_step(fracture_mesh_step)
 
     factory.keep_only(*mesh_groups)
     factory.remove_duplicate_entities()
     factory.write_brep()
 
-    min_el_size = well_r / 30
+    min_el_size = fracture_mesh_step / 100
     fracture_el_size = np.max(dimensions) / 20
-    max_el_size = np.max(dimensions) / 10
+    max_el_size = np.max(dimensions) / 8
 
-    fractures_fr.set_mesh_step(20)
+
     # fracture_el_size = field.constant(100, 10000)
     # frac_el_size_only = field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
     # field.set_mesh_step_field(frac_el_size_only)
 
     mesh = options.Mesh()
-    mesh.ToleranceInitialDelaunay = 0.01
+    # mesh.Algorithm = options.Algorithm2d.MeshAdapt # produce some degenerated 2d elements on fracture boundaries ??
+    #mesh.Algorithm = options.Algorithm2d.Delaunay
+    #mesh.Algorithm = options.Algorithm2d.FrontalDelaunay
+    #mesh.Algorithm3D = options.Algorithm3d.Frontal
+    #mesh.Algorithm3D = options.Algorithm3d.Delaunay
+    #mesh.ToleranceInitialDelaunay = 0.01
+    #mesh.ToleranceEdgeLength = fracture_mesh_step / 5
     mesh.CharacteristicLengthFromPoints = True
     mesh.CharacteristicLengthFromCurvature = True
     mesh.CharacteristicLengthExtendFromBoundary = 1
     mesh.CharacteristicLengthMin = min_el_size
     mesh.CharacteristicLengthMax = max_el_size
+    mesh.MinimumCirclePoints = 6
     mesh.MinimumCurvePoints = 2
 
+
+    #factory.make_mesh(mesh_groups, dim=2)
     factory.make_mesh(mesh_groups)
     factory.write_mesh(format=gmsh.MeshFormat.msh2)
-    os.rename(mesh_name + ".msh2", mesh_name + ".msh")
-    #factory.show()
-    return mesh_name + ".msh"
+    os.rename(mesh_name + ".msh2", mesh_file)
 
-def call_flow(config_dict, param_key):
+    healed_mesh = heal_mesh(mesh_file)
+    #factory.show()
+    return healed_mesh
+
+
+def tri_measure(nodes):
+    return np.linalg.norm(np.cross(nodes[2] - nodes[0], nodes[1] - nodes[0]))/2
+
+
+def smooth_grad_error_indicator_2d(nodes):
+    edges = [(0,1), (1,2), (2,0)]
+    e_lens = [np.linalg.norm(nodes[i]- nodes[j]) for i,j in edges]
+    i_min_edge = np.argmin(e_lens)
+    prod = max(1e-300, (np.prod(e_lens)) ** (2.0 / 3.0))
+    quality = 4 / np.sqrt(3) * np.abs(tri_measure(nodes)) / prod
+    return quality, edges[i_min_edge]
+
+
+def tet_measure(nodes):
+    return np.linalg.det(nodes[1:, :] - nodes[0, :]) / 6
+
+
+def smooth_grad_error_indicator_3d(nodes):
+    vtxs_faces = [[0,1,2], [0,1,3], [0, 2,3], [1,2,3]]
+    faces = [tri_measure(nodes[face_vtxs]) for face_vtxs in vtxs_faces]
+    edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
+    e_lens = [np.linalg.norm(nodes[i]- nodes[j]) for i,j in edges]
+    e_faces = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 3]]
+    sum_pairs = max(1e-300, np.sum([faces[i] * faces[j] * elen ** 2 for (i,j),elen in zip(e_faces, e_lens)]))
+    regular = (2.0 * np.sqrt(2.0 / 3.0) / 9.0)
+    quality = np.abs(tet_measure(nodes)) * (np.sum(faces) / sum_pairs) ** (3.0/4.0) / regular
+    i_min_edge = np.argmin(e_lens)
+    return quality, edges[i_min_edge]
+
+
+def check_element(mesh, eid):
+    """
+    Check element, possibly contract its shortest edge.
+    :param mesh:
+    :param eid:
+    :return: List of still existing but changed elements.
+    """
+    quality_tol = 0.001
+    type, tags, node_ids = mesh.elements[eid]
+    nodes = np.array([mesh.nodes[n] for n in node_ids])
+    if len(nodes) < 3:
+        return []
+    merge_nodes = None
+    if len(nodes) == 4:
+        quality, min_edge_nodes = smooth_grad_error_indicator_3d(nodes)
+        #print(eid, "3dq: ", quality)
+        if quality < quality_tol:
+            loc_node_a, loc_node_b = min_edge_nodes
+            merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
+    elif len(nodes) == 3:
+        quality, min_edge_nodes = smooth_grad_error_indicator_2d(nodes)
+        #print(eid, "2dq: ", quality)
+        if quality < quality_tol:
+            loc_node_a, loc_node_b = min_edge_nodes
+            merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
+
+    if merge_nodes is None:
+        return []
+
+    print("eid: {} q{}d: {} nodes: {}".format(eid, len(nodes) -1, quality, merge_nodes))
+    node_a, node_b = merge_nodes
+    els_a = set(mesh.node_els[node_a])
+    els_b = set(mesh.node_els[node_b])
+    # remove elements containing the edge (a,b)
+    for i_edge_el in  els_a & els_b:
+        if i_edge_el in mesh.elements:
+            del mesh.elements[i_edge_el]
+    # substitute node a for the node b
+    for i_b_el in els_b:
+        if i_b_el in mesh.elements:
+            type, tags, node_ids = mesh.elements[i_b_el]
+            node_ids = [node_a if n == node_b else n for n in node_ids]
+            mesh.elements[i_b_el] = (type, tags, node_ids)
+    # average nodes, remove the second one
+    node_avg = np.average([np.array(mesh.nodes[n]) for n in merge_nodes], axis=0)
+    #print("node avg: ", node_avg)
+    mesh.nodes[node_a] = node_avg
+    del mesh.nodes[node_b]
+
+    # merge node element lists
+    mesh.node_els[node_a] = list(els_a | els_b)
+    del mesh.node_els[node_b]
+
+    return mesh.node_els[node_a]
+
+def heal_mesh(mesh_file):
+    """
+    Detect elements with bad quality according to the flow123d quality measure (poor one).
+    Contract their shortest edge.
+    - should only be used for elements with an edge shorter then others
+    - not effective for thetrahedra between two close skew lines
+      TODO: move two of vertices to get intersection and split the neigbouring thtrahedra
+    TODO: use simpler quality measure
+    Write healed mesh to the new file.
+    :param mesh_file:
+    :return: Name of the healed mesh file.
+    """
+
+    import gmsh_io
+    mesh = gmsh_io.GmshIO(mesh_file)
+
+    # make node -> element map
+    mesh.node_els = collections.defaultdict(list)
+    for eid, e in mesh.elements.items():
+        type, tags, node_ids = e
+        for n in node_ids:
+            mesh.node_els[n].append(eid)
+    #print("node els:", node_els[682])
+
+    el_to_check = collections.deque(mesh.elements.keys())
+    while el_to_check:
+        eid = el_to_check.popleft()
+        if eid in mesh.elements:
+            el_to_check.extend(check_element(mesh, eid))
+
+
+    base, ext = os.path.splitext(mesh_file)
+    healed_name = base + "_healed.msh"
+    with open(healed_name, "w") as f:
+        mesh.write_ascii(f)
+    return healed_name
+
+def call_flow(config_dict, param_key, result_files):
     """
     Redirect sstdout and sterr, return true on succesfull run.
     :param arguments:
     :return:
     """
+
     params = config_dict[param_key]
     fname = params["in_file"]
     substitute_placeholders(fname + '_tmpl.yaml', fname + '.yaml', params)
     arguments = config_dict["_aux_flow_path"].copy()
-    arguments.extend(['--output_dir', 'output_th', fname + ".yaml"])
-    print("Running: ", " ".join(arguments))
-    with open(fname + "_stdout", "w") as stdout:
-        with open(fname + "_stderr", "w") as stderr:
-            completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
-
-    status =  completed.returncode == 0
+    output_dir = "output_" + fname
+    config_dict[param_key]["output_dir"] = output_dir
+    if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
+        status = True
+    else:
+        arguments.extend(['--output_dir', output_dir, fname + ".yaml"])
+        print("Running: ", " ".join(arguments))
+        with open(fname + "_stdout", "w") as stdout:
+            with open(fname + "_stderr", "w") as stderr:
+                completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
+        status = completed.returncode == 0
     print("Exit status: ", status)
-
+    return status
 
 
 
@@ -275,24 +462,27 @@ def extract_time_series(yaml_stream, regions, extract):
     series = [np.array(region_series) for region_series in reg_series.values()]
     return np.array(times), series
 
+
 def extract_results(config_dict):
     """
     :param config_dict: Parsed config.yaml. see key comments there.
     : return
     """
-    bc_regions = ['.left_fr_left_well', '.left_well', '.right_fr_right_well', '.right_well']
+    bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
     out_regions = bc_regions[2:]
-    with open("output_th/energy_balance.yaml", "r") as f:
+    output_dir = config_dict["th_params"]["output_dir"]
+    with open(os.path.join(output_dir, "energy_balance.yaml"), "r") as f:
         power_times, reg_powers = extract_time_series(f, bc_regions, extract=lambda frame: frame['data'][0])
-    power_series = -sum(reg_powers)
+        power_series = -sum(reg_powers)
 
-    with open("output_th/Heat_AdvectionDiffusion_region_stat.yaml", "r") as f:
+    with open(os.path.join(output_dir, "Heat_AdvectionDiffusion_region_stat.yaml"), "r") as f:
         temp_times, reg_temps = extract_time_series(f, out_regions, extract=lambda frame: frame['average'][0])
-    with open("output_th/water_balance.yaml", "r") as f:
+    with open(os.path.join(output_dir, "water_balance.yaml"), "r") as f:
         flux_times, reg_fluxes = extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
     sum_flux = sum(reg_fluxes)
     avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
     return temp_times, avg_temp, power_times, power_series
+
 
 def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
     abs_zero_temp = 273.15
@@ -316,16 +506,14 @@ def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
     plt.show()
 
 
-
-def sample(tag, config_dict):
-    # Setup dir
-    root_dir = os.getcwd()
+def setup_dir(tag, config_dict, clean=False):
     sample_dir = os.path.abspath("samples/{}".format(tag))
-    try:
-        shutil.rmtree(sample_dir)
-    except FileNotFoundError:
-        pass
-    os.mkdir(sample_dir)
+    if clean:
+        try:
+           shutil.rmtree(sample_dir)
+        except FileNotFoundError:
+           pass
+        os.mkdir(sample_dir)
     os.chdir(sample_dir)
     for f in config_dict["copy_files"]:
         shutil.copyfile("../../" + f, f)
@@ -333,18 +521,23 @@ def sample(tag, config_dict):
     flow_exec[0] = "../../" + flow_exec[0]
     config_dict["_aux_flow_path"] = flow_exec
 
+
+def sample(tag, config_dict):
+    root_dir = os.getcwd()
+    #setup_dir(tag, config_dict, clean=True)
+    setup_dir(tag, config_dict)
+
     fractures = generate_fractures(config_dict)
     # plot_fr_orientation(fractures)
-    mesh_file = prepare_mesh(config_dict, fractures)
-    #shutil.copyfile("../../random_frac_full_reg.msh",  mesh_file)
-    config_dict["hm_params"]["mesh"] = mesh_file
-    config_dict["th_params"]["mesh"] = mesh_file
+    healed_mesh = prepare_mesh(config_dict, fractures)
+    config_dict["hm_params"]["mesh"] = healed_mesh
+    config_dict["th_params"]["mesh"] = healed_mesh
 
-    hm_succeed = call_flow(config_dict, 'hm_params')
+    hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
     th_succeed = False
     if hm_succeed:
         prepare_th_input(config_dict)
-        th_succeed = call_flow(config_dict, 'th_params')
+        th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
         if th_succeed:
             series = extract_results(config_dict)
             plot_exchanger_evolution(*series)

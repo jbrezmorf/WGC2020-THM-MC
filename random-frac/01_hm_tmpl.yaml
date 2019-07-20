@@ -92,7 +92,7 @@ problem: !Coupling_Sequential
         solver: !Petsc
           a_tol: 1e-14
           r_tol: 1e-14
-#          options: -ksp_type preonly -pc_type lu  # does not work in parallel
+          options: -ksp_type cg -pc_type icc -pc_factor_levels 2 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 3.0 
         input_fields:
           - region: box
             young_modulus: 50e9

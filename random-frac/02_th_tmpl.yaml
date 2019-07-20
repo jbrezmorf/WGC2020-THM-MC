@@ -29,7 +29,7 @@ problem: !Coupling_Sequential
 
       - region: fractures
         cross_section: !FieldFE  # loaded from HM simulation
-          mesh_data_file: output_hm/mechanics.msh
+          mesh_data_file: output_01_hm/mechanics.msh
           field_name: cross_section_updated
           default_value: 1e-3
           # ???
@@ -104,9 +104,9 @@ problem: !Coupling_Sequential
       file: heat
       format: !vtk
         variant: ascii
-      observe_points:
-        - point: [ 90.875, -4.091, -17.826 ]   # observe temperature at intersection of right fracture and right "well"
-          snap_region: right_fr
+      #observe_points:
+        #- point: [ 90.875, -4.091, -17.826 ]   # observe temperature at intersection of right fracture and right "well"
+          #snap_region: right_fr
     output:
       fields:
         - temperature
