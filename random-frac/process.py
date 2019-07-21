@@ -205,7 +205,7 @@ def prepare_mesh(config_dict, fractures):
     fractures = create_fractures_rectangles(factory, fractures, factory.rectangle())
     #fractures = create_fractures_polygons(factory, fractures)
     fractures_group = factory.group(*fractures)
-    fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
+    #fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
 
     # drilled box and its boundary
     box_drilled = box.cut(left_well, right_well)
