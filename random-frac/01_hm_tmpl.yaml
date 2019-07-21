@@ -29,7 +29,7 @@ problem: !Coupling_Sequential
           linear_solver: !Petsc
             a_tol: 1e-14
             r_tol: 1e-14
-#            options: -ksp_type preonly -pc_type lu
+            options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
         n_schurs: 2
         input_fields:
           - region: box
@@ -92,6 +92,7 @@ problem: !Coupling_Sequential
         solver: !Petsc
           a_tol: 1e-14
           r_tol: 1e-14
+          # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
           options: -ksp_type cg -pc_type icc -pc_factor_levels 2 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 3.0 
         input_fields:
           - region: box
