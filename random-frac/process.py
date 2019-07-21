@@ -159,10 +159,10 @@ def prepare_mesh(config_dict, fractures):
     well_dist = geom["well_distance"]
     mesh_name = config_dict["mesh_name"]
     mesh_file = mesh_name + ".msh"
-    fracture_mesh_step = 20
+    fracture_mesh_step = 10
 
     if os.path.isfile(mesh_file):
-        return mesh_file
+        return mesh_name + "_healed.msh"
 
 
     from gmsh_api import gmsh
@@ -229,13 +229,13 @@ def prepare_mesh(config_dict, fractures):
     b_fr_right_well = b_fractures.select_by_intersect(b_right_well).modify_regions("{}_right_well")
     b_fractures = factory.group(b_fr_left_well, b_fr_right_well, b_fractures_box)
     mesh_groups = [*box_all, fractures_fr, b_fractures]
-    #fractures_fr.set_mesh_step(fracture_mesh_step)
+    fractures_fr.set_mesh_step(fracture_mesh_step)
 
     factory.keep_only(*mesh_groups)
     factory.remove_duplicate_entities()
     factory.write_brep()
 
-    min_el_size = fracture_mesh_step / 100
+    min_el_size = fracture_mesh_step / 10
     fracture_el_size = np.max(dimensions) / 20
     max_el_size = np.max(dimensions) / 8
 

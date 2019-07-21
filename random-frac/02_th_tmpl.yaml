@@ -20,6 +20,7 @@ problem: !Coupling_Sequential
       linear_solver: !Petsc
         a_tol: 1e-14
         r_tol: 1e-14
+        options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
 #        options: -ksp_type preonly -pc_type lu
     n_schurs: 2
     input_fields:
