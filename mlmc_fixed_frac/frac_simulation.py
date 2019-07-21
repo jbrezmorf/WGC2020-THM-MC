@@ -4,9 +4,10 @@ import shutil
 import yaml
 import numpy as np
 import time as t
-import mlmc.sample as sample
 import copy
+sys.path.append('../MLMC/src')
 import gmsh_io as gmsh_io
+import mlmc.sample as sample
 from mlmc.simulation import Simulation
 
 
@@ -105,6 +106,9 @@ class FracSimulation(Simulation):
         self.coarse_sim_set = False
         self.pbs_script = []
 
+        # Auxiliary param for extracting results
+        self.previous_length = 0
+
         self.config_dict = load_config_dict()
         super(Simulation, self).__init__()
 
@@ -141,7 +145,6 @@ class FracSimulation(Simulation):
         Store them separeted.
         :return:
         """
-        # @TODO: create random fractures and whole mesh here
         pass
 
     def compute_hm(self, sample_dir):
@@ -244,7 +247,7 @@ class FracSimulation(Simulation):
         """
         self.compute_hm(sample_dir)
         # All auxiliary methods must be run in pbs script
-        self.pbs_script.append("python3 frac_simulation.py {}".format(sample_dir)) #causes some errors
+        self.pbs_script.append("python3 {}/prepare_th_input.py {}".format(self.process_dir, sample_dir)) #causes some errors
         self.compute_th(sample_dir)
 
     def run_sim_sample(self, out_subdir):
@@ -268,7 +271,11 @@ class FracSimulation(Simulation):
         :param regions:
         :return: times list, list: for every region the array of value series
         """
-        data = yaml.safe_load(yaml_stream)['data']
+        content = yaml.safe_load(yaml_stream)
+        if content is None:
+            return None, None
+
+        data = content['data']
         times = set()
         reg_series = {reg: [] for reg in regions}
 
@@ -302,35 +309,50 @@ class FracSimulation(Simulation):
         if os.path.exists(os.path.join(sample_dir, "FINISHED")):
             if os.path.exists(water_balance_file) and os.path.exists(energy_balance_file) and os.path.exists(heat_region_stat):
                 # Sometimes content of files is not complete, sleep() seems to be workaround
-                t.sleep(60)
+                if self.previous_length == 0:
+                    t.sleep(60)
 
-                # extract the flux
-                bc_regions = ['.left_fr_left_well', '.left_well', '.right_fr_right_well', '.right_well']
-                out_regions = bc_regions[2:]
+                while True:
+                    # extract the flux
+                    bc_regions = ['.left_fr_left_well', '.left_well', '.right_fr_right_well', '.right_well']
+                    out_regions = bc_regions[2:]
 
-                with open(energy_balance_file, "r") as f:
-                    power_times, reg_powers = self._extract_time_series(f, bc_regions,
-                                                                        extract=lambda frame: frame['data'][0])
-                power_series = -sum(reg_powers)
+                    with open(energy_balance_file, "r") as f:
+                        power_times, reg_powers = self._extract_time_series(f, bc_regions,
+                                                                            extract=lambda frame: frame['data'][0])
 
-                with open(heat_region_stat, "r") as f:
-                    temp_times, reg_temps = self._extract_time_series(f, out_regions,
-                                                                      extract=lambda frame: frame['average'][0])
-                with open(water_balance_file, "r") as f:
-                    flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
-                                                                       extract=lambda frame: frame['data'][0])
-                sum_flux = sum(reg_fluxes)
-                avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+                    with open(heat_region_stat, "r") as f:
+                        temp_times, reg_temps = self._extract_time_series(f, out_regions,
+                                                                          extract=lambda frame: frame['average'][0])
+                    with open(water_balance_file, "r") as f:
+                        flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
+                                                                           extract=lambda frame: frame['data'][0])
 
-                power_series = power_series / 1e6
-                power_times = power_times / year_sec
-                avg_temp = avg_temp - abs_zero_temp
+                    if power_times is None or temp_times is None or flux_times is None:
+                        t.sleep(15)
+                        continue
 
-                # Sometimes avg_temp is larger than others, it is now may solved by sleep(), needs more tests
-                min_lenght = len(min([power_series, power_times, avg_temp], key=len))
+                    power_series = -sum(reg_powers)
+
+                    sum_flux = sum(reg_fluxes)
+                    avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+
+                    power_series = power_series / 1e6
+                    power_times = power_times / year_sec
+                    avg_temp = avg_temp - abs_zero_temp
+
+                    if not (len(power_series) == len(power_times) == len(avg_temp)):
+                        t.sleep(15)
+                    elif self.previous_length > len(power_series):
+                        t.sleep(15)
+                    else:
+                        break
+
+                if self.previous_length == 0:
+                    self.previous_length = len(power_times)
 
                 result_values = []
-                for i in range(min_lenght):
+                for i in range(len(power_times)):
                     result_values.append((i, power_series[i], avg_temp[i], power_times[i]))
 
                 return result_values
@@ -339,75 +361,3 @@ class FracSimulation(Simulation):
 
         else:
             return [None, None, None, None]
-
-
-def prepare_th_input(sample_dir):
-    """
-    Prepare FieldFE input file for the TH simulation.
-    """
-    # pass
-    # we have to read region names from the input mesh
-    # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
-    #
-    # is_bc_region = {}
-    # for name, (id, _) in input_mesh.physical.items():
-    #     unquoted_name = name.strip("\"'")
-    #     is_bc_region[id] = (unquoted_name[0] == '.')
-
-    config_dict = load_config_dict()
-
-    # read mesh and mechanical output data
-    mesh = gmsh_io.GmshIO(os.path.join(sample_dir, 'output_hm/mechanics.msh'))
-
-    n_bulk = len(mesh.elements)
-    ele_ids = np.zeros(n_bulk, dtype=int)
-    for i, id_bulk in zip(range(n_bulk), mesh.elements.items()):
-        ele_ids[i] = id_bulk[0]
-
-    init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
-    init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
-    init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
-
-    field_cs = mesh.element_data['cross_section_updated'][1]
-
-    K = np.zeros((n_bulk, 1), dtype=float)
-    cs = np.zeros((n_bulk, 1), dtype=float)
-    for i, valcs in zip(range(n_bulk), field_cs[1].values()):
-        cs_el = valcs[0]
-        cs[i, 0] = cs_el
-        if cs_el != 1.0:  # if cross_section == 1, i.e. 3d bulk
-            K[i, 0] = init_fr_K * (cs_el * cs_el) / (init_fr_cs * init_fr_cs)
-        else:
-            K[i, 0] = init_bulk_K
-
-    # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
-    th_input_file = os.path.join(sample_dir, 'output_hm/th_input.msh')
-    with open(th_input_file, "w") as fout:
-        mesh.write_ascii(fout)
-        mesh.write_element_data(fout, ele_ids, 'conductivity', K)
-        mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs)
-
-    # create field for K (copy cs)
-    # posun dat K do casu 0
-    # read original K = oK (define in config yaml)
-    # read original cs = ocs (define in config yaml)
-    # compute K = oK * (cs/ocs)^2
-    # write K
-
-    # posun dat cs do casu 0
-    # write cs
-
-    # mesh.element_data.
-
-    #
-    # @attr.s(auto_attribs=True)
-    # class ValueDesctription:
-    #     time: float
-    #     position: str
-    #     quantity: str
-    #     unit: str
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        prepare_th_input(sys.argv[1])

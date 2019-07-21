@@ -48,12 +48,7 @@ class Process(base_process.Process):
             mlmc_est = Estimate(mlmc)
             mlmc_est_list.append(mlmc_est)
 
-        cl = CompareLevels([mlmc],
-                           output_dir=src_path,
-                           quantity_name="Q [m/s]",
-                           moment_class=Monomial,
-                           log_scale=False,
-                           n_moments=3, )
+        #self.plot_density(mlmc)
 
         self.plot_temp_power(mlmc_est)
 
@@ -149,9 +144,23 @@ class Process(base_process.Process):
             mlmc_obj.load_from_file()
         return mlmc_obj
 
-    def _plot_density(self, mlmc_est):
-        # @TODO: plot densities for temp a power at given time
-        pass
+    def plot_density(self, mlmc):
+        # for level in mlmc.levels:
+        #     for f_sample, c_sample in level.collected_samples:
+        #         print("f sample ", f_sample.result_data)
+        mlmc.select_values({"power_time": (0, "=")}, selected_param="power")
+        # for level in mlmc.levels:
+        #     for f_sample, c_sample in level.collected_samples:
+        #         print("f sample ", f_sample.result)
+
+        cl = CompareLevels([mlmc],
+                           output_dir=src_path,
+                           quantity_name="Q [m/s]",
+                           moment_class=Legendre,
+                           log_scale=False,
+                           n_moments=8, )
+        cl.construct_densities()
+        cl.plot_densities()
 
     def get_all_results_by_param(self, mlmc_est, param_name):
         """
@@ -161,10 +170,12 @@ class Process(base_process.Process):
         :return: moments means, moments vars -> two numpy arrays
         """
         n_moments = 3
+        mlmc_est.mlmc.clean_select()
         mlmc_est.mlmc.select_values({param_name: (0, ">=")})
         domain = Estimate.estimate_domain(mlmc_est.mlmc)
         moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
         means, vars = mlmc_est.estimate_moments(moments_fn)
+
         return means, vars
 
     def plot_temp_power(self, mlmc_est):
@@ -173,8 +184,6 @@ class Process(base_process.Process):
         :param mlmc_est: mlmc.Estimate instance
         :return: None
         """
-        #self._plot_density(mlmc_est)
-
         times_means, times_vars = self.get_all_results_by_param(mlmc_est, "value")
         temp_times = times_means[:, 1]
 
