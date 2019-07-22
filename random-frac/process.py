@@ -337,15 +337,15 @@ def check_element(mesh, eid):
             loc_node_a, loc_node_b = min_edge_nodes
             merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
 
-        if flat_indicator_3d(nodes) < quality_tol:
-            edges = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
-            dists = [skew_line_dist(nodes[e]) for e in edges]
-            i_min = np.argmin([np.abs(d) for d,norm in dists])
-            shift = dists[i_min][0] * dists[i_min][1]
-            edge = edges[i_min]
-            nodes[edge[0]] += shift
-            nodes[edge[1]] += shift
-            nn = nodes[edge]
+        # if flat_indicator_3d(nodes) < quality_tol:
+        #     edges = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
+        #     dists = [skew_line_dist(nodes[e]) for e in edges]
+        #     i_min = np.argmin([np.abs(d) for d,norm in dists])
+        #     shift = dists[i_min][0] * dists[i_min][1]
+        #     edge = edges[i_min]
+        #     nodes[edge[0]] += shift
+        #     nodes[edge[1]] += shift
+        #     nn = nodes[edge]
 
 
 
