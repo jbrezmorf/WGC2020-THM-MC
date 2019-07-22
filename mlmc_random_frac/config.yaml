@@ -1,0 +1,99 @@
+# The flow executable and arguments to use.
+# JB:
+flow_executable:
+  - ../../flow123d/bin/fterm
+  - --no-term
+  - rel
+  - run
+
+# Charon:
+# flow_executable:
+#   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+
+copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml]
+
+geometry:
+  # depth of the center of the box and of the coordinate system
+  center_depth: 5000
+  # x,y,z dimension
+  box_dimensions: [600, 600, 600]
+  # z range of the well opening
+  well_openning: [-50, 50]
+  # effective well radius (cut off from the geometry)
+  well_effective_radius: 10
+  # horizontal distance of the well axes
+  well_distance: 200
+  # upper limit on the number of fractures
+  n_frac_limit: 100
+  fracture_stats:
+      # SKB data
+      -   name: NS
+          trend: 292
+          plunge: 1
+          concentration: 17.8
+          power: 2.5
+          r_min: 0.038
+          r_max: 564
+          p_32: 0.073
+      -   name: NE
+          trend: 326
+          plunge: 2
+          concentration: 14.3
+          power: 2.7
+          r_min: 0.038
+          r_max: 564
+          p_32: 0.319
+      -   name: NW
+          trend: 60
+          plunge: 6
+          concentration: 12.9
+          power: 3.1
+          r_min: 0.038
+          r_max: 564
+          p_32: 0.107
+      -   name: EW
+          trend: 15
+          plunge: 2
+          concentration: 14.0
+          power: 3.1
+          r_min: 0.038
+          r_max: 564
+          p_32: 0.088
+      -   name: HZ
+          trend: 5
+          plunge: 86
+          concentration: 15.2
+          power: 2.38
+          r_min: 0.038
+          r_max: 564
+          p_32: 0.543
+
+# base of the mesh file name
+mesh_name: random_fractures
+
+
+# parameters substituted into the HM model template
+hm_params:
+    # The mesh to use in both simulations.
+    #mesh: three_frac_symmetric.msh
+    mesh: random_fractures.msh
+    in_file: 01_hm
+
+    fr_cross_section: 1e-3
+    fr_conductivity: 1e-3
+    bulk_conductivity: 1e-9
+
+
+
+# parameters substituted into the TH model template
+th_params:
+    # The mesh to use in both simulations.
+    #mesh: three_frac_symmetric.msh
+    mesh: random_fractures.msh
+    in_file: 02_th
+
+    fr_conductivity: 1e-3
+    bulk_conductivity: 1e-9
+
+
+
