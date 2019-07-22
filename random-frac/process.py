@@ -9,6 +9,7 @@ import yaml
 import attr
 import numpy as np
 import collections
+import gmsh_io
 # import matplotlib.pyplot as plt
 
 import fracture
@@ -301,6 +302,21 @@ def smooth_grad_error_indicator_3d(nodes):
     return quality, edges[i_min_edge]
 
 
+def flat_indicator_3d(nodes):
+    edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
+    max_edge = np.sum([np.linalg.norm(nodes[i]- nodes[j]) for i,j in edges])
+    quality = np.abs(tet_measure(nodes)) / (max_edge **3 / 6 / np.sqrt(2))
+    return quality
+
+
+def skew_line_dist(nodes):
+    a_vec = nodes[1] - nodes[0]
+    b_vec = nodes[3] - nodes[2]
+    normal = np.cross(a_vec, b_vec)
+    normal /= np.linalg.norm(normal)
+    dist = normal @ (nodes[0] - nodes[1])
+    return dist, normal
+
 def check_element(mesh, eid):
     """
     Check element, possibly contract its shortest edge.
@@ -320,6 +336,19 @@ def check_element(mesh, eid):
         if quality < quality_tol:
             loc_node_a, loc_node_b = min_edge_nodes
             merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
+
+        if flat_indicator_3d(nodes) < quality_tol:
+            edges = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
+            dists = [skew_line_dist(nodes[e]) for e in edges]
+            i_min = np.argmin([np.abs(d) for d,norm in dists])
+            shift = dists[i_min][0] * dists[i_min][1]
+            edge = edges[i_min]
+            nodes[edge[0]] += shift
+            nodes[edge[1]] += shift
+            nn = nodes[edge]
+
+
+
     elif len(nodes) == 3:
         quality, min_edge_nodes = smooth_grad_error_indicator_2d(nodes)
         #print(eid, "2dq: ", quality)
@@ -425,7 +454,56 @@ def prepare_th_input(config_dict):
     Prepare FieldFE input file for the TH simulation.
     :param config_dict: Parsed config.yaml. see key comments there.
     """
-    pass
+    # pass
+    # we have to read region names from the input mesh
+    # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
+    #
+    # is_bc_region = {}
+    # for name, (id, _) in input_mesh.physical.items():
+    #     unquoted_name = name.strip("\"'")
+    #     is_bc_region[id] = (unquoted_name[0] == '.')
+
+    # read mesh and mechanichal output data
+    mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
+    mesh = gmsh_io.GmshIO(mechanics_output)
+
+    n_bulk = len(mesh.elements)
+    ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
+
+    init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
+    init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
+    init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
+
+    time_idx = 1
+    time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
+
+    cs = np.array([v[0] for v in field_cs.values()])
+
+    K = np.where(
+        cs == 1.0,      # condition
+        init_bulk_K,    # true array
+        init_fr_K * (cs / init_fr_cs) ** 2
+    )
+
+    # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
+    th_input_file = 'th_input.msh'
+    with open(th_input_file, "w") as fout:
+        mesh.write_ascii(fout)
+        mesh.write_element_data(fout, ele_ids, 'conductivity', K[:, None])
+        mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs[:, None])
+
+    # create field for K (copy cs)
+    # posun dat K do casu 0
+    # read original K = oK (define in config yaml)
+    # read original cs = ocs (define in config yaml)
+    # compute K = oK * (cs/ocs)^2
+    # write K
+
+    # posun dat cs do casu 0
+    # write cs
+
+    # mesh.element_data.
+
 
 
 def get_result_description():
@@ -481,6 +559,7 @@ def extract_results(config_dict):
         flux_times, reg_fluxes = extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
     sum_flux = sum(reg_fluxes)
     avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+    print("temp: ", avg_temp)
     return temp_times, avg_temp, power_times, power_series
 
 
@@ -513,7 +592,7 @@ def setup_dir(tag, config_dict, clean=False):
            shutil.rmtree(sample_dir)
         except FileNotFoundError:
            pass
-        os.mkdir(sample_dir)
+    os.makedirs(sample_dir, exist_ok=True)
     os.chdir(sample_dir)
     for f in config_dict["copy_files"]:
         shutil.copyfile("../../" + f, f)

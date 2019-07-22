@@ -25,40 +25,46 @@ problem: !Coupling_Sequential
     n_schurs: 2
     input_fields:
       - region: box   # we assume steady flow, hence storativity is not set
-        conductivity: 1e-9
+        conductivity: <bulk_conductivity>
         init_piezo_head: 0
 
       - region: fractures
         cross_section: !FieldFE  # loaded from HM simulation
-          mesh_data_file: output_01_hm/mechanics.msh
+          mesh_data_file: th_input.msh
           field_name: cross_section_updated
           default_value: 1e-3
           # ???
           read_time_shift: [1, 'd']   # 86400
-        conductivity: 1e-3
+        conductivity: !FieldFE  # loaded from HM simulation
+          mesh_data_file: th_input.msh
+          field_name: conductivity
+          default_value: <fr_conductivity>
+          init_piezo_head: 0
+
         init_piezo_head: 0
 
       - region: .left_well_fr
         bc_type: total_flux
         bc_piezo_head: 1e2
-        bc_robin_sigma: !FieldFormula # -conductivity*ln(mesh radius)/mesh radius/ln(well radius)
-          value: -1e-3*log(10)/10/log(0.15)
+        bc_robin_sigma: !FieldFormula
+          value: <fr_conductivity> / (10*log(10/0.15)) # cca 5.5e-5
       - region: .left_well
         bc_type: total_flux
         bc_piezo_head: 1e2
         bc_robin_sigma: !FieldFormula
-          value: -1e-9*log(10)/10/log(0.15)
+          value: <bulk_conductivity> / (10*log(10/0.15))
 
       - region: .right_well_fr
         bc_type: total_flux
         bc_piezo_head: -1e2
         bc_robin_sigma: !FieldFormula
-          value: -1e-3*log(10)/10/log(0.15)
+          value: <fr_conductivity> / (10*log(10/0.15))
       - region: .right_well
         bc_type: total_flux
         bc_piezo_head: -1e2
         bc_robin_sigma: !FieldFormula
-          value: -1e-9*log(10)/10/log(0.15)
+          value: <bulk_conductivity> / (10*log(10/0.15))
+
 
     output:
       fields:
@@ -112,11 +118,11 @@ problem: !Coupling_Sequential
       fields:
         - temperature
         - region_id
-      observe_fields: temperature
+      #observe_fields: temperature
       times:
         - {step: 1, time_unit: 'y'}      # 31557600       # 1 yr
     solver: !Petsc
       a_tol: 1e-14
       r_tol: 1e-14
     time:
-      end_time: [30, 'y'] #946728000       # 30 yr
+      end_time: [3, 'y'] #946728000       # 30 yr

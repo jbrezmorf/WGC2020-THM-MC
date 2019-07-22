@@ -3,7 +3,7 @@
 flow_executable:
   - ../../flow123d_JB/bin/fterm
   - --no-term
-  - dbg
+  - rel
   - run
 
 # Charon:
@@ -79,6 +79,10 @@ hm_params:
     mesh: random_fractures.msh
     in_file: 01_hm
 
+    fr_cross_section: 1e-3
+    fr_conductivity: 1e-3
+    bulk_conductivity: 1e-9
+
 
 
 # parameters substituted into the TH model template
@@ -87,3 +91,9 @@ th_params:
     #mesh: three_frac_symmetric.msh
     mesh: random_fractures.msh
     in_file: 02_th
+
+    fr_conductivity: 1e-3
+    bulk_conductivity: 1e-9
+
+
+
