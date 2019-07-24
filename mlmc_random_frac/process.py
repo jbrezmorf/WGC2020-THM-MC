@@ -1,10 +1,10 @@
 import sys
 import os
-WGC_DIR = "/storage/liberec3-tul/home/martin_spetlik/WGC_rand"
-WORK_DIR = os.path.join(WGC_DIR, 'mlmc_random_frac')
-
-sys.path.append(os.path.join(WGC_DIR, 'MLMC/src'))
-sys.path.append(os.path.join(WGC_DIR, 'dfn/src'))
+#WGC_DIR = "/storage/liberec3-tul/home/martin_spetlik/WGC_rand"
+#WORK_DIR = os.path.join(WGC_DIR, 'mlmc_random_frac')
+script_dir = os.path.realpath(__file__)
+sys.path.append(os.path.join(script_dir, '../MLMC/src'))
+sys.path.append(os.path.join(script_dir, '../dfn/src'))
 
 import shutil
 import subprocess
@@ -152,7 +152,7 @@ def create_fractures_polygons(gmsh_geom, fractures):
     return fracture_fragments
 
 
-def prepare_mesh(config_dict, fractures, sample_dir):
+def prepare_mesh(config_dict, fractures):
     geom = config_dict["geometry"]
     dimensions = geom["box_dimensions"]
     well_z0, well_z1 = geom["well_openning"]
@@ -160,11 +160,11 @@ def prepare_mesh(config_dict, fractures, sample_dir):
     well_r = geom["well_effective_radius"]
     well_dist = geom["well_distance"]
     mesh_name = config_dict["mesh_name"]
-    mesh_file = os.path.join(sample_dir, mesh_name + ".msh")
+    mesh_file = mesh_name + ".msh"
     fracture_mesh_step = 10
 
     if os.path.isfile(mesh_file):
-        return os.path.join(sample_dir, mesh_name + "_healed.msh")
+        return mesh_name + "_healed.msh"
 
     factory = gmsh.GeometryOCC(mesh_name, verbose=True)
     gopt = options.Geometry()
@@ -420,7 +420,7 @@ def heal_mesh(mesh_file):
     return healed_name
 
 
-def call_flow(config_dict, param_key, sample_dir, result_files):
+def call_flow(config_dict, param_key, result_files):
     """
     Redirect sstdout and sterr, return true on succesfull run.
     :param arguments:
@@ -428,7 +428,7 @@ def call_flow(config_dict, param_key, sample_dir, result_files):
     """
     params = config_dict[param_key]
     fname = params["in_file"]
-    substitute_placeholders(os.path.join(sample_dir, fname + '_tmpl.yaml'), os.path.join(sample_dir, fname + '.yaml'), params)
+    substitute_placeholders(fname + '_tmpl.yaml', fname + '.yaml', params)
     arguments = config_dict["_aux_flow_path"].copy()
 
     output_dir = "output_" + fname
@@ -437,17 +437,17 @@ def call_flow(config_dict, param_key, sample_dir, result_files):
     if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
         status = True
     else:
-        arguments.extend(['--output_dir', output_dir, os.path.join(sample_dir, fname + ".yaml")])
+        arguments.extend(['--output_dir', output_dir, fname + ".yaml"])
         print("Running: ", " ".join(arguments))
-        with open(os.path.join(sample_dir, fname + "_stdout"), "w") as stdout:
-            with open(os.path.join(sample_dir, fname + "_stderr"), "w") as stderr:
+        with open(fname + "_stdout", "w") as stdout:
+            with open(fname + "_stderr", "w") as stderr:
                 completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
         status = completed.returncode == 0
     print("Exit status: ", status)
     return status
 
 
-def prepare_th_input(config_dict, sample_dir):
+def prepare_th_input(config_dict):
     """
     Prepare FieldFE input file for the TH simulation.
     :param config_dict: Parsed config.yaml. see key comments there.
@@ -462,7 +462,7 @@ def prepare_th_input(config_dict, sample_dir):
     #     is_bc_region[id] = (unquoted_name[0] == '.')
 
     # read mesh and mechanichal output data
-    mechanics_output = os.path.join(sample_dir,config_dict['hm_params']["output_dir"], 'mechanics.msh')
+    mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
     mesh = gmsh_io.GmshIO(mechanics_output)
 
     n_bulk = len(mesh.elements)
@@ -485,7 +485,7 @@ def prepare_th_input(config_dict, sample_dir):
 
     # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
     th_input_file = 'th_input.msh'
-    with open(os.path.join(sample_dir, th_input_file), "w") as fout:
+    with open(th_input_file, "w") as fout:
         mesh.write_ascii(fout)
         mesh.write_element_data(fout, ele_ids, 'conductivity', K[:, None])
         mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs[:, None])
@@ -583,44 +583,35 @@ def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
     plt.show()
 
 
-def setup_dir(sample_dir, config_dict, clean=False):
-    # sample_dir = os.path.abspath("samples/{}".format(tag))
-    # if clean:
-    #     try:
-    #        shutil.rmtree(sample_dir)
-    #     except FileNotFoundError:
-    #        pass
-    # os.makedirs(sample_dir, exist_ok=True)
-    # os.chdir(sample_dir)
+def setup_dir(config_dict, clean=False):
     for f in config_dict["copy_files"]:
-        shutil.copyfile(os.path.join(WORK_DIR, f), os.path.join(sample_dir, f))
+        shutil.copyfile(os.path.join(script_dir, f), os.path.join(".", f))
     flow_exec = config_dict["flow_executable"].copy()
-    #flow_exec[0] = "../../" + flow_exec[0]
     config_dict["_aux_flow_path"] = flow_exec
 
 
-def sample(sample_dir, config_dict):
-    root_dir = os.getcwd()
-    setup_dir(sample_dir, config_dict, clean=True)
+def sample(config_dict):
+
+    setup_dir(config_dict, clean=True)
     #setup_dir(tag, config_dict)
 
     fractures = generate_fractures(config_dict)
     # plot_fr_orientation(fractures)
     
-    healed_mesh = prepare_mesh(config_dict, fractures, sample_dir)
+    healed_mesh = prepare_mesh(config_dict, fractures)
     healed_mesh_bn = os.path.basename(healed_mesh)
     config_dict["hm_params"]["mesh"] = healed_mesh_bn
     config_dict["th_params"]["mesh"] = healed_mesh_bn
 
-    hm_succeed = call_flow(config_dict, 'hm_params', sample_dir, result_files=["mechanics.msh"])
+    hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
     th_succeed = False
     if hm_succeed:
-        prepare_th_input(config_dict, sample_dir)
-        th_succeed = call_flow(config_dict, 'th_params', sample_dir, result_files=["energy_balance.yaml"])
+        prepare_th_input(config_dict)
+        th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
         # if th_succeed:
         #     series = extract_results(config_dict)
         #     plot_exchanger_evolution(*series)
-    os.chdir(root_dir)
+
 
 
 # @attr.s(auto_attribs=True)
@@ -633,7 +624,9 @@ def sample(sample_dir, config_dict):
 
 if __name__ == "__main__":
     sample_dir = sys.argv[1]
+    os.chdir(sample_dir)
     np.random.seed(1)
-    with open(os.path.join(WORK_DIR, "config.yaml"), "r") as f:
+
+    with open(os.path.join(script_dir, "config.yaml"), "r") as f:
         config_dict = yaml.safe_load(f)
-    sample(sample_dir, config_dict)
+    sample(config_dict)
