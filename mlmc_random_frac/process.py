@@ -1,6 +1,6 @@
 import sys
 import os
-WGC_DIR = "/home/martin/Documents/WGC"
+WGC_DIR = "/storage/liberec3-tul/home/martin_spetlik/WGC_rand"
 WORK_DIR = os.path.join(WGC_DIR, 'mlmc_random_frac')
 
 sys.path.append(os.path.join(WGC_DIR, 'MLMC/src'))
@@ -335,15 +335,15 @@ def check_element(mesh, eid):
             loc_node_a, loc_node_b = min_edge_nodes
             merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
 
-        if flat_indicator_3d(nodes) < quality_tol:
-            edges = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
-            dists = [skew_line_dist(nodes[e]) for e in edges]
-            i_min = np.argmin([np.abs(d) for d,norm in dists])
-            shift = dists[i_min][0] * dists[i_min][1]
-            edge = edges[i_min]
-            nodes[edge[0]] += shift
-            nodes[edge[1]] += shift
-            nn = nodes[edge]
+        # if flat_indicator_3d(nodes) < quality_tol:
+        #     edges = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
+        #     dists = [skew_line_dist(nodes[e]) for e in edges]
+        #     i_min = np.argmin([np.abs(d) for d,norm in dists])
+        #     shift = dists[i_min][0] * dists[i_min][1]
+        #     edge = edges[i_min]
+        #     nodes[edge[0]] += shift
+        #     nodes[edge[1]] += shift
+        #     nn = nodes[edge]
 
     elif len(nodes) == 3:
         quality, min_edge_nodes = smooth_grad_error_indicator_2d(nodes)
@@ -447,7 +447,7 @@ def call_flow(config_dict, param_key, sample_dir, result_files):
     return status
 
 
-def prepare_th_input(config_dict):
+def prepare_th_input(config_dict, sample_dir):
     """
     Prepare FieldFE input file for the TH simulation.
     :param config_dict: Parsed config.yaml. see key comments there.
@@ -485,7 +485,7 @@ def prepare_th_input(config_dict):
 
     # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
     th_input_file = 'th_input.msh'
-    with open(th_input_file, "w") as fout:
+    with open(os.path.join(sample_dir, th_input_file), "w") as fout:
         mesh.write_ascii(fout)
         mesh.write_element_data(fout, ele_ids, 'conductivity', K[:, None])
         mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs[:, None])
@@ -613,7 +613,7 @@ def sample(sample_dir, config_dict):
     hm_succeed = call_flow(config_dict, 'hm_params', sample_dir, result_files=["mechanics.msh"])
     th_succeed = False
     if hm_succeed:
-        prepare_th_input(config_dict)
+        prepare_th_input(config_dict, sample_dir)
         th_succeed = call_flow(config_dict, 'th_params', sample_dir, result_files=["energy_balance.yaml"])
         # if th_succeed:
         #     series = extract_results(config_dict)

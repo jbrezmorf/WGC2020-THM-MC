@@ -145,7 +145,8 @@ class RandomFracSimulation(Simulation):
         :return: None
         """
         # All auxiliary methods must be run in pbs script
-        self.pbs_script.append("python3.6 {}/process.py {}".format(self.process_dir, sample_dir))
+        self.pbs_script.append("pip3 install --user gmsh-sdk")
+        self.pbs_script.append("python3 {}/process.py {}".format(self.process_dir, sample_dir))
         self.pbs_script.append("touch {}/FINISHED".format(sample_dir))
 
     def run_sim_sample(self, out_subdir):
@@ -212,7 +213,7 @@ class RandomFracSimulation(Simulation):
 
                 while True:
                     # extract the flux
-                    bc_regions = ['.left_fr_left_well', '.left_well', '.right_fr_right_well', '.right_well']
+                    bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
                     out_regions = bc_regions[2:]
 
                     with open(energy_balance_file, "r") as f:
