@@ -151,20 +151,14 @@ def create_fractures_polygons(gmsh_geom, fractures):
     return fracture_fragments
 
 
-def prepare_mesh(config_dict, fractures):
+def make_mesh(config_dict, fractures, mesh_name, mesh_file):
+    fracture_mesh_step = 10
     geom = config_dict["geometry"]
     dimensions = geom["box_dimensions"]
     well_z0, well_z1 = geom["well_openning"]
     well_length = well_z1 - well_z0
     well_r = geom["well_effective_radius"]
     well_dist = geom["well_distance"]
-    mesh_name = config_dict["mesh_name"]
-    mesh_file = mesh_name + ".msh"
-    fracture_mesh_step = 10
-
-    if os.path.isfile(mesh_file):
-        return mesh_name + "_healed.msh"
-
 
     from gmsh_api import gmsh
     from gmsh_api import options
@@ -267,160 +261,23 @@ def prepare_mesh(config_dict, fractures):
     factory.write_mesh(format=gmsh.MeshFormat.msh2)
     os.rename(mesh_name + ".msh2", mesh_file)
 
-    healed_mesh = heal_mesh(mesh_file)
-    #factory.show()
-    return healed_mesh
 
+def prepare_mesh(config_dict, fractures):
+    mesh_name = config_dict["mesh_name"]
+    mesh_file = mesh_name + ".msh"
+    if not os.path.isfile(mesh_file):
+        make_mesh(config_dict, fractures, mesh_name, mesh_file)
 
-def tri_measure(nodes):
-    return np.linalg.norm(np.cross(nodes[2] - nodes[0], nodes[1] - nodes[0]))/2
+    mesh_healed = mesh_name + "_healed.msh"
+    if True: #not os.path.isfile(mesh_healed):
+        import heal_mesh
+        hm = heal_mesh.HealMesh(mesh_file)
+        hm.heal_small_edges(0.001)
+        hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
+        hm.write()
+        assert hm.healed_mesh_name == mesh_healed
+    return mesh_healed
 
-
-def smooth_grad_error_indicator_2d(nodes):
-    edges = [(0,1), (1,2), (2,0)]
-    e_lens = [np.linalg.norm(nodes[i]- nodes[j]) for i,j in edges]
-    i_min_edge = np.argmin(e_lens)
-    prod = max(1e-300, (np.prod(e_lens)) ** (2.0 / 3.0))
-    quality = 4 / np.sqrt(3) * np.abs(tri_measure(nodes)) / prod
-    return quality, edges[i_min_edge]
-
-
-def tet_measure(nodes):
-    return np.linalg.det(nodes[1:, :] - nodes[0, :]) / 6
-
-
-def smooth_grad_error_indicator_3d(nodes):
-    vtxs_faces = [[0,1,2], [0,1,3], [0, 2,3], [1,2,3]]
-    faces = [tri_measure(nodes[face_vtxs]) for face_vtxs in vtxs_faces]
-    edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
-    e_lens = [np.linalg.norm(nodes[i]- nodes[j]) for i,j in edges]
-    e_faces = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 3]]
-    sum_pairs = max(1e-300, np.sum([faces[i] * faces[j] * elen ** 2 for (i,j),elen in zip(e_faces, e_lens)]))
-    regular = (2.0 * np.sqrt(2.0 / 3.0) / 9.0)
-    quality = np.abs(tet_measure(nodes)) * (np.sum(faces) / sum_pairs) ** (3.0/4.0) / regular
-    i_min_edge = np.argmin(e_lens)
-    return quality, edges[i_min_edge]
-
-
-def flat_indicator_3d(nodes):
-    edges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
-    max_edge = np.sum([np.linalg.norm(nodes[i]- nodes[j]) for i,j in edges])
-    quality = np.abs(tet_measure(nodes)) / (max_edge **3 / 6 / np.sqrt(2))
-    return quality
-
-
-def skew_line_dist(nodes):
-    a_vec = nodes[1] - nodes[0]
-    b_vec = nodes[3] - nodes[2]
-    normal = np.cross(a_vec, b_vec)
-    normal /= np.linalg.norm(normal)
-    dist = normal @ (nodes[0] - nodes[1])
-    return dist, normal
-
-def check_element(mesh, eid):
-    """
-    Check element, possibly contract its shortest edge.
-    :param mesh:
-    :param eid:
-    :return: List of still existing but changed elements.
-    """
-    quality_tol = 0.001
-    type, tags, node_ids = mesh.elements[eid]
-    nodes = np.array([mesh.nodes[n] for n in node_ids])
-    if len(nodes) < 3:
-        return []
-    merge_nodes = None
-    if len(nodes) == 4:
-        quality, min_edge_nodes = smooth_grad_error_indicator_3d(nodes)
-        #print(eid, "3dq: ", quality)
-        if quality < quality_tol:
-            loc_node_a, loc_node_b = min_edge_nodes
-            merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
-
-        # if flat_indicator_3d(nodes) < quality_tol:
-        #     edges = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]]
-        #     dists = [skew_line_dist(nodes[e]) for e in edges]
-        #     i_min = np.argmin([np.abs(d) for d,norm in dists])
-        #     shift = dists[i_min][0] * dists[i_min][1]
-        #     edge = edges[i_min]
-        #     nodes[edge[0]] += shift
-        #     nodes[edge[1]] += shift
-        #     nn = nodes[edge]
-
-
-
-    elif len(nodes) == 3:
-        quality, min_edge_nodes = smooth_grad_error_indicator_2d(nodes)
-        #print(eid, "2dq: ", quality)
-        if quality < quality_tol:
-            loc_node_a, loc_node_b = min_edge_nodes
-            merge_nodes = (node_ids[loc_node_a], node_ids[loc_node_b])
-
-    if merge_nodes is None:
-        return []
-
-    print("eid: {} q{}d: {} nodes: {}".format(eid, len(nodes) -1, quality, merge_nodes))
-    node_a, node_b = merge_nodes
-    els_a = set(mesh.node_els[node_a])
-    els_b = set(mesh.node_els[node_b])
-    # remove elements containing the edge (a,b)
-    for i_edge_el in  els_a & els_b:
-        if i_edge_el in mesh.elements:
-            del mesh.elements[i_edge_el]
-    # substitute node a for the node b
-    for i_b_el in els_b:
-        if i_b_el in mesh.elements:
-            type, tags, node_ids = mesh.elements[i_b_el]
-            node_ids = [node_a if n == node_b else n for n in node_ids]
-            mesh.elements[i_b_el] = (type, tags, node_ids)
-    # average nodes, remove the second one
-    node_avg = np.average([np.array(mesh.nodes[n]) for n in merge_nodes], axis=0)
-    #print("node avg: ", node_avg)
-    mesh.nodes[node_a] = node_avg
-    del mesh.nodes[node_b]
-
-    # merge node element lists
-    mesh.node_els[node_a] = list(els_a | els_b)
-    del mesh.node_els[node_b]
-
-    return mesh.node_els[node_a]
-
-def heal_mesh(mesh_file):
-    """
-    Detect elements with bad quality according to the flow123d quality measure (poor one).
-    Contract their shortest edge.
-    - should only be used for elements with an edge shorter then others
-    - not effective for thetrahedra between two close skew lines
-      TODO: move two of vertices to get intersection and split the neigbouring thtrahedra
-    TODO: use simpler quality measure
-    Write healed mesh to the new file.
-    :param mesh_file:
-    :return: Name of the healed mesh file.
-    """
-
-    import gmsh_io
-    mesh = gmsh_io.GmshIO(mesh_file)
-
-    # make node -> element map
-    mesh.node_els = collections.defaultdict(list)
-    for eid, e in mesh.elements.items():
-        type, tags, node_ids = e
-        for n in node_ids:
-            mesh.node_els[n].append(eid)
-    #print("node els:", node_els[682])
-
-    el_to_check = collections.deque(mesh.elements.keys())
-    while el_to_check:
-        eid = el_to_check.popleft()
-        if eid in mesh.elements:
-            el_to_check.extend(check_element(mesh, eid))
-
-
-    base, ext = os.path.splitext(mesh_file)
-    healed_name = base + "_healed.msh"
-    with open(healed_name, "w") as f:
-        mesh.write_ascii(f)
-    return healed_name
 
 def call_flow(config_dict, param_key, result_files):
     """
@@ -612,14 +469,14 @@ def sample(tag, config_dict):
     config_dict["hm_params"]["mesh"] = healed_mesh
     config_dict["th_params"]["mesh"] = healed_mesh
 
-    hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
-    th_succeed = False
-    if hm_succeed:
-        prepare_th_input(config_dict)
-        th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
-        if th_succeed:
-            series = extract_results(config_dict)
-            plot_exchanger_evolution(*series)
+    # hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
+    # th_succeed = False
+    # if hm_succeed:
+    #     prepare_th_input(config_dict)
+    #     th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
+    #     if th_succeed:
+    #         series = extract_results(config_dict)
+    #         plot_exchanger_evolution(*series)
     os.chdir(root_dir)
 
 
