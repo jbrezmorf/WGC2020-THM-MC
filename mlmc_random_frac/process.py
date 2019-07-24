@@ -2,7 +2,7 @@ import sys
 import os
 #WGC_DIR = "/storage/liberec3-tul/home/martin_spetlik/WGC_rand"
 #WORK_DIR = os.path.join(WGC_DIR, 'mlmc_random_frac')
-script_dir = os.path.realpath(__file__)
+script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '../MLMC/src'))
 sys.path.append(os.path.join(script_dir, '../dfn/src'))
 
