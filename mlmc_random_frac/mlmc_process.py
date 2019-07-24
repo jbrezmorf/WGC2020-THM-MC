@@ -1,5 +1,6 @@
 import sys
 import os
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 src_path = os.path.dirname(os.path.abspath(__file__))
@@ -15,13 +16,17 @@ import pbs
 from rand_frac_simulation import RandomFracSimulation
 
 
+def load_config_dict():
+    with open("config.yaml", "r") as f:
+        return yaml.safe_load(f)
+
+
 class Process(base_process.Process):
     def run(self):
         """
         Run mlmc
         :return: None
         """
-        mc_samples = 2
         os.makedirs(self.work_dir, mode=0o775, exist_ok=True)
         self.n_moments = 10
 
@@ -30,7 +35,7 @@ class Process(base_process.Process):
         for nl in [1]:  # , 2, 3, 4,5, 7, 9]:
             mlmc = self.setup_config(nl, clean=True)
             # self.n_sample_estimate(mlmc)
-            self.generate_jobs(mlmc, n_samples=[mc_samples])
+            self.generate_jobs(mlmc, n_samples=[self.mc_samples])
             mlmc_list.append(mlmc)
 
         self.all_collect(mlmc_list)
@@ -65,31 +70,26 @@ class Process(base_process.Process):
         while root_dir != '/':
             root_dir, tail = os.path.split(root_dir)
 
-        self.pbs_config = dict(
-            job_weight=250000,  # max number of elements per job
-            n_cores=3,
-            n_nodes=1,
-            select_flags=['cgroups=cpuacct'],
-            mem='8gb',
-            queue='charon',
-            home_dir='/storage/liberec3-tul/home/martin_spetlik/')
-
-        if tail == 'storage':
-            # Metacentrum
+        self.flow123d = self.config_dict["flow_executable"]
+        if(self.config_dict["metacentrum"]):
+            self.pbs_config = dict(
+                job_weight=250000,  # max number of elements per job
+                n_cores=3,
+                n_nodes=1,
+                select_flags=['cgroups=cpuacct'],
+                mem='8gb',
+                queue='charon')
             self.sample_sleep = 30
             self.init_sample_timeout = 600
             self.sample_timeout = 0
             self.pbs_config['qsub'] = '/usr/bin/qsub'
-            self.flow123d = 'flow123d'  # "/storage/praha1/home/jan_brezina/local/flow123d_2.2.0/flow123d"
-            self.gmsh = "/storage/liberec3-tul/home/martin_spetlik/astra/gmsh/bin/gmsh"
         else:
-            # Local
             self.sample_sleep = 1
             self.init_sample_timeout = 60
             self.sample_timeout = 60
             self.pbs_config['qsub'] = None
-            self.flow123d = "/home/martin/Documents/flow123d/bin/fterm flow123d dbg"
-            self.gmsh = "/home/jb/local/gmsh-3.0.5-git-Linux/bin/gmsh"
+
+        self.mc_samples = self.config_dict["mc_samples"]
 
     def create_pbs_object(self, output_dir, clean):
         """
@@ -117,6 +117,7 @@ class Process(base_process.Process):
         :return: mlmc.MLMC instance
         """
         # Set pbs config, flow123d, gmsh, ...
+        self.config_dict = load_config_dict()
         self.set_environment_variables()
         output_dir = os.path.join(self.work_dir, "output_{}".format(n_levels))
         # remove existing files
