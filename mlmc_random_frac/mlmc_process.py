@@ -49,6 +49,7 @@ class Process(base_process.Process):
             mlmc_est = Estimate(mlmc)
             mlmc_est_list.append(mlmc_est)
 
+        self.result_text(mlmc)
         #self.plot_density(mlmc)
 
         self.plot_temp_power(mlmc_est)
@@ -178,6 +179,16 @@ class Process(base_process.Process):
         means, vars = mlmc_est.estimate_moments(moments_fn)
 
         return means, vars
+
+    def result_text(self, mlmc):
+        for level in mlmc.levels:
+            for f_sample, c_sample in level.collected_samples:
+                print("Sample result data ", f_sample.result_data)
+                print("Sample temp result", f_sample.result_data["temp"])
+
+        mlmc.select_values(None, selected_param="temp")
+        for l in mlmc.levels:
+            print("Sample values ", l.sample_values)
 
     def plot_temp_power(self, mlmc_est):
         """
