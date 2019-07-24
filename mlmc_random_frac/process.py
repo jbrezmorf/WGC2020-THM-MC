@@ -261,8 +261,8 @@ def prepare_mesh(config_dict, fractures, sample_dir):
 
     #factory.make_mesh(mesh_groups, dim=2)
     factory.make_mesh(mesh_groups)
-    factory.write_mesh(filename=os.path.join(sample_dir, mesh_name + "." + gmsh.MeshFormat.msh2.name), format=gmsh.MeshFormat.msh2)
-    os.rename(os.path.join(sample_dir, mesh_name + ".msh2"), mesh_file)
+    factory.write_mesh(filename=mesh_name + "." + gmsh.MeshFormat.msh2.name, format=gmsh.MeshFormat.msh2)
+    os.rename(mesh_name + ".msh2", mesh_file)
 
     healed_mesh = heal_mesh(mesh_file)
     #factory.show()
@@ -431,7 +431,7 @@ def call_flow(config_dict, param_key, sample_dir, result_files):
     substitute_placeholders(os.path.join(sample_dir, fname + '_tmpl.yaml'), os.path.join(sample_dir, fname + '.yaml'), params)
     arguments = config_dict["_aux_flow_path"].copy()
 
-    output_dir = os.path.join(sample_dir, "output_" + fname)
+    output_dir = "output_" + fname
     config_dict[param_key]["output_dir"] = output_dir
 
     if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
@@ -462,7 +462,7 @@ def prepare_th_input(config_dict, sample_dir):
     #     is_bc_region[id] = (unquoted_name[0] == '.')
 
     # read mesh and mechanichal output data
-    mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
+    mechanics_output = os.path.join(sample_dir,config_dict['hm_params']["output_dir"], 'mechanics.msh')
     mesh = gmsh_io.GmshIO(mechanics_output)
 
     n_bulk = len(mesh.elements)
@@ -606,9 +606,11 @@ def sample(sample_dir, config_dict):
 
     fractures = generate_fractures(config_dict)
     # plot_fr_orientation(fractures)
+    
     healed_mesh = prepare_mesh(config_dict, fractures, sample_dir)
-    config_dict["hm_params"]["mesh"] = healed_mesh
-    config_dict["th_params"]["mesh"] = healed_mesh
+    healed_mesh_bn = os.path.basename(healed_mesh)
+    config_dict["hm_params"]["mesh"] = healed_mesh_bn
+    config_dict["th_params"]["mesh"] = healed_mesh_bn
 
     hm_succeed = call_flow(config_dict, 'hm_params', sample_dir, result_files=["mechanics.msh"])
     th_succeed = False
