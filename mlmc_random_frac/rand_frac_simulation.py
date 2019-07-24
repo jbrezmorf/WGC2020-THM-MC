@@ -146,6 +146,7 @@ class RandomFracSimulation(Simulation):
         """
         # All auxiliary methods must be run in pbs script
         #self.pbs_script.append("pip3 install --user gmsh-sdk")
+        self.pbs_script.append("cd {}".format(os.path.abspath(self.process_dir)))
         self.pbs_script.append("source {}/env/bin/activate".format(self.process_dir))
         self.pbs_script.append("python {}/process.py {}".format(self.process_dir, sample_dir))
         self.pbs_script.append("touch {}/FINISHED".format(sample_dir))

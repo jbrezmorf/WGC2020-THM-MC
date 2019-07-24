@@ -128,7 +128,7 @@ class Process(base_process.Process):
         self.create_pbs_object(output_dir, clean)
 
         simulation_config = {
-            'env': dict(flow123d=self.flow123d, gmsh=self.gmsh, pbs=self.pbs_obj),  # The Environment.
+            'env': dict(flow123d=self.flow123d, pbs=self.pbs_obj),  # The Environment.
             'output_dir': output_dir,
             'sim_param_range': self.step_range,  # Range of MLMC simulation parametr. Here the mesh step.
         }
