@@ -198,16 +198,17 @@ class RandomFracSimulation(Simulation):
         abs_zero_temp = 273.15
         year_sec = 60 * 60 * 24 * 365
         # Sample result structure -> you can enlarge it and other stuff will be done automatically
-        self.result_struct = [["value", "power", "temp", "power_time"], ["f8", "f8", "f8", "f8"]]
+        self.result_struct = [["value", "power", "temp", "power_time", "n_bad_els"], ["f8", "f8", "f8", "f8", "u4"]]
 
         sample_dir = sample.directory
 
+        heal_stat_file = os.path.join(sample_dir, "random_fractures_heal_stats.yaml")
         water_balance_file = os.path.join(sample_dir, "output_02_th/water_balance.yaml")
         energy_balance_file = os.path.join(sample_dir, "output_02_th/energy_balance.yaml")
         heat_region_stat = os.path.join(sample_dir, "output_02_th/Heat_AdvectionDiffusion_region_stat.yaml")
 
         if os.path.exists(os.path.join(sample_dir, "FINISHED")):
-            if os.path.exists(water_balance_file) and os.path.exists(energy_balance_file) and os.path.exists(heat_region_stat):
+            if os.path.exists(heal_stat_file) and os.path.exists(water_balance_file) and os.path.exists(energy_balance_file) and os.path.exists(heat_region_stat):
                 # Sometimes content of files is not complete, sleep() seems to be workaround
                 if self.previous_length == 0:
                     t.sleep(60)
@@ -217,10 +218,13 @@ class RandomFracSimulation(Simulation):
                     bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
                     out_regions = bc_regions[2:]
 
+                    with open(heal_stat_file, "r") as f:
+                        stat_doc = yaml.safe_load(f)
+                        n_bad_els = len(stat_doc["flow_stats"]["bad_elements"]) + len(stat_doc["gamma_stats"]["bad_elements"])
+
                     with open(energy_balance_file, "r") as f:
                         power_times, reg_powers = self._extract_time_series(f, bc_regions,
                                                                             extract=lambda frame: frame['data'][0])
-
                     with open(heat_region_stat, "r") as f:
                         temp_times, reg_temps = self._extract_time_series(f, out_regions,
                                                                           extract=lambda frame: frame['average'][0])
@@ -253,7 +257,7 @@ class RandomFracSimulation(Simulation):
 
                 result_values = []
                 for i in range(len(power_times)):
-                    result_values.append((i, power_series[i], avg_temp[i], power_times[i]))
+                    result_values.append((i, power_series[i], avg_temp[i], power_times[i], n_bad_els))
 
                 return result_values
             else:
