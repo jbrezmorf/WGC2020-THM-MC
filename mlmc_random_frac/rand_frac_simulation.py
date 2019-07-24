@@ -145,8 +145,9 @@ class RandomFracSimulation(Simulation):
         :return: None
         """
         # All auxiliary methods must be run in pbs script
-        self.pbs_script.append("pip3 install --user gmsh-sdk")
-        self.pbs_script.append("python3 {}/process.py {}".format(self.process_dir, sample_dir))
+        #self.pbs_script.append("pip3 install --user gmsh-sdk")
+        self.pbs_script.append("source {}/env/bin/activate".format(self.process_dir))
+        self.pbs_script.append("python {}/process.py {}".format(self.process_dir, sample_dir))
         self.pbs_script.append("touch {}/FINISHED".format(sample_dir))
 
     def run_sim_sample(self, out_subdir):
@@ -186,8 +187,8 @@ class RandomFracSimulation(Simulation):
                 reg_series[region].append(power_in_time)
         times = list(times)
         times.sort()
-        series = [np.array(region_series) for region_series in reg_series.values()]
-        return np.array(times), series
+        series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
+        return np.array(times, dtype=float), series
 
     def _extract_result(self, sample):
         """
