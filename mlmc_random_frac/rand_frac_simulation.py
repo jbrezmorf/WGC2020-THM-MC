@@ -198,7 +198,7 @@ class RandomFracSimulation(Simulation):
         abs_zero_temp = 273.15
         year_sec = 60 * 60 * 24 * 365
         # Sample result structure -> you can enlarge it and other stuff will be done automatically
-        self.result_struct = [["value", "power", "temp", "power_time", "n_bad_els"], ["f8", "f8", "f8", "f8", "u4"]]
+        self.result_struct = [["value", "power", "temp", "power_time", "temp_min", "temp_max", "n_bad_els"], ["f8", "f8", "f8", "f8",  "f8", "f8", "u4"]]
 
         sample_dir = sample.directory
 
@@ -216,6 +216,7 @@ class RandomFracSimulation(Simulation):
                 while True:
                     # extract the flux
                     bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
+                    regions = ['fr', 'box']
                     out_regions = bc_regions[2:]
 
                     with open(heal_stat_file, "r") as f:
@@ -228,6 +229,12 @@ class RandomFracSimulation(Simulation):
                     with open(heat_region_stat, "r") as f:
                         temp_times, reg_temps = self._extract_time_series(f, out_regions,
                                                                           extract=lambda frame: frame['average'][0])
+                    with open(heat_region_stat, "r") as f:
+                        temp_min_times, reg_temp_min = self._extract_time_series(f, regions,
+                                                                                 extract=lambda frame: frame['min'][0])
+                    with open(heat_region_stat, "r") as f:
+                        temp_max_times, reg_temp_max = self._extract_time_series(f, regions,
+                                                                                 extract=lambda frame: frame['max'][0])
                     with open(water_balance_file, "r") as f:
                         flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
                                                                            extract=lambda frame: frame['data'][0])
@@ -245,6 +252,14 @@ class RandomFracSimulation(Simulation):
                     power_times = power_times / year_sec
                     avg_temp = avg_temp - abs_zero_temp
 
+                    # compute min and max temperature over regions
+                    temp_min = np.full(len(power_times), 1e10)
+                    temp_max = np.full(len(power_times), -1e10)
+                    for j in range(0, len(power_times)):
+                        for i in range(0, len(regions)):
+                            temp_min[j] = min([temp_min[j], reg_temp_min[i][j]])
+                            temp_max[j] = max([temp_max[j], reg_temp_max[i][j]])
+                            
                     if not (len(power_series) == len(power_times) == len(avg_temp)):
                         t.sleep(15)
                     elif self.previous_length > len(power_series):
@@ -257,11 +272,12 @@ class RandomFracSimulation(Simulation):
 
                 result_values = []
                 for i in range(len(power_times)):
-                    result_values.append((i, power_series[i], avg_temp[i], power_times[i], n_bad_els))
+                    result_values.append((i, power_series[i], avg_temp[i], power_times[i], n_bad_els,
+                                          temp_min[i], temp_max[i]))
 
                 return result_values
             else:
-                return [np.inf, np.inf, np.inf, np.inf]
+                return [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
 
         else:
-            return [None, None, None, None]
+            return [None, None, None, None, None, None, None]
