@@ -152,7 +152,7 @@ def create_fractures_polygons(gmsh_geom, fractures):
     return fracture_fragments
 
 
-def make_mesh(config_dict, fractures):
+def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     fracture_mesh_step = 10
     geom = config_dict["geometry"]
     dimensions = geom["box_dimensions"]
@@ -260,10 +260,6 @@ def make_mesh(config_dict, fractures):
     factory.make_mesh(mesh_groups)
     factory.write_mesh(filename=mesh_name + "." + gmsh.MeshFormat.msh2.name, format=gmsh.MeshFormat.msh2)
     os.rename(mesh_name + ".msh2", mesh_file)
-
-    healed_mesh = heal_mesh(mesh_file)
-    #factory.show()
-    return healed_mesh
 
 
 def prepare_mesh(config_dict, fractures):
