@@ -1,6 +1,8 @@
 import sys
-sys.path.append('../dfn/src')
-sys.path.append('../MLMC/src')
+import os
+src_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(src_path, '../MLMC/src'))
+sys.path.append(os.path.join(src_path, '../dfn/src'))
 
 import os
 import shutil
