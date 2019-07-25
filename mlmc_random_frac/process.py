@@ -269,10 +269,10 @@ def prepare_mesh(config_dict, fractures):
         make_mesh(config_dict, fractures, mesh_name, mesh_file)
 
     mesh_healed = mesh_name + "_healed.msh"
-    if True: #not os.path.isfile(mesh_healed):
+    if not os.path.isfile(mesh_healed):
         import heal_mesh
-        hm = heal_mesh.HealMesh(mesh_file)
-        hm.heal_small_edges(0.001)
+        hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
+        hm.heal_mesh(tol_edge_ratio=0.01, tol_flat_ratio=0.01)
         hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
         hm.write()
         assert hm.healed_mesh_name == mesh_healed
