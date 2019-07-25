@@ -146,6 +146,7 @@ class RandomFracSimulation(Simulation):
         """
         # All auxiliary methods must be run in pbs script
         #self.pbs_script.append("pip3 install --user gmsh-sdk")
+        self.pbs_script.append("cd {}".format(os.path.abspath(self.process_dir)))
         self.pbs_script.append("source {}/env/bin/activate".format(self.process_dir))
         self.pbs_script.append("python {}/process.py {}".format(self.process_dir, sample_dir))
         self.pbs_script.append("touch {}/FINISHED".format(sample_dir))
@@ -198,7 +199,7 @@ class RandomFracSimulation(Simulation):
         abs_zero_temp = 273.15
         year_sec = 60 * 60 * 24 * 365
         # Sample result structure -> you can enlarge it and other stuff will be done automatically
-        self.result_struct = [["value", "power", "temp", "power_time", "temp_min", "temp_max", "n_bad_els"], ["f8", "f8", "f8", "f8",  "f8", "f8", "u4"]]
+        self.result_struct = [["value", "power", "temp", "power_time", "temp_min", "temp_max", "n_bad_els"], ["f8", "f8", "f8", "f8",  "f8", "f8", "f8"]]
 
         sample_dir = sample.directory
 
@@ -272,8 +273,8 @@ class RandomFracSimulation(Simulation):
 
                 result_values = []
                 for i in range(len(power_times)):
-                    result_values.append((i, power_series[i], avg_temp[i], power_times[i], n_bad_els,
-                                          temp_min[i], temp_max[i]))
+                    result_values.append((i, power_series[i], avg_temp[i], power_times[i],
+                                          temp_min[i], temp_max[i], n_bad_els))
 
                 return result_values
             else:

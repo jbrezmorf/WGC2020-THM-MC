@@ -54,10 +54,93 @@ class Process(base_process.Process):
             mlmc_est = Estimate(mlmc)
             mlmc_est_list.append(mlmc_est)
 
-        self.result_text(mlmc)
-        #self.plot_density(mlmc)
+        # self.result_text(mlmc)
+        # self.plot_density(mlmc)
 
-        self.plot_temp_power(mlmc_est)
+        # self.plot_temp_power(mlmc_est)
+
+        mlmc_est.mlmc.clean_select()
+        mlmc_est.mlmc.select_values({"n_bad_els": (-10, ">=")}, selected_param="n_bad_els")
+        n_bad_els = mlmc_est.mlmc.levels[0].sample_values
+
+        mlmc_est.mlmc.clean_select()
+        # mlmc_est.mlmc.select_values(None, selected_param="temp_min")
+        # mlmc_est.mlmc.select_values(None, selected_param="temp")
+        mlmc_est.mlmc.select_values({"temp_min": (100000, "<=")}, selected_param="temp_min")
+        temp_min = mlmc_est.mlmc.levels[0].sample_values
+
+        mlmc_est.mlmc.clean_select()
+        mlmc_est.mlmc.select_values({"temp_max": (-100000, ">=")}, selected_param="temp_max")
+        temp_max = mlmc_est.mlmc.levels[0].sample_values
+
+        n_samples = int(mlmc_est.mlmc.n_samples)
+        print("N samples: ", n_samples)
+        temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
+        MIN_T = 250
+        MAX_T = 470
+        print("goot temperature interval: <{},{}>".format(MIN_T, MAX_T))
+        bad_temp_flag = np.zeros((len(n_bad_els),))
+        bad_ele_flag = np.zeros((len(n_bad_els),))
+        for i in range(0, n_samples):
+            bad_temp_flag[i] = min(temp_min[i][0]) < MIN_T or max(temp_max[i][0]) > MAX_T
+            bad_ele_flag[i] = n_bad_els[i][0][0] > 0
+            ty = i if bad_temp_flag[i] else n_samples + i
+            tx = i if bad_ele_flag[i] else n_samples + i
+            temp_v_ele[ty, tx] = 1
+
+        # print("temp_v_ele:\n", temp_v_ele)
+        temp_v_ele_sum = [
+            [np.sum(temp_v_ele[:n_samples, :n_samples]),
+             np.sum(temp_v_ele[:n_samples, n_samples:2 * n_samples])],
+            [np.sum(temp_v_ele[n_samples:2 * n_samples, :n_samples]),
+             np.sum(temp_v_ele[n_samples:2 * n_samples, n_samples:2 * n_samples])]]
+
+        print("temp[BAD, GOOD]' x mesh[BAD, GOOD]]\n{}\n{}".format(temp_v_ele_sum[0], temp_v_ele_sum[1]))
+
+        # print(n_bad_els.shape)
+        n_bad_elements = np.zeros((len(n_bad_els),))
+        for i in range(len(n_bad_els)):
+            n_bad_elements[i] = n_bad_els[i][0][0]
+
+        print("min n_bad_element = ", min(n_bad_elements))
+        print("max n_bad_element = ", max(n_bad_elements))
+
+        # compute EX and varX
+        bad_temp_ele_avg = 0    # EX of bad elements for bad temperature
+        good_temp_ele_avg = 0   # EX of bad elements for good temperature
+        for i in range(len(n_bad_els)):
+            if bad_temp_flag[i]:
+                bad_temp_ele_avg += n_bad_elements[i]
+            else:
+                good_temp_ele_avg += n_bad_elements[i]
+        bad_temp_ele_avg /= temp_v_ele_sum[0][0]
+        good_temp_ele_avg /= temp_v_ele_sum[1][0]
+        print("bad_temp EX: ", bad_temp_ele_avg)
+        print("good_temp EX: ", good_temp_ele_avg)
+
+        bad_temp_ele_var = 0    # varX of bad elements for bad temperature
+        good_temp_ele_var = 0   # varX of bad elements for good temperature
+        for i in range(len(n_bad_els)):
+            if bad_temp_flag[i]:
+                bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
+            else:
+                good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
+        bad_temp_ele_var /= temp_v_ele_sum[0][0]
+        good_temp_ele_var /= temp_v_ele_sum[1][0]
+        print("bad_temp varX: ", bad_temp_ele_var)
+        print("good_temp varX: ", good_temp_ele_var)
+        print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
+        print("good_temp s: ", np.sqrt(good_temp_ele_var))
+
+        # print("n_bad_els:\n", n_bad_els)
+
+        # print("TEMP_MIN: ", temp_min)
+        # print("TEMP_MAX: ", temp_max)
+        #
+        # print("TEMP_MIN: ", min(temp_min[0][0]))
+        # print("TEMP_MAX: ", max(temp_max[1][0]))
+
+        print("PROCESS FINISHED :)")
 
         # self.process_analysis(cl)
 
@@ -87,7 +170,6 @@ class Process(base_process.Process):
             self.sample_sleep = 1
             self.init_sample_timeout = 60
             self.sample_timeout = 60
-            self.pbs_config['qsub'] = None
 
         self.mc_samples = self.config_dict["mc_samples"]
 
@@ -125,10 +207,13 @@ class Process(base_process.Process):
             self.rm_files(output_dir)
 
         # Init pbs object
-        self.create_pbs_object(output_dir, clean)
+        if (self.config_dict["metacentrum"]):
+            self.create_pbs_object(output_dir, clean)
+        else:
+            self.pbs_obj = None
 
         simulation_config = {
-            'env': dict(flow123d=self.flow123d, gmsh=self.gmsh, pbs=self.pbs_obj),  # The Environment.
+            'env': dict(flow123d=self.flow123d, pbs=self.pbs_obj),  # The Environment.
             'output_dir': output_dir,
             'sim_param_range': self.step_range,  # Range of MLMC simulation parametr. Here the mesh step.
         }
