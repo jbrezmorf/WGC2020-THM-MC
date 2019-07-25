@@ -273,8 +273,8 @@ class RandomFracSimulation(Simulation):
 
                 result_values = []
                 for i in range(len(power_times)):
-                    result_values.append((i, power_series[i], avg_temp[i], power_times[i], n_bad_els,
-                                          temp_min[i], temp_max[i]))
+                    result_values.append((i, power_series[i], avg_temp[i], power_times[i],
+                                          temp_min[i], temp_max[i], n_bad_els))
 
                 return result_values
             else:
