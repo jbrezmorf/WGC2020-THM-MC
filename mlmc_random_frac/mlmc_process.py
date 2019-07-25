@@ -87,7 +87,6 @@ class Process(base_process.Process):
             self.sample_sleep = 1
             self.init_sample_timeout = 60
             self.sample_timeout = 60
-            self.pbs_config['qsub'] = None
 
         self.mc_samples = self.config_dict["mc_samples"]
 
@@ -125,7 +124,10 @@ class Process(base_process.Process):
             self.rm_files(output_dir)
 
         # Init pbs object
-        self.create_pbs_object(output_dir, clean)
+        if (self.config_dict["metacentrum"]):
+            self.create_pbs_object(output_dir, clean)
+        else:
+            self.pbs_obj = None
 
         simulation_config = {
             'env': dict(flow123d=self.flow123d, pbs=self.pbs_obj),  # The Environment.
