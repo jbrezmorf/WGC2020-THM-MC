@@ -199,7 +199,7 @@ class RandomFracSimulation(Simulation):
         abs_zero_temp = 273.15
         year_sec = 60 * 60 * 24 * 365
         # Sample result structure -> you can enlarge it and other stuff will be done automatically
-        self.result_struct = [["value", "power", "temp", "power_time", "temp_min", "temp_max", "n_bad_els"], ["f8", "f8", "f8", "f8",  "f8", "f8", "u4"]]
+        self.result_struct = [["value", "power", "temp", "power_time", "temp_min", "temp_max", "n_bad_els"], ["f8", "f8", "f8", "f8",  "f8", "f8", "f8"]]
 
         sample_dir = sample.directory
 
