@@ -271,12 +271,11 @@ def prepare_mesh(config_dict, fractures):
         make_mesh(config_dict, fractures, mesh_name, mesh_file)
 
     mesh_healed = mesh_name + "_healed.msh"
-    if True: #not os.path.isfile(mesh_healed):
+    if not os.path.isfile(mesh_healed):
         import heal_mesh
-        hm = heal_mesh.HealMesh.read_mesh(mesh_file)
-        hm.heal_mesh(0.001)
-        #hm.heal_flat_elements(0.001)
-        #hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
+        hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
+        hm.heal_mesh(tol_edge_ratio=0.01, tol_flat_ratio=0.01)
+        hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
         hm.write()
         assert hm.healed_mesh_name == mesh_healed
     return mesh_healed
@@ -472,14 +471,14 @@ def sample(tag, config_dict):
     config_dict["hm_params"]["mesh"] = healed_mesh
     config_dict["th_params"]["mesh"] = healed_mesh
 
-    # hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
-    # th_succeed = False
-    # if hm_succeed:
-    #     prepare_th_input(config_dict)
-    #     th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
-    #     if th_succeed:
-    #         series = extract_results(config_dict)
-    #         plot_exchanger_evolution(*series)
+    hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
+    th_succeed = False
+    if hm_succeed:
+        prepare_th_input(config_dict)
+        th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
+        if th_succeed:
+            series = extract_results(config_dict)
+            plot_exchanger_evolution(*series)
     os.chdir(root_dir)
 
 
