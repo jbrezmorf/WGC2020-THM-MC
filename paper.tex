@@ -5,14 +5,15 @@
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
-\usepackage{hyperref}       % hyperlinks
+\usepackage[colorlinks]{hyperref}       % hyperlinks
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
 \usepackage{amsfonts,amsmath} % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage[bbgreekl]{mathbbol} % for blackboard \sigma
-
+\usepackage{color}
+\usepackage[square]{natbib}
 
 
 \newcommand{\CC}{\mathbb C}
@@ -24,9 +25,10 @@
 \newcommand{\uu}{\vc u}
 \newcommand{\vc}[1]{\boldsymbol{#1}}
 \newcommand{\xx}{\vc x}
+\newcommand{\todo}[1]{{\color{red}#1}}
 
 
-\title{Stochastic modeling of EGS using continuum-fracture approach and multilevel Monte Carlo}
+\title{Stochastic modeling of EGS using continuum-fracture approach.}
 
 
 \author{
@@ -67,106 +69,31 @@
 
 
 \section{Introduction}
-
+\todo{
+- problem definition - uncertainty of EGS output due to  fracture network and other properties\\
+- goal - capturing these uncertainties by stochastic modelling\\
+- basic research (find some related work for dealing with modelling EGS with fracture opening and/or stochastic DFN\\
+- paper structure\\
+}
 
 
 \section{Mathematical model}
+According to available geological data of the Litoměřice locality, the rock in the depth of several km is considered crystallinic, possibly consisting of granite, gneiss or mica schist \cite{Capova2013}. % zula, rula, svor
+We also refer to the EGS study for this site in  contribution \cite{Ralek}.  
 
-\subsection{Geological properties}
+\todo{short characterization of the locality, rock types,  temperature, reference to Ralek, identification of the model parameters postpone after model introduction.}
 
-According to available geological data of the Litoměřice locality, the rock in the depth of several km is considered crystallinic, possibly consisting of granite, gneiss or mica schist \cite{capova}. % zula, rula, svor
-The mechanical properties of granitic rocks have been investigated e.g. in \cite{ljunggren}, where the measured Young modulus $E$ varies around 50 GPa and Poisson's ratio $\nu$ is around 0.25.
-The reported values of compressibility $\beta$ of several types of granite and orthogneiss are approx. $20\times 10^{-13}$ cm${}^2$.dyne${}^{-1}$ = $2\times10^{-11}$ Pa${}^{-1}$ \cite{zisman}.
-As far as porosity $\vartheta$ is concerned, \cite{intera} report values between 0.001 and 0.01 for metamorphic crystalline rocks, we shall consider the value 0.005.
-For water we use the density $\varrho_l=10^3$ kg.m${}^{-3}$, compressibility $\beta_l=5\times 10^{-10}$ Pa${}^{-1}$.
-Here and in what follows, subscript ``l'' indicates quantities associated to the liquid.
-Similarly, subscript ``f'' will denote quantities for the fractures.
-Storativity $S$ is calculated from compressibility and porosity as follows (\cite{brace-et-al}, see also \cite{intera}):
-\[ S = \varrho_l g(\beta + \vartheta\beta_l). \]
-Here $g=9.81$ m.s${}^{-2}$ is the standard gravity.
-In our case we obtain $S\approx 2\times 10^{-7} \mbox{ m}^{-1}$.
+\todo{Conceptual model:
 
-The values of physical parameters in the fractured zone are mostly unknown, hence the following values are only approximate.
-The hydraulic conductivity of fractures dominates than the one of intact rock by several orders of magnitude, we consider $k_f=10^{-3}$ m.s${}^{-1}$
-On the other hand, the elastic modulus of fracture is assumed much smaller, we take $E_f=50$ Pa.
-The porosity is taken one order higher that in the rock, i.e. we consider $\vartheta_f=0.05$.
-We assume the same compressibility $\beta_f=\beta$, which gives approximately the same value of storativity $S_f\approx S$.
+\begin{itemize}
+    \item modeling just small box around the heat exchanger
+    \item fracking considered as just opening existing fractures;simple HM model
+    \item deformation considered permanent
+    \item longterm heat transfer as separated problem;
+          TH model sequentialy coupled
+\end{itemize}
+}
 
-All values of physical parameters used in our model are listed in Table \ref{tab:params}.
-
-\begin{table}
-\centering
-\begin{tabular}{|l|c|c|c|}
-\hline
- & rock & fractures & liquid\\\hline
-Density $\varrho$ [kg.m${}^{-3}$] & 2700 & 2700 & 1000 \\
-Hydraulic conductivity $k$ [m.s${}^{-1}$] & $10^{-9}$ \cite{sperl-trckova} & $10^{-3}$ & ---\\
-Porosity $\vartheta$ [--] & $5\times10^{-3}$ & $5\times10^{-2}$ & --- \\
-Compressibility $\beta$ [Pa${}^{-1}$] & $2\times10^{-11}$ & $2\times10^{-11}$ & $5\times10^{-10}$ \\
-Storativity $S$ [m${}^{-1}$] & $2\times10^{-7}$ & $2\times10^{-7}$ & --- \\
-Cross-section $\delta$ [m] & --- & $10^{-3}$ & --- \\
-\hline
-Young modulus $E$ [Pa] & $50\times10^9$ & 50 & --- \\
-Poisson's ratio $\nu$ [--] & 0.25 & 0.25 & --- \\
-Biot's coefficient $\alpha$ [--] & 1 & 1 & --- \\
-\hline
-Heat capacity $c$ [J.kg${}^{-1}$.K${}^{-1}$] & 790 & 790 & 4000 \\
-Thermal conductivity $\lambda$ [W.m${}^{-1}$.K${}^{-1}$] & 2.5 & 2.5 & 0.5 \\
-\hline
-\end{tabular}
-\caption{Physical parameters of rock, fractures and water, used in the model.}
-\label{tab:params}
-\end{table}
-
-Papers about effective properties of fractured porous media: \cite{Snow1969}, \cite{Bonnet2001}, \cite{Olson2003}
-
-
-
-\subsection{Parameters of EGS site and model geometry}
-
-Number of wells: 2 \\
-Depth: 5 km \\
-Distance: 200 m \\
-Well radius: $\rho = 15$ cm \\
-Length of open part of wells: $L=60$ m \\
-
-% Pressure difference / water flux: 60 l/s
-
-
-In our model, we consider pair of vertical wells with the radius $\rho=0.15$ m in the distance $D=200$ m. The open part of the length $L=60$ m is in the depth $5000$ m. The cube $600 \times 600 \times 600$ m around the open parts is considered as the computational domain.
-
-{\bf The test geometry:} The wells are connected by three fractures, two of them intersecting the cylinders and one intersecting the first two fractures.
-
-\subsection{Analytical models in the vicinity of the well}
-In order to keep the mesh size treatable, we cut out of the computational domain two cylinders around the open well parts with a larger radius $R=10$ m.
-On the surface of these cylinders we consider the Robin type boundary condition for the piezometric head:
-%
-\eq{\label{eq:H_robin} k\nabla h\cdot\nn = \sigma(H_w-h), }
-%
-where $\nn$ is the unit normal vector pointing to the centre of the well and $H_w$ is the piezometric head in the well.
-% We assume the constant conductivity $k$ in the vicinity of well.
-The parameter $\sigma$ is determined from the analytical radially symmetric solution
-of the steady Darcy flow problem with a point source:
-\[
-    \hat h(r) = -\alpha \log (r) + \beta,
-\]
-where $r$ is the distance from the well and $\alpha$, $\beta$ are arbitrary constants such that $\hat h(\rho)=H_w$:
-First, the flux from the well into the domain through the surface $C_\rho$ of the cylinder with radius $\rho$ and length $L$ is
-%  
-\eq{\label{eq:Q_rho}    Q_\rho := -\int_{C_\rho} k\nabla h\cdot\nn = -2\pi \rho L k \hat h'(\rho) = 2\pi L k \alpha. }
-%
-% where we have used the Darcy law with the conductivity $k$.
-%Now we use the analytical solution to fit the Robin type boundary condition:
-Next, the flux at the distance $R$ can be expressed from \eqref{eq:H_robin} as follows:
-%
-\eq{\label{eq:Q_R}   Q_R = 2\pi R L \sigma (\hat h(\rho) - \hat h(R)) = 2\pi R L \sigma \alpha \log(R/\rho).}
-%
-%which combined with previous equality determines $\sigma$ as:
-Finally, since $Q_\rho=Q_R$, we obtain from \eqref{eq:Q_rho} and \eqref{eq:Q_R}:
-\eq{ \label{eq:sigma} \sigma = \frac{k}{R\log(R/\rho)}. }
-In the simulations we shall use the hydraulic conductivity of the fractures in \eqref{eq:sigma} as the fractures have major influence on the flow in the vicinity of wells.
-
-Since the heat transfer is dominated by the convection in the vicinity of the wells, the temperature in the well is transported to the surface of the cut-off cylinders or vice verse in the time $t_0 = R/q$ which for the observed volume fluxes $Q\sim 1$ l/s is about $100$ days. This is negligible with respect to the total lifetime of the heat exchanger, hence in the simulation of heat we shall use Dirichlet boundary condition for the temperature.
 
 
 
@@ -178,12 +105,12 @@ In the first model scenario the fluid is injected to both wells in order to open
 This leads to increase in the cross-section of fractures, which is then used in the computation of long-term operation.
 As the HM model of 3d rock we use the Biot poroelasticity equations:
 \eq{\label{eq:biot} \partial_t(Sp + \alpha\div\uu) +\div\vc q = 0,\qquad -\div\bbsigma + \tilde\alpha\nabla p = 0. }
-Here $p=h-x_3$ is the pressure head [m], $\uu$ is the displacement [m] and $\tilde\alpha:=\alpha\varrho_l g$.
+Here $p=h-x_3$ is the pressure head [m], $\uu$ is the displacement [m], $\tilde\alpha:=\alpha\varrho_l g$ and $\alpha$ is the Biot's effective stress parameter \cite{Biot1941}.
 The flux $\vc q$ [m.s${}^{-1}$] and the stress tensor $\bbsigma$ [Pa] are given by the Darcy and Hooke laws:
 \eq{ \vc q = - k\nabla p, \qquad \bbsigma = \CC(\nabla\uu) := \mu(\nabla\uu+\nabla\uu^\top) + \lambda(\II:\nabla\uu)\II, }
 where $\mu=E/(2(1+\nu))$ and $\lambda=E\nu/((1+\nu)(1-2\nu))$ are the Lamé parameters [Pa], $\II$ is the identity matrix and ``:'' denotes the scalar product of matrices.
 
-For the 2d fractures we apply a dimension reduction procedure, which was originally developed in \cite{martin-jaffre-roberts} for the Darcy flow.
+For the 2d fractures we apply a dimension reduction procedure, which was originally developed in \cite{martin_modeling_2005} for the Darcy flow.
 We introduce the unit normal vector $\vc\nu$ to the fracture plane with arbitrary but fixed orientation.
 For a quantity, say $p$, which is defined on both sides of the fracture, we define the jump $\jmp{p}:=p^+-p^-$, where $p^\pm$ is the trace of $p$ on the positive/negative side of the fracture, determined by the orientation of $\vc\nu$.
 Then, integrating \eqref{eq:biot} across fracture aperture results in the following system of equations:
@@ -237,7 +164,120 @@ Boundary conditions:
 We use the following system of heat equation and steady-state Darcy flow with coupling terms connecting the rock to the fractures:
 \[ ... \]
 
+\subsection{Conductivity dependent on displacement}
+We consider that after releasing the fracking pressure the displacement of larger fractures persists. So the change in new porosity is
+\[
+\phi = \phi_0 + \alpha\div \vc u
+\]
+where $\phi_0$ is the porosity before deformation, c.f. time term in \eqref{eq:biot}. 
+Using the Carman-Kozeny relation \cite{Kaviany1999}, 
+% \[
+%     k = \tilde{k}\frac{\phi^3}{(1-\phi)^2}
+% \]
+we can derive formula for the updated conductivity:
+\[
+    K = K_0\left(\frac{\phi}{\phi_0}\right)^3 \left(\frac{1-\phi_0}{1-\phi}\right)^2.
+\]
 
+\subsection{Analytical models in the vicinity of the well}
+In order to keep the mesh size treatable, we cut out of the computational domain two cylinders around the open well parts with a larger radius $R=10$ m.
+On the surface of these cylinders we consider the Robin type boundary condition for the piezometric head:
+%
+\eq{\label{eq:H_robin} k\nabla h\cdot\nn = \sigma(H_w-h), }
+%
+where $\nn$ is the unit normal vector pointing to the centre of the well and $H_w$ is the piezometric head in the well.
+% We assume the constant conductivity $k$ in the vicinity of well.
+The parameter $\sigma$ is determined from the analytical radially symmetric solution
+of the steady Darcy flow problem with a point source:
+\[
+    \hat h(r) = -\alpha \log (r) + \beta,
+\]
+where $r$ is the distance from the well and $\alpha$, $\beta$ are arbitrary constants such that $\hat h(\rho)=H_w$:
+First, the flux from the well into the domain through the surface $C_\rho$ of the cylinder with radius $\rho$ and length $L$ is
+%  
+\eq{\label{eq:Q_rho}    Q_\rho := -\int_{C_\rho} k\nabla h\cdot\nn = -2\pi \rho L k \hat h'(\rho) = 2\pi L k \alpha. }
+%
+% where we have used the Darcy law with the conductivity $k$.
+%Now we use the analytical solution to fit the Robin type boundary condition:
+Next, the flux at the distance $R$ can be expressed from \eqref{eq:H_robin} as follows:
+%
+\eq{\label{eq:Q_R}   Q_R = 2\pi R L \sigma (\hat h(\rho) - \hat h(R)) = 2\pi R L \sigma \alpha \log(R/\rho).}
+%
+%which combined with previous equality determines $\sigma$ as:
+Finally, since $Q_\rho=Q_R$, we obtain from \eqref{eq:Q_rho} and \eqref{eq:Q_R}:
+\eq{ \label{eq:sigma} \sigma = \frac{k}{R\log(R/\rho)}. }
+In the simulations we shall use the hydraulic conductivity of the fractures in \eqref{eq:sigma} as the fractures have major influence on the flow in the vicinity of wells.
+
+Since the heat transfer is dominated by the convection in the vicinity of the wells, the temperature in the well is transported to the surface of the cut-off cylinders or vice verse in the time $t_0 = R/q$ which for the observed volume fluxes $Q\sim 1$ l/s is about $100$ days. This is negligible with respect to the total lifetime of the heat exchanger, hence in the simulation of heat we shall use Dirichlet boundary condition for the temperature.
+
+
+\subsection{Geological properties}
+
+The mechanical properties of granitic rocks have been investigated e.g. in \cite{Ljunggren1985}, where the measured Young modulus $E$ varies around 50 GPa and Poisson's ratio $\nu$ is around 0.25.
+The reported values of the drained compressibility $\beta$ of several types of granite and orthogneiss are approx. $20\times 10^{-13}$ cm${}^2$.dyne${}^{-1}$ = $2\times10^{-11}$ Pa${}^{-1}$ \cite{Zisman1933}.
+As far as porosity $\vartheta$ is concerned, \cite{intera} report values between 0.001 and 0.01 for metamorphic crystalline rocks, we shall consider the value 0.005.
+For water we use the density $\varrho_l=10^3$ kg.m${}^{-3}$, compressibility $\beta_l=5\times 10^{-10}$ Pa${}^{-1}$.
+Here and in what follows, subscript ``l'' indicates quantities associated to the liquid.
+Similarly, subscript ``f'' will denote quantities for the fractures.
+Storativity $S$ is calculated from compressibility and porosity as follows (\cite{Brace1968}, see also \cite{intera}):
+\[ S = \varrho_l g(\beta + \vartheta\beta_l). \]
+Here $g=9.81$ m.s${}^{-2}$ is the standard gravity.
+In our case we obtain $S\approx 2\times 10^{-7} \mbox{ m}^{-1}$.
+
+The values of physical parameters in the fractured zone are mostly unknown, hence the following values are only approximate.
+The hydraulic conductivity of fractures dominates than the one of intact rock by several orders of magnitude, we consider $k_f=10^{-3}$ m.s${}^{-1}$
+On the other hand, the elastic modulus of fracture is assumed much smaller, we take $E_f=50$ Pa.
+The porosity is taken one order higher that in the rock, i.e. we consider $\vartheta_f=0.05$.
+We assume the same compressibility $\beta_f=\beta$, which gives approximately the same value of storativity $S_f\approx S$.
+
+All values of physical parameters used in our model are listed in Table \ref{tab:params}.
+
+\begin{table}
+\centering
+\begin{tabular}{|l|c|c|c|}
+\hline
+ & rock & fractures & liquid\\\hline
+Density $\varrho$ [kg.m${}^{-3}$] & 2700 & 2700 & 1000 \\
+Hydraulic conductivity $k$ [m.s${}^{-1}$] & $10^{-9}$ \cite{Sperl2008} & $10^{-3}$ & ---\\
+Porosity $\vartheta$ [--] & $5\times10^{-3}$ & $5\times10^{-2}$ & --- \\
+Compressibility $\beta$ [Pa${}^{-1}$] & $2\times10^{-11}$ & $2\times10^{-11}$ & $5\times10^{-10}$ \\
+Storativity $S$ [m${}^{-1}$] & $2\times10^{-7}$ & $2\times10^{-7}$ & --- \\
+Cross-section $\delta$ [m] & --- & $10^{-3}$ & --- \\
+\hline
+Young modulus $E$ [Pa] & $50\times10^9$ & 50 & --- \\
+Poisson's ratio $\nu$ [--] & 0.25 & 0.25 & --- \\
+Biot's coefficient $\alpha$ [--] & 1 & 1 & --- \\
+\hline
+Heat capacity $c$ [J.kg${}^{-1}$.K${}^{-1}$] & 790 & 790 & 4000 \\
+Thermal conductivity $\lambda$ [W.m${}^{-1}$.K${}^{-1}$] & 2.5 & 2.5 & 0.5 \\
+\hline
+\end{tabular}
+\caption{Physical parameters of rock, fractures and water, used in the model.}
+\label{tab:params}
+\end{table}
+
+Papers about effective properties of fractured porous media: \cite{Snow1969}, \cite{Bonnet2001}, \cite{Olson2003}
+
+
+
+\subsection{Parameters of EGS site and model geometry}
+
+Number of wells: 2 \\
+Depth: 5 km \\
+Distance: 200 m \\
+Well radius: $\rho = 15$ cm \\
+Length of open part of wells: $L=60$ m \\
+
+% Pressure difference / water flux: 60 l/s
+
+
+In our model, we consider pair of vertical wells with the radius $\rho=0.15$ m in the distance $D=200$ m. The open part of the length $L=60$ m is in the depth $5000$ m. The cube $600 \times 600 \times 600$ m around the open parts is considered as the computational domain.
+
+{\bf The test geometry:} The wells are connected by three fractures, two of them intersecting the cylinders and one intersecting the first two fractures.
+
+\section{Fractured media}
+\subsection{Stochastic description of the fractures}
+\subsection{Effective properties of the fractured porous media}
 
 \section*{Acknowledgement}
 \begin{itemize}
@@ -248,24 +288,26 @@ We use the following system of heat equation and steady-state Darcy flow with co
     The resrarch was supported by the project No. CZ.02.1.01/0.0/0.0/16\_013/0001792, co-funded by the EU Operational Programme ``Research, Development and Education''.
 \end{itemize}
 
+\bibliographystyle{dinat}
+\bibliography{references.bib}
 
-\begin{thebibliography}{9}
+% \begin{thebibliography}{9}
 
-\bibitem{brace-et-al} W. F. Brace,  J. B. Walsh, W. T. Grango.  Permeability of Granite Under High Pressure, J. Geophys. Res. 73(6):2225--2236, 1968.
+% \bibitem{brace-et-al} W. F. Brace,  J. B. Walsh, W. T. Grango.  Permeability of Granite Under High Pressure, J. Geophys. Res. 73(6):2225--2236, 1968.
 
-\bibitem{capova} L. Čápová. Specification of the geothermic model in the environs of several selected boreholes. Diploma thesis, Charles University in Prague, 2013.
+% \bibitem{capova} L. Čápová. Specification of the geothermic model in the environs of several selected boreholes. Diploma thesis, Charles University in Prague, 2013.
 
-\bibitem{intera} INTERA Environmental Consultants, Inc. Porosity, Permeability,  and Their  Relationship  in  
-Granite,  Basalt, and Tuff. Accession  DE83-011519, NTIS, Springfield, Virginia, 1983.
+% \bibitem{intera} INTERA Environmental Consultants, Inc. Porosity, Permeability,  and Their  Relationship  in  
+% Granite,  Basalt, and Tuff. Accession  DE83-011519, NTIS, Springfield, Virginia, 1983.
 
-\bibitem{martin-jaffre-roberts} V. Martin, J. Jaffré, J. E. Roberts. Modeling fractures and barriers as interfaces for flow in porous media. SIAM Journal on Scientific Computing 26(5):1667--1691, 2005.
+% \bibitem{martin-jaffre-roberts} V. Martin, J. Jaffré, J. E. Roberts. Modeling fractures and barriers as interfaces for flow in porous media. SIAM Journal on Scientific Computing 26(5):1667--1691, 2005.
 
-\bibitem{sperl-trckova} J. Šperl, J. Trčková. Permeability and porosity of rocks and their relationship based on laboratory testing. Acta Geodyn. Geomater. 5(149):41--47, 2008.
+% \bibitem{sperl-trckova} J. Šperl, J. Trčková. Permeability and porosity of rocks and their relationship based on laboratory testing. Acta Geodyn. Geomater. 5(149):41--47, 2008.
 
-\bibitem{ljunggren} C. Ljunggren, O. Stephansson, O. Alm, H. Hakami, U. Mattila. Mechanical properties of granitic rocks from Gide\aa, Sweden. Technical Report 85-06, SKB, 1985.
+% \bibitem{ljunggren} C. Ljunggren, O. Stephansson, O. Alm, H. Hakami, U. Mattila. Mechanical properties of granitic rocks from Gide\aa, Sweden. Technical Report 85-06, SKB, 1985.
 
-\bibitem{zisman} W. A. Zisman. Compressibility and anisotropy of rocks at and near the Earth's surface. Proceedings of the National Academy of Sciences of the United States of America, 19(7):666--679, 1933.
+% \bibitem{zisman} W. A. Zisman. Compressibility and anisotropy of rocks at and near the Earth's surface. Proceedings of the National Academy of Sciences of the United States of America, 19(7):666--679, 1933.
 
-\end{thebibliography}
+% \end{thebibliography}
 
 \end{document}
