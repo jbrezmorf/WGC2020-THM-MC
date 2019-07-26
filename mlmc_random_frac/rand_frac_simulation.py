@@ -146,13 +146,13 @@ class RandomFracSimulation(Simulation):
         """
         self.pbs_script.append(
             """
-            cd {proc_dir}
+            cd {abs_proc_dir}
             source {proc_dir}/env/bin/activate
             python {proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
             sleep 30
             echo "done" >{sample_dir}/FINISHED
             """
-            .format(proc_dir=self.process_dir, sample_dir=sample_dir))
+            .format(abs_proc_dir= os.path.abspath(self.process_dir), proc_dir=self.process_dir, sample_dir=sample_dir))
 
 
     def run_sim_sample(self, out_subdir):
