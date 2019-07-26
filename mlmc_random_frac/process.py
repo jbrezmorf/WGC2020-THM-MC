@@ -485,7 +485,7 @@ def sample(config_dict):
 if __name__ == "__main__":
     sample_dir = sys.argv[1]
     os.chdir(sample_dir)
-    np.random.seed(1)
+    np.random.seed()
 
     with open(os.path.join(script_dir, "config.yaml"), "r") as f:
         config_dict = yaml.safe_load(f)
