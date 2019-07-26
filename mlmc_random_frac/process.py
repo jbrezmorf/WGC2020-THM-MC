@@ -1,7 +1,5 @@
 import sys
 import os
-#WGC_DIR = "/storage/liberec3-tul/home/martin_spetlik/WGC_rand"
-#WORK_DIR = os.path.join(WGC_DIR, 'mlmc_random_frac')
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '../MLMC/src'))
 sys.path.append(os.path.join(script_dir, '../dfn/src'))
@@ -17,12 +15,17 @@ import gmsh_io
 
 import fracture
 
-from gmsh_api import gmsh
-from gmsh_api import options
-
 # TODO:
 # - enforce creation of empty physical groups, or creation of empty regions in the flow input
 # - speedup mechanics
+
+@attr.s(auto_attribs=True)
+class ValueDescription:
+    time: float
+    position: str
+    quantity: str
+    unit: str
+
 
 
 def substitute_placeholders(file_in, file_out, params):
@@ -45,14 +48,12 @@ def substitute_placeholders(file_in, file_out, params):
         dst.write(text)
     return used_params
 
-
 def to_polar(x, y, z):
     rho = np.sqrt(x ** 2 + y ** 2)
     phi = np.arctan2(y, x)
     if z > 0:
         phi += np.pi
     return (phi, rho)
-
 
 def plot_fr_orientation(fractures):
     family_dict = collections.defaultdict(list)
@@ -84,7 +85,6 @@ def plot_fr_orientation(fractures):
     fig.savefig("fracture_orientation.pdf")
     plt.close(fig)
     #plt.show()
-
 
 def generate_fractures(config_dict):
     geom = config_dict["geometry"]
@@ -256,9 +256,10 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     mesh.MinimumCirclePoints = 6
     mesh.MinimumCurvePoints = 2
 
+
     #factory.make_mesh(mesh_groups, dim=2)
     factory.make_mesh(mesh_groups)
-    factory.write_mesh(filename=mesh_name + "." + gmsh.MeshFormat.msh2.name, format=gmsh.MeshFormat.msh2)
+    factory.write_mesh(format=gmsh.MeshFormat.msh2)
     os.rename(mesh_name + ".msh2", mesh_file)
 
 
@@ -272,13 +273,27 @@ def prepare_mesh(config_dict, fractures):
     if not os.path.isfile(mesh_healed):
         import heal_mesh
         hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
-        hm.heal_mesh(tol_edge_ratio=0.01, tol_flat_ratio=0.01)
+        hm.heal_mesh(tol_edge_ratio=0.02, tol_flat_ratio=0.02)
         hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
         hm.write()
         assert hm.healed_mesh_name == mesh_healed
     return mesh_healed
 
-
+def check_conv_reasons(log_fname):
+    with open(log_fname, "r") as f:
+        for line in f:
+            tokens = line.split(" ")
+            try:
+                i = tokens.index('convergence')
+                if tokens[i + 1] == 'reason':
+                    value = tokens[i + 2].rstrip(",")
+                    conv_reason = int(value)
+                    if conv_reason < 0:
+                        print("Failed to converge: ", conv_reason)
+                        return False
+            except ValueError:
+                continue
+    return True
 
 def call_flow(config_dict, param_key, result_files):
     """
@@ -286,14 +301,13 @@ def call_flow(config_dict, param_key, result_files):
     :param arguments:
     :return:
     """
+
     params = config_dict[param_key]
     fname = params["in_file"]
     substitute_placeholders(fname + '_tmpl.yaml', fname + '.yaml', params)
     arguments = config_dict["_aux_flow_path"].copy()
-
     output_dir = "output_" + fname
     config_dict[param_key]["output_dir"] = output_dir
-
     if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
         status = True
     else:
@@ -302,9 +316,11 @@ def call_flow(config_dict, param_key, result_files):
         with open(fname + "_stdout", "w") as stdout:
             with open(fname + "_stderr", "w") as stderr:
                 completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
+        print("Exit status: ", completed.returncode)
         status = completed.returncode == 0
-    print("Exit status: ", status)
-    return status
+    conv_check = check_conv_reasons(os.path.join(output_dir, "flow123.0.log"))
+    return status # and conv_check
+
 
 
 def prepare_th_input(config_dict):
@@ -331,11 +347,13 @@ def prepare_th_input(config_dict):
     init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
     init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
     init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
+    min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
 
     time_idx = 1
     time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
 
-    cs = np.array([v[0] for v in field_cs.values()])
+
+    cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
 
     K = np.where(
         cs == 1.0,      # condition
@@ -364,16 +382,16 @@ def prepare_th_input(config_dict):
 
 
 
-# def get_result_description():
-#     """
-#     :return:
-#     """
-#     end_time = 30
-#     values = [ [ValueDescription(time=t, position="extraction_well", quantity="power", unit="MW"),
-#                 ValueDescription(time=t, position="extraction_well", quantity="temperature", unit="Celsius deg.")
-#                 ] for t in np.linspace(0, end_time, 0.1)]
-#     power_series, temp_series = zip(*values)
-#     return power_series + temp_series
+def get_result_description():
+    """
+    :return:
+    """
+    end_time = 30
+    values = [ [ValueDescription(time=t, position="extraction_well", quantity="power", unit="MW"),
+                ValueDescription(time=t, position="extraction_well", quantity="temperature", unit="Celsius deg.")
+                ] for t in np.linspace(0, end_time, 0.1)]
+    power_series, temp_series = zip(*values)
+    return power_series + temp_series
 
 
 def extract_time_series(yaml_stream, regions, extract):
@@ -395,7 +413,7 @@ def extract_time_series(yaml_stream, regions, extract):
             reg_series[region].append(power_in_time)
     times = list(times)
     times.sort()
-    series = [np.array(region_series) for region_series in reg_series.values()]
+    series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
     return np.array(times), series
 
 
@@ -457,7 +475,6 @@ def sample(config_dict):
 
     fractures = generate_fractures(config_dict)
     # plot_fr_orientation(fractures)
-    
     healed_mesh = prepare_mesh(config_dict, fractures)
     healed_mesh_bn = os.path.basename(healed_mesh)
     config_dict["hm_params"]["mesh"] = healed_mesh_bn
@@ -468,18 +485,10 @@ def sample(config_dict):
     if hm_succeed:
         prepare_th_input(config_dict)
         th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
-        # if th_succeed:
-        #     series = extract_results(config_dict)
-        #     plot_exchanger_evolution(*series)
+        if th_succeed:
+            series = extract_results(config_dict)
+            plot_exchanger_evolution(*series)
 
-
-
-# @attr.s(auto_attribs=True)
-# class ValueDescription:
-#     time: float
-#     position: str
-#     quantity: str
-#     unit: str
 
 
 if __name__ == "__main__":

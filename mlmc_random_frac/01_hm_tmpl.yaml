@@ -27,8 +27,9 @@ problem: !Coupling_Sequential
         output_specific:
         nonlinear_solver:
           linear_solver: !Petsc
-            a_tol: 1e-14
-            r_tol: 1e-7
+            a_tol: <flow_solver__a_tol>
+            r_tol: <flow_solver__r_tol>
+            options: <flow_solver__options>
             # Boomeramg options:
             # -ksp_type richardson              - recomended usage when solving just by multigrid
             #  -pc_hypre_boomeramg_cycle_type <V> Cycle type (choose one of) V W (None)
@@ -82,7 +83,7 @@ problem: !Coupling_Sequential
             # failed: indefinite PC
             #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Chebyshev
 
-            options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type HMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type HMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
             # it: 414 r_tol 1e-7
 
             #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all symmetric-SOR/Jacobi
@@ -153,10 +154,11 @@ problem: !Coupling_Sequential
             - displacement_divergence
             - region_id
         solver: !Petsc
-          a_tol: 1e-14
-          r_tol: 1e-7
+          a_tol: <mechanics_solver__a_tol>
+          r_tol: <mechanics_solver__r_tol>
+          options: <mechanics_solver__options>
           # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
-          options: -ksp_type cg -pc_type icc -pc_factor_levels 2 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 3.0 -ksp_monitor
+          #options: -ksp_type cg -pc_type icc -pc_factor_levels 2 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 3.0 -ksp_monitor
         input_fields:
           - region: box
             young_modulus: 50e9
