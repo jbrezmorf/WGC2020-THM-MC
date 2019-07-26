@@ -1,17 +1,17 @@
 # The flow executable and arguments to use.
 # JB:
-flow_executable:
-  - ../../flow123d/bin/fterm
-  - --no-term
-  - rel
-  - run
+# flow_executable:
+#  - ../../flow123d/bin/fterm
+#  - --no-term
+#  - rel
+#  - run
 
 # Charon:
-# flow_executable:
-#   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+flow_executable:
+  - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
 metacentrum: true
 
-mc_samples: 2
+mc_samples: 10
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml]
 
