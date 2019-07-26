@@ -154,19 +154,28 @@ class Process(base_process.Process):
             root_dir, tail = os.path.split(root_dir)
 
         self.flow123d = self.config_dict["flow_executable"]
+        self.pbs_config = dict(
+            job_weight=250000,  # max number of elements per job
+            n_cores=1,
+            n_nodes=1,
+            select_flags=[],
+            mem='8gb',
+            queue='charon',
+            qsub=None)
         if(self.config_dict["metacentrum"]):
-            self.pbs_config = dict(
-                job_weight=250000,  # max number of elements per job
-                n_cores=3,
-                n_nodes=1,
-                select_flags=['cgroups=cpuacct'],
-                mem='8gb',
-                queue='charon')
             self.sample_sleep = 30
             self.init_sample_timeout = 600
             self.sample_timeout = 0
-            self.pbs_config['qsub'] = '/usr/bin/qsub'
+            self.pbs_config.update(dict(
+                qsub='/usr/bin/qsub',
+                modules=[
+
+                ]
+            ))
         else:
+            # pbs_config is necessary for the local run but is not used
+            # as long as the pbs key is set to None
+            self.pbs_config['qsub'] = None
             self.sample_sleep = 1
             self.init_sample_timeout = 60
             self.sample_timeout = 60
@@ -189,7 +198,7 @@ class Process(base_process.Process):
                                job_count=num_jobs,
                                qsub=self.pbs_config['qsub'],
                                clean=clean)
-        self.pbs_obj.pbs_common_setting(flow_3=True, **self.pbs_config)
+        self.pbs_obj.pbs_common_setting(**self.pbs_config)
 
     def setup_config(self, n_levels, clean):
         """
@@ -207,10 +216,11 @@ class Process(base_process.Process):
             self.rm_files(output_dir)
 
         # Init pbs object
-        if (self.config_dict["metacentrum"]):
-            self.create_pbs_object(output_dir, clean)
-        else:
-            self.pbs_obj = None
+        self.create_pbs_object(output_dir, clean)
+        # if (self.config_dict["metacentrum"]):
+        #
+        # else:
+        #     self.pbs_obj = None
 
         simulation_config = {
             'env': dict(flow123d=self.flow123d, pbs=self.pbs_obj),  # The Environment.
