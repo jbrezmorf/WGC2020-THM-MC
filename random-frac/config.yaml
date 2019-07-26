@@ -83,6 +83,77 @@ hm_params:
     fr_conductivity: 1e-3
     bulk_conductivity: 1e-9
 
+    mechanics_solver__a_tol: 1e-14
+    mechanics_solver__r_tol: 1e-7
+        # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+    mechanics_solver__options: -ksp_type cg -pc_type icc -pc_factor_levels 2 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 3.0 -ksp_monitor
+
+
+    flow_solver__a_tol: &fatol   1e-14
+    flow_solver__r_tol: &frtol   1e-7
+        # Boomeramg options:
+        # -ksp_type richardson              - recomended usage when solving just by multigrid
+        #  -pc_hypre_boomeramg_cycle_type <V> Cycle type (choose one of) V W (None)
+        #                                 cans try: V, W
+        #  -pc_hypre_boomeramg_max_levels <25>: Number of levels (of grids) allowed (None)
+        #  -pc_hypre_boomeramg_max_iter <1>: Maximum iterations used PER hypre call (None)
+        #                                  PETSC recomend more then 1 when just richardson KSP is used
+        #  -pc_hypre_boomeramg_tol <0.>: Convergence tolerance PER hypre call (0.0 = use a fixed number of iterations) (None)
+        #                                  PETSC says 1e-7 is default, when previous is not set
+        #  -pc_hypre_boomeramg_strong_threshold <0.25>: Threshold for being strongly connected (None)
+        #                                  HYPRE recommends 0.5 for 3d problems
+        #
+        #  -pc_hypre_boomeramg_P_max <0>: Max elements per row for interpolation operator (0=unlimited) (None)
+        #  -pc_hypre_boomeramg_agg_nl <0>: Number of levels of aggressive coarsening (None)
+        #  -pc_hypre_boomeramg_agg_num_paths <1>: Number of paths for aggressive coarsening (None)
+        #  -pc_hypre_boomeramg_strong_threshold <0.25>: Threshold for being strongly connected (None)
+        #  -pc_hypre_boomeramg_coarsen_type <Falgout> Coarsen type (choose one of) CLJP Ruge-Stueben  modifiedRuge-Stueben   Falgout  PMIS  HMIS (None)
+        #  -pc_hypre_boomeramg_interp_type <classical> Interpolation type (choose one of) classical   direct multipass multipass-wts ext+i ext+i-cc standard standard-wts block block-wtd FF FF1 (None)
+
+        #  -pc_hypre_boomeramg_relax_type_all <symmetric-SOR/Jacobi> Relax type for the up and down cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+        #  -pc_hypre_boomeramg_relax_type_down <symmetric-SOR/Jacobi> Relax type for the down cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+        #  -pc_hypre_boomeramg_relax_type_up <symmetric-SOR/Jacobi> Relax type for the up cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+        #  -pc_hypre_boomeramg_relax_type_coarse <Gaussian-elimination> Relax type on coarse grid (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+        #  -pc_hypre_boomeramg_relax_weight_all <1.>: Relaxation weight for all levels (0 = hypre estimates, -k = determined with k CG steps) (None)
+        #  -pc_hypre_boomeramg_relax_weight_level <1.>: Set the relaxation weight for a particular level (weight,level) (None)
+        #  -pc_hypre_boomeramg_outer_relax_weight_all <1.>: Outer relaxation weight for all levels (-k = determined with k CG steps) (None)
+        #  -pc_hypre_boomeramg_outer_relax_weight_level <1.>: Set the outer relaxation weight for a particular level (weight,level) (None)
+        #  -pc_hypre_boomeramg_no_CF: <FALSE> Do not use CF-relaxation (None)
+
+
+        # -pc_hypre_boomeramg_max_iter <1>  - number of V/W cycles
+        # -pc_hypre_boomeramg_tol <1e-7>    - tolerance of MG solver
+        # -pc_hypre_boomeramg_coarsen_type  [PMIS  HMIS]  - recomenden for 3d problems
+        # -pc_hypre_boomeramg_interp_type [ext+i ext+i-cc] - probably recomended for 3d problems
+        # -pc_hypre_boomeramg_strong_threshold <0.5> - recomended for 3d problems
+        # for cg one must use symmetric smoother (default is hybrid Gauss-Siedel)
+        # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+
+        # Experiements:
+        # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+        # it: 421 r_tol 1e-7
+        #options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5 -ksp_monitor
+        # it: 696 r_tol 1e-7
+        #options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type HMIS -pc_hypre_boomeramg_strong_threshold 0.5 -ksp_monitor
+        # it: 705 r_tol 1e-7
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+        # it: 414 r_tol 1e-7
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all FCF-Jacobi
+        # failed: indefinite PC
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Jacobi
+        # failed: indefinite PC
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Chebyshev
+
+    flow_solver__options: &fopt -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type HMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+        # it: 414 r_tol 1e-7
+
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all symmetric-SOR/Jacobi
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Jacobi
+
+        # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+        # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.4  -ksp_monitor
+        # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.6  -ksp_monitor
+
 
 
 # parameters substituted into the TH model template
@@ -94,6 +165,24 @@ th_params:
 
     fr_conductivity: 1e-3
     bulk_conductivity: 1e-9
+    min_fr_cross_section: 1e-4
 
+    flow_solver__a_tol: *fatol
+    flow_solver__r_tol: *frtol
+    flow_solver__options: *fopt
+
+    # residual is the energy balance which is in order of MW
+    # we prescribe a tol about # orders of mag. lower
+    heat_solver__a_tol: 1e+3
+    heat_solver__r_tol: 1e-5
+        # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+
+    #heat_solver__options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+    # faild fo indef PC
+    #heat_solver__options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+    # failed do to 1000 iterations
+    # heat_solver__options: -ksp_type preonly -pc_type lu -pc_factor_mat_solver_type mumps
+    # out of memory 12GB
+    heat_solver__options: -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
 
 

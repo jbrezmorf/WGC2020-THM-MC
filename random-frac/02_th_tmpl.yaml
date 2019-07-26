@@ -18,9 +18,11 @@ problem: !Coupling_Sequential
     output_specific:
     nonlinear_solver:
       linear_solver: !Petsc
-        a_tol: 1e-14
-        r_tol: 1e-14
-        options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+        a_tol: <flow_solver__a_tol>
+        r_tol: <flow_solver__r_tol>
+        options: <flow_solver__options>
+
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
 #        options: -ksp_type preonly -pc_type lu
     n_schurs: 2
     input_fields:
@@ -90,6 +92,10 @@ problem: !Coupling_Sequential
         solid_density: 2700
         solid_heat_capacity: 790
         solid_heat_conductivity: 2.5
+        disp_l: 20             # conservative according to Sahimi 1986
+        disp_t: 2
+        fracture_sigma: 2000   # 2/cross_section; cs = 1e-3
+        dg_penalty: 0.5
         init_temperature: !FieldFormula
           value: 10-(z-5000)/5000*150+273.15  # geothermal gradient 30 K/km, temperature 10 C at surface (5 km above well end)
       - region: box
@@ -122,7 +128,9 @@ problem: !Coupling_Sequential
       times:
         - {step: 1, time_unit: 'y'}      # 31557600       # 1 yr
     solver: !Petsc
-      a_tol: 1e-14
-      r_tol: 1e-14
+      a_tol: <heat_solver__a_tol>
+      r_tol: <heat_solver__r_tol>
+      options: <heat_solver__options>
+
     time:
       end_time: [3, 'y'] #946728000       # 30 yr

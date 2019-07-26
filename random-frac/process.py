@@ -274,12 +274,27 @@ def prepare_mesh(config_dict, fractures):
     if not os.path.isfile(mesh_healed):
         import heal_mesh
         hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
-        hm.heal_mesh(tol_edge_ratio=0.01, tol_flat_ratio=0.01)
+        hm.heal_mesh(tol_edge_ratio=0.02, tol_flat_ratio=0.02)
         hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
         hm.write()
         assert hm.healed_mesh_name == mesh_healed
     return mesh_healed
 
+def check_conv_reasons(log_fname):
+    with open(log_fname, "r") as f:
+        for line in f:
+            tokens = line.split(" ")
+            try:
+                i = tokens.index('convergence')
+                if tokens[i + 1] == 'reason':
+                    value = tokens[i + 2].rstrip(",")
+                    conv_reason = int(value)
+                    if conv_reason < 0:
+                        print("Failed to converge: ", conv_reason)
+                        return False
+            except ValueError:
+                continue
+    return True
 
 def call_flow(config_dict, param_key, result_files):
     """
@@ -302,9 +317,10 @@ def call_flow(config_dict, param_key, result_files):
         with open(fname + "_stdout", "w") as stdout:
             with open(fname + "_stderr", "w") as stderr:
                 completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
+        print("Exit status: ", completed.returncode)
         status = completed.returncode == 0
-    print("Exit status: ", status)
-    return status
+    conv_check = check_conv_reasons(os.path.join(output_dir, "flow123.0.log"))
+    return status # and conv_check
 
 
 
@@ -332,11 +348,13 @@ def prepare_th_input(config_dict):
     init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
     init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
     init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
+    min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
 
     time_idx = 1
     time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
 
-    cs = np.array([v[0] for v in field_cs.values()])
+
+    cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
 
     K = np.where(
         cs == 1.0,      # condition
@@ -396,7 +414,7 @@ def extract_time_series(yaml_stream, regions, extract):
             reg_series[region].append(power_in_time)
     times = list(times)
     times.sort()
-    series = [np.array(region_series) for region_series in reg_series.values()]
+    series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
     return np.array(times), series
 
 
