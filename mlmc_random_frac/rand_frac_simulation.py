@@ -144,12 +144,16 @@ class RandomFracSimulation(Simulation):
         :param sample_dir: Sample dir abs path
         :return: None
         """
-        # All auxiliary methods must be run in pbs script
-        #self.pbs_script.append("pip3 install --user gmsh-sdk")
-        self.pbs_script.append("cd {}".format(os.path.abspath(self.process_dir)))
-        self.pbs_script.append("source {}/env/bin/activate".format(self.process_dir))
-        self.pbs_script.append("python {}/process.py {} >STDOUT 2>&1 ".format(self.process_dir, sample_dir))
-        self.pbs_script.append("touch {}/FINISHED".format(sample_dir))
+        self.pbs_script.append(
+            """
+            cd {proc_dir}
+            source {proc_dir}/env/bin/activate
+            python {proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
+            sleep 30
+            echo "done" >{sample_dir}/FINISHED
+            """
+            .format(proc_dir=self.process_dir, sample_dir=sample_dir))
+
 
     def run_sim_sample(self, out_subdir):
         """
@@ -207,12 +211,20 @@ class RandomFracSimulation(Simulation):
         water_balance_file = os.path.join(sample_dir, "output_02_th/water_balance.yaml")
         energy_balance_file = os.path.join(sample_dir, "output_02_th/energy_balance.yaml")
         heat_region_stat = os.path.join(sample_dir, "output_02_th/Heat_AdvectionDiffusion_region_stat.yaml")
+        finished_file = os.path.join(sample_dir, "FINISHED")
 
-        if os.path.exists(os.path.join(sample_dir, "FINISHED")):
-            if os.path.exists(heal_stat_file) and os.path.exists(water_balance_file) and os.path.exists(energy_balance_file) and os.path.exists(heat_region_stat):
+        finished = False
+        if os.path.exists(finished_file):
+            with open(finished_file, "r") as f:
+                content = f.read()
+            finished = content == "done"
+
+        if finished:
+            files_exist = all([os.path.exists(f) for f in [finished_file, heal_stat_file, water_balance_file, energy_balance_file, heat_region_stat]])
+            if files_exist:
                 # Sometimes content of files is not complete, sleep() seems to be workaround
-                if self.previous_length == 0:
-                    t.sleep(60)
+                # if self.previous_length == 0:
+                #     t.sleep(60)
 
                 while True:
                     # extract the flux
@@ -240,9 +252,9 @@ class RandomFracSimulation(Simulation):
                         flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
                                                                            extract=lambda frame: frame['data'][0])
 
-                    if power_times is None or temp_times is None or flux_times is None:
-                        t.sleep(15)
-                        continue
+                    # if power_times is None or temp_times is None or flux_times is None:
+                    #     t.sleep(15)
+                    #     continue
 
                     power_series = -sum(reg_powers)
 
@@ -260,13 +272,14 @@ class RandomFracSimulation(Simulation):
                         for i in range(0, len(regions)):
                             temp_min[j] = min([temp_min[j], reg_temp_min[i][j]])
                             temp_max[j] = max([temp_max[j], reg_temp_max[i][j]])
-                            
-                    if not (len(power_series) == len(power_times) == len(avg_temp)):
-                        t.sleep(15)
-                    elif self.previous_length > len(power_series):
-                        t.sleep(15)
-                    else:
-                        break
+
+                    # if not (len(power_series) == len(power_times) == len(avg_temp)):
+                    #     t.sleep(15)
+                    # elif self.previous_length > len(power_series):
+                    #     t.sleep(15)
+                    # else:
+                    #     break
+                    break
 
                 if self.previous_length == 0:
                     self.previous_length = len(power_times)
