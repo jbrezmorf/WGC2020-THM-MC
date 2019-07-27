@@ -94,7 +94,7 @@ problem: !Coupling_Sequential
         solid_heat_conductivity: 2.5
         disp_l: 20             # conservative according to Sahimi 1986
         disp_t: 2
-        fracture_sigma: 2000   # 2/cross_section; cs = 1e-3
+        fracture_sigma: 1.0   #2000   # 2/cross_section; cs = 1e-3
         dg_penalty: 0.5
         init_temperature: !FieldFormula
           value: 10-(z-5000)/5000*150+273.15  # geothermal gradient 30 K/km, temperature 10 C at surface (5 km above well end)

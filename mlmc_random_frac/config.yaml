@@ -8,12 +8,18 @@
 
 # Charon:
 flow_executable:
-  - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+  # release
+  # - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+  # debug
+  - /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
-mc_samples: 10
+mc_samples: 2
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml]
+
+# Set to None to generate new meshes.
+mesh_repository: ./mesh_repository
 
 geometry:
   # depth of the center of the box and of the coordinate system

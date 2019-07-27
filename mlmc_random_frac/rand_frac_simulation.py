@@ -216,12 +216,15 @@ class RandomFracSimulation(Simulation):
         finished = False
         if os.path.exists(finished_file):
             with open(finished_file, "r") as f:
-                content = f.read()
-            finished = content == "done"
+                content = f.read().split()                
+            finished = len(content)==1 and content[0] == "done"
 
         if finished:
-            files_exist = all([os.path.exists(f) for f in [finished_file, heal_stat_file, water_balance_file, energy_balance_file, heat_region_stat]])
+            print(sample_dir, "Finished")
+            finished_map = {f:os.path.exists(f) for f in [finished_file, heal_stat_file, water_balance_file, energy_balance_file, heat_region_stat]}
+            files_exist = all(finished_map.values())
             if files_exist:
+                print(sample_dir, "Files exist")
                 # Sometimes content of files is not complete, sleep() seems to be workaround
                 # if self.previous_length == 0:
                 #     t.sleep(60)
@@ -288,9 +291,11 @@ class RandomFracSimulation(Simulation):
                 for i in range(len(power_times)):
                     result_values.append((i, power_series[i], avg_temp[i], power_times[i],
                                           temp_min[i], temp_max[i], n_bad_els))
-
+                
+                
                 return result_values
             else:
+                print(sample_dir, "missing files", finished_map)
                 return [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
 
         else:
