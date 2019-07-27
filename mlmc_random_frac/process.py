@@ -153,7 +153,7 @@ def create_fractures_polygons(gmsh_geom, fractures):
 
 
 def make_mesh(config_dict, fractures, mesh_name, mesh_file):
-    fracture_mesh_step = 10
+    fracture_mesh_step = 15
     geom = config_dict["geometry"]
     dimensions = geom["box_dimensions"]
     well_z0, well_z1 = geom["well_openning"]
@@ -163,6 +163,8 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
 
     from gmsh_api import gmsh
     from gmsh_api import options
+    from gmsh_api import field
+
     factory = gmsh.GeometryOCC(mesh_name, verbose=True)
     gopt = options.Geometry()
     gopt.Tolerance = 0.0001
@@ -225,7 +227,9 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     b_fr_right_well = b_fractures.select_by_intersect(b_right_well).modify_regions("{}_right_well")
     b_fractures = factory.group(b_fr_left_well, b_fr_right_well, b_fractures_box)
     mesh_groups = [*box_all, fractures_fr, b_fractures]
-    fractures_fr.set_mesh_step(fracture_mesh_step)
+
+    print(fracture_mesh_step)
+    #fractures_fr.set_mesh_step(fracture_mesh_step)
 
     factory.keep_only(*mesh_groups)
     factory.remove_duplicate_entities()
@@ -236,21 +240,21 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     max_el_size = np.max(dimensions) / 8
 
 
-    # fracture_el_size = field.constant(100, 10000)
-    # frac_el_size_only = field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
-    # field.set_mesh_step_field(frac_el_size_only)
+    fracture_el_size = field.constant(fracture_mesh_step, 10000)
+    frac_el_size_only = field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
+    field.set_mesh_step_field(frac_el_size_only)
 
     mesh = options.Mesh()
-    # mesh.Algorithm = options.Algorithm2d.MeshAdapt # produce some degenerated 2d elements on fracture boundaries ??
+    #mesh.Algorithm = options.Algorithm2d.MeshAdapt # produce some degenerated 2d elements on fracture boundaries ??
     #mesh.Algorithm = options.Algorithm2d.Delaunay
     #mesh.Algorithm = options.Algorithm2d.FrontalDelaunay
     #mesh.Algorithm3D = options.Algorithm3d.Frontal
     #mesh.Algorithm3D = options.Algorithm3d.Delaunay
-    #mesh.ToleranceInitialDelaunay = 0.01
+    mesh.ToleranceInitialDelaunay = 0.01
     #mesh.ToleranceEdgeLength = fracture_mesh_step / 5
     mesh.CharacteristicLengthFromPoints = True
     mesh.CharacteristicLengthFromCurvature = True
-    mesh.CharacteristicLengthExtendFromBoundary = 1
+    mesh.CharacteristicLengthExtendFromBoundary = 2
     mesh.CharacteristicLengthMin = min_el_size
     mesh.CharacteristicLengthMax = max_el_size
     mesh.MinimumCirclePoints = 6

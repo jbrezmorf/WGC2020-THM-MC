@@ -1,8 +1,9 @@
 #!/bin/bash
 echo "source this script: 'source load_modules.sh'"
 
-# if which module
-# then
+x=`declare -F | grep "declare -fx module"`
+if [ -n "$x" ]
+then
     module -fs purge
     module load metabase
     module load cmake-3.6.1
@@ -13,4 +14,4 @@ echo "source this script: 'source load_modules.sh'"
     module load python-3.6.2-gcc
     module load python36-modules-gcc
     module list
-# fi
+fi
