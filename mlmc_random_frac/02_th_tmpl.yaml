@@ -133,4 +133,4 @@ problem: !Coupling_Sequential
       options: <heat_solver__options>
 
     time:
-      end_time: [3, 'y'] #946728000       # 30 yr
+      end_time: [30, 'y'] #946728000       # 30 yr

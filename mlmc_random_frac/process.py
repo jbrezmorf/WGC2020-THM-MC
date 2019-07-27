@@ -273,7 +273,7 @@ def prepare_mesh(config_dict, fractures):
     if not os.path.isfile(mesh_healed):
         import heal_mesh
         hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
-        hm.heal_mesh(tol_edge_ratio=0.02, tol_flat_ratio=0.02)
+        hm.heal_mesh(gamma_tol=0.01)
         hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
         hm.write()
         assert hm.healed_mesh_name == mesh_healed
@@ -382,83 +382,83 @@ def prepare_th_input(config_dict):
 
 
 
-def get_result_description():
-    """
-    :return:
-    """
-    end_time = 30
-    values = [ [ValueDescription(time=t, position="extraction_well", quantity="power", unit="MW"),
-                ValueDescription(time=t, position="extraction_well", quantity="temperature", unit="Celsius deg.")
-                ] for t in np.linspace(0, end_time, 0.1)]
-    power_series, temp_series = zip(*values)
-    return power_series + temp_series
-
-
-def extract_time_series(yaml_stream, regions, extract):
-    """
-
-    :param yaml_stream:
-    :param regions:
-    :return: times list, list: for every region the array of value series
-    """
-    data = yaml.safe_load(yaml_stream)['data']
-    times = set()
-    reg_series = {reg: [] for reg in regions}
-
-    for time_data in data:
-        region = time_data['region']
-        if region in reg_series:
-            times.add(time_data['time'])
-            power_in_time = extract(time_data)
-            reg_series[region].append(power_in_time)
-    times = list(times)
-    times.sort()
-    series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
-    return np.array(times), series
-
-
-def extract_results(config_dict):
-    """
-    :param config_dict: Parsed config.yaml. see key comments there.
-    : return
-    """
-    bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
-    out_regions = bc_regions[2:]
-    output_dir = config_dict["th_params"]["output_dir"]
-    with open(os.path.join(output_dir, "energy_balance.yaml"), "r") as f:
-        power_times, reg_powers = extract_time_series(f, bc_regions, extract=lambda frame: frame['data'][0])
-        power_series = -sum(reg_powers)
-
-    with open(os.path.join(output_dir, "Heat_AdvectionDiffusion_region_stat.yaml"), "r") as f:
-        temp_times, reg_temps = extract_time_series(f, out_regions, extract=lambda frame: frame['average'][0])
-    with open(os.path.join(output_dir, "water_balance.yaml"), "r") as f:
-        flux_times, reg_fluxes = extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
-    sum_flux = sum(reg_fluxes)
-    avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
-    print("temp: ", avg_temp)
-    return temp_times, avg_temp, power_times, power_series
-
-
-def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
-    abs_zero_temp = 273.15
-    year_sec = 60 * 60 * 24 * 365
-
-    import matplotlib.pyplot as plt
-    fig, ax1 = plt.subplots()
-    temp_color = 'red'
-    ax1.set_xlabel('time [y]')
-    ax1.set_ylabel('Temperature [C deg]', color=temp_color)
-    ax1.plot(temp_times[1:] / year_sec, avg_temp[1:] - abs_zero_temp, color=temp_color)
-    ax1.tick_params(axis='y', labelcolor=temp_color)
-
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-    pow_color = 'blue'
-    ax2.set_ylabel('Power [MW]', color=pow_color)  # we already handled the x-label with ax1
-    ax2.plot(power_times[1:] / year_sec, power_series[1:] / 1e6, color=pow_color)
-    ax2.tick_params(axis='y', labelcolor=pow_color)
-
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.show()
+# def get_result_description():
+#     """
+#     :return:
+#     """
+#     end_time = 30
+#     values = [ [ValueDescription(time=t, position="extraction_well", quantity="power", unit="MW"),
+#                 ValueDescription(time=t, position="extraction_well", quantity="temperature", unit="Celsius deg.")
+#                 ] for t in np.linspace(0, end_time, 0.1)]
+#     power_series, temp_series = zip(*values)
+#     return power_series + temp_series
+#
+#
+# def extract_time_series(yaml_stream, regions, extract):
+#     """
+#
+#     :param yaml_stream:
+#     :param regions:
+#     :return: times list, list: for every region the array of value series
+#     """
+#     data = yaml.safe_load(yaml_stream)['data']
+#     times = set()
+#     reg_series = {reg: [] for reg in regions}
+#
+#     for time_data in data:
+#         region = time_data['region']
+#         if region in reg_series:
+#             times.add(time_data['time'])
+#             power_in_time = extract(time_data)
+#             reg_series[region].append(power_in_time)
+#     times = list(times)
+#     times.sort()
+#     series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
+#     return np.array(times), series
+#
+#
+# def extract_results(config_dict):
+#     """
+#     :param config_dict: Parsed config.yaml. see key comments there.
+#     : return
+#     """
+#     bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
+#     out_regions = bc_regions[2:]
+#     output_dir = config_dict["th_params"]["output_dir"]
+#     with open(os.path.join(output_dir, "energy_balance.yaml"), "r") as f:
+#         power_times, reg_powers = extract_time_series(f, bc_regions, extract=lambda frame: frame['data'][0])
+#         power_series = -sum(reg_powers)
+#
+#     with open(os.path.join(output_dir, "Heat_AdvectionDiffusion_region_stat.yaml"), "r") as f:
+#         temp_times, reg_temps = extract_time_series(f, out_regions, extract=lambda frame: frame['average'][0])
+#     with open(os.path.join(output_dir, "water_balance.yaml"), "r") as f:
+#         flux_times, reg_fluxes = extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
+#     sum_flux = sum(reg_fluxes)
+#     avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+#     print("temp: ", avg_temp)
+#     return temp_times, avg_temp, power_times, power_series
+#
+#
+# def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
+#     abs_zero_temp = 273.15
+#     year_sec = 60 * 60 * 24 * 365
+#
+#     import matplotlib.pyplot as plt
+#     fig, ax1 = plt.subplots()
+#     temp_color = 'red'
+#     ax1.set_xlabel('time [y]')
+#     ax1.set_ylabel('Temperature [C deg]', color=temp_color)
+#     ax1.plot(temp_times[1:] / year_sec, avg_temp[1:] - abs_zero_temp, color=temp_color)
+#     ax1.tick_params(axis='y', labelcolor=temp_color)
+#
+#     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+#     pow_color = 'blue'
+#     ax2.set_ylabel('Power [MW]', color=pow_color)  # we already handled the x-label with ax1
+#     ax2.plot(power_times[1:] / year_sec, power_series[1:] / 1e6, color=pow_color)
+#     ax2.tick_params(axis='y', labelcolor=pow_color)
+#
+#     fig.tight_layout()  # otherwise the right y-label is slightly clipped
+#     plt.show()
 
 
 def setup_dir(config_dict, clean=False):
@@ -485,9 +485,9 @@ def sample(config_dict):
     if hm_succeed:
         prepare_th_input(config_dict)
         th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
-        if th_succeed:
-            series = extract_results(config_dict)
-            plot_exchanger_evolution(*series)
+        #if th_succeed:
+        #    series = extract_results(config_dict)
+        #    plot_exchanger_evolution(*series)
 
 
 
