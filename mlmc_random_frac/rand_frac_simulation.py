@@ -147,6 +147,7 @@ class RandomFracSimulation(Simulation):
         self.pbs_script.append(
             """
             cd {abs_proc_dir}
+            module load python36-modules-gcc
             source {proc_dir}/env/bin/activate
             python {proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
             sleep 30

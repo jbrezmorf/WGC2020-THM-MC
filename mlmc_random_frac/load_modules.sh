@@ -1,8 +1,8 @@
 #!/bin/bash
 echo "source this script: 'source load_modules.sh'"
 
-if which module
-then
+# if which module
+# then
     module -fs purge
     module load metabase
     module load cmake-3.6.1
@@ -13,4 +13,4 @@ then
     module load python-3.6.2-gcc
     module load python36-modules-gcc
     module list
-fi
+# fi

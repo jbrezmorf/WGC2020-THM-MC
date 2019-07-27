@@ -487,10 +487,10 @@ def sample(config_dict):
 
     setup_dir(config_dict, clean=True)
     mesh_repo = config_dict.get('mesh_repository', None)
+    fractures = generate_fractures(config_dict)
     if mesh_repo:
-        healed_mesh = sample_mesh_repository(mesh_repo) 
+        healed_mesh = sample_mesh_repository(mesh_repo)
     else:
-        fractures = generate_fractures(config_dict)
         # plot_fr_orientation(fractures)
         healed_mesh = prepare_mesh(config_dict, fractures)
 
