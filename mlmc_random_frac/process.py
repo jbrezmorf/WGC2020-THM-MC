@@ -319,6 +319,7 @@ def call_flow(config_dict, param_key, result_files):
         print("Exit status: ", completed.returncode)
         status = completed.returncode == 0
     conv_check = check_conv_reasons(os.path.join(output_dir, "flow123.0.log"))
+    print("converged: ", conv_check)
     return status # and conv_check
 
 
@@ -460,6 +461,20 @@ def prepare_th_input(config_dict):
 #     fig.tight_layout()  # otherwise the right y-label is slightly clipped
 #     plt.show()
 
+def sample_mesh_repository(mesh_repository):
+    """
+    
+    """
+    mesh_repository_dir = os.path.join(script_dir, "mesh_repository")
+    mesh_file = np.random.choice(os.listdir(mesh_repository_dir))
+    healed_mesh = "random_fractures_healed.msh"
+    shutil.copyfile(os.path.join(mesh_repository_dir, mesh_file), healed_mesh)
+    heal_ref_report = { 'flow_stats': { 'bad_el_tol': 0.01, 'bad_elements': [], 'bins': [], 'hist': []},
+                        'gamma_stats': {'bad_el_tol': 0.01, 'bad_elements': [], 'bins': [], 'hist': []}}
+    with open("random_fractures_heal_stats.yaml", "w") as f:
+        yaml.dump(heal_ref_report, f)
+    return healed_mesh
+
 
 def setup_dir(config_dict, clean=False):
     for f in config_dict["copy_files"]:
@@ -471,11 +486,14 @@ def setup_dir(config_dict, clean=False):
 def sample(config_dict):
 
     setup_dir(config_dict, clean=True)
-    #setup_dir(tag, config_dict)
+    mesh_repo = config_dict.get('mesh_repository', None)
+    if mesh_repo:
+        healed_mesh = sample_mesh_repository(mesh_repo) 
+    else:
+        fractures = generate_fractures(config_dict)
+        # plot_fr_orientation(fractures)
+        healed_mesh = prepare_mesh(config_dict, fractures)
 
-    fractures = generate_fractures(config_dict)
-    # plot_fr_orientation(fractures)
-    healed_mesh = prepare_mesh(config_dict, fractures)
     healed_mesh_bn = os.path.basename(healed_mesh)
     config_dict["hm_params"]["mesh"] = healed_mesh_bn
     config_dict["th_params"]["mesh"] = healed_mesh_bn
@@ -488,7 +506,7 @@ def sample(config_dict):
         #if th_succeed:
         #    series = extract_results(config_dict)
         #    plot_exchanger_evolution(*series)
-
+    print("Finished")
 
 
 if __name__ == "__main__":
