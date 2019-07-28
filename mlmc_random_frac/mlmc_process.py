@@ -170,73 +170,74 @@ class Process(base_process.Process):
         self.select_samples_with_good_values(mlmc_est)
         print("N good samples: ", mlmc_est.mlmc.n_samples[0])
         self.plot_temp_power(mlmc_est)
+        self.plot_histogram(mlmc_est, 'temp')
+        self.plot_histogram(mlmc_est, 'power')
 
 
-
-        n_samples = int(mlmc_est.mlmc.n_samples)
-        print("N samples: ", n_samples)
-        temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
-        print("good temperature interval: <{},{}>".format(MIN_T, MAX_T))
-        bad_temp_flag = np.zeros((len(n_bad_els),))
-        bad_ele_flag = np.zeros((len(n_bad_els),))
-        for i in range(0, n_samples):
-            bad_temp_flag[i] = min(temp_min[i][0]) < MIN_T or max(temp_max[i][0]) > MAX_T
-            bad_ele_flag[i] = n_bad_els[i][0][0] > 0
-            ty = i if bad_temp_flag[i] else n_samples + i
-            tx = i if bad_ele_flag[i] else n_samples + i
-            temp_v_ele[ty, tx] = 1
-
-        # print("temp_v_ele:\n", temp_v_ele)
-        temp_v_ele_sum = [
-            [np.sum(temp_v_ele[:n_samples, :n_samples]),
-             np.sum(temp_v_ele[:n_samples, n_samples:2 * n_samples])],
-            [np.sum(temp_v_ele[n_samples:2 * n_samples, :n_samples]),
-             np.sum(temp_v_ele[n_samples:2 * n_samples, n_samples:2 * n_samples])]]
-
-        print("temp[BAD, GOOD]' x mesh[BAD, GOOD]]\n{}\n{}".format(temp_v_ele_sum[0], temp_v_ele_sum[1]))
-
-        # print(n_bad_els.shape)
-        n_bad_elements = np.zeros((len(n_bad_els),))
-        for i in range(len(n_bad_els)):
-            n_bad_elements[i] = n_bad_els[i][0][0]
-
-        print("min n_bad_element = ", min(n_bad_elements))
-        print("max n_bad_element = ", max(n_bad_elements))
-
-        # compute EX and varX
-        bad_temp_ele_avg = 0    # EX of bad elements for bad temperature
-        good_temp_ele_avg = 0   # EX of bad elements for good temperature
-        for i in range(len(n_bad_els)):
-            if bad_temp_flag[i]:
-                bad_temp_ele_avg += n_bad_elements[i]
-            else:
-                good_temp_ele_avg += n_bad_elements[i]
-        bad_temp_ele_avg /= temp_v_ele_sum[0][0]
-        good_temp_ele_avg /= temp_v_ele_sum[1][0]
-        print("bad_temp EX: ", bad_temp_ele_avg)
-        print("good_temp EX: ", good_temp_ele_avg)
-
-        bad_temp_ele_var = 0    # varX of bad elements for bad temperature
-        good_temp_ele_var = 0   # varX of bad elements for good temperature
-        for i in range(len(n_bad_els)):
-            if bad_temp_flag[i]:
-                bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
-            else:
-                good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
-        bad_temp_ele_var /= temp_v_ele_sum[0][0]
-        good_temp_ele_var /= temp_v_ele_sum[1][0]
-        print("bad_temp varX: ", bad_temp_ele_var)
-        print("good_temp varX: ", good_temp_ele_var)
-        print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
-        print("good_temp s: ", np.sqrt(good_temp_ele_var))
-
-        # print("n_bad_els:\n", n_bad_els)
-
-        # print("TEMP_MIN: ", temp_min)
-        # print("TEMP_MAX: ", temp_max)
+        # n_samples = int(mlmc_est.mlmc.n_samples)
+        # print("N samples: ", n_samples)
+        # temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
+        # print("good temperature interval: <{},{}>".format(MIN_T, MAX_T))
+        # bad_temp_flag = np.zeros((len(n_bad_els),))
+        # bad_ele_flag = np.zeros((len(n_bad_els),))
+        # for i in range(0, n_samples):
+        #     bad_temp_flag[i] = min(temp_min[i][0]) < MIN_T or max(temp_max[i][0]) > MAX_T
+        #     bad_ele_flag[i] = n_bad_els[i][0][0] > 0
+        #     ty = i if bad_temp_flag[i] else n_samples + i
+        #     tx = i if bad_ele_flag[i] else n_samples + i
+        #     temp_v_ele[ty, tx] = 1
         #
-        # print("TEMP_MIN: ", min(temp_min[0][0]))
-        # print("TEMP_MAX: ", max(temp_max[1][0]))
+        # # print("temp_v_ele:\n", temp_v_ele)
+        # temp_v_ele_sum = [
+        #     [np.sum(temp_v_ele[:n_samples, :n_samples]),
+        #      np.sum(temp_v_ele[:n_samples, n_samples:2 * n_samples])],
+        #     [np.sum(temp_v_ele[n_samples:2 * n_samples, :n_samples]),
+        #      np.sum(temp_v_ele[n_samples:2 * n_samples, n_samples:2 * n_samples])]]
+        #
+        # print("temp[BAD, GOOD]' x mesh[BAD, GOOD]]\n{}\n{}".format(temp_v_ele_sum[0], temp_v_ele_sum[1]))
+        #
+        # # print(n_bad_els.shape)
+        # n_bad_elements = np.zeros((len(n_bad_els),))
+        # for i in range(len(n_bad_els)):
+        #     n_bad_elements[i] = n_bad_els[i][0][0]
+        #
+        # print("min n_bad_element = ", min(n_bad_elements))
+        # print("max n_bad_element = ", max(n_bad_elements))
+        #
+        # # compute EX and varX
+        # bad_temp_ele_avg = 0    # EX of bad elements for bad temperature
+        # good_temp_ele_avg = 0   # EX of bad elements for good temperature
+        # for i in range(len(n_bad_els)):
+        #     if bad_temp_flag[i]:
+        #         bad_temp_ele_avg += n_bad_elements[i]
+        #     else:
+        #         good_temp_ele_avg += n_bad_elements[i]
+        # bad_temp_ele_avg /= temp_v_ele_sum[0][0]
+        # good_temp_ele_avg /= temp_v_ele_sum[1][0]
+        # print("bad_temp EX: ", bad_temp_ele_avg)
+        # print("good_temp EX: ", good_temp_ele_avg)
+        #
+        # bad_temp_ele_var = 0    # varX of bad elements for bad temperature
+        # good_temp_ele_var = 0   # varX of bad elements for good temperature
+        # for i in range(len(n_bad_els)):
+        #     if bad_temp_flag[i]:
+        #         bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
+        #     else:
+        #         good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
+        # bad_temp_ele_var /= temp_v_ele_sum[0][0]
+        # good_temp_ele_var /= temp_v_ele_sum[1][0]
+        # print("bad_temp varX: ", bad_temp_ele_var)
+        # print("good_temp varX: ", good_temp_ele_var)
+        # print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
+        # print("good_temp s: ", np.sqrt(good_temp_ele_var))
+        #
+        # # print("n_bad_els:\n", n_bad_els)
+        #
+        # # print("TEMP_MIN: ", temp_min)
+        # # print("TEMP_MAX: ", temp_max)
+        # #
+        # # print("TEMP_MIN: ", min(temp_min[0][0]))
+        # # print("TEMP_MAX: ", max(temp_max[1][0]))
 
         print("PROCESS FINISHED :)")
 
@@ -283,7 +284,7 @@ class Process(base_process.Process):
 
 
 
-    def get_all_results_by_param(self, mlmc_est, param_name):
+    def plot_param(self, mlmc_est, ax, X, col, param_name):
         """
         Get all result values by given param name, e.g. param_name = "temp" - return all temperatures...
         :param mlmc_est: Estimate instance
@@ -305,12 +306,23 @@ class Process(base_process.Process):
 
         N = mlmc_est.mlmc.n_samples[0]
         mom_means, mom_vars = mlmc_est.estimate_moments(moments_fn)
+        mom_means, mom_vars = mom_means[1:,], mom_vars[1:,]
         q_mean = mom_means[:, 1]
         q_mean_err = np.sqrt(mom_vars[:, 1])
-        q_std = np.sqrt((mom_means[:, 2] - N * q_mean ** 2) * N / (N-1))
-        q_std_err = np.sqrt(mom_vars[:, 2] * N / (N-1))
+        #q_var = (mom_means[:, 2] - q_mean ** 2) * N**2 / (N-1)
+        q_var = q_mean_err * N
+        q_std = np.sqrt(q_var)
+        q_std_err = np.sqrt( q_var + mom_vars[:, 2] * N / (N-1))
 
-        return mom_means, mom_vars
+        ax.fill_between(X, q_mean - q_mean_err, q_mean + q_mean_err,
+                         color=col, alpha=1)
+        ax.fill_between(X, q_mean - q_std, q_mean + q_std,
+                         color=col, alpha=0.2)
+        #ax.fill_between(X, q_mean - q_std_err, q_mean - q_std,
+        #                 color=col, alpha=0.4)
+        #ax.fill_between(X, q_mean + q_std, q_mean + q_std_err,
+        #                 color=col, alpha=0.4)
+
 
     def result_text(self, mlmc):
         for level in mlmc.levels:
@@ -322,55 +334,46 @@ class Process(base_process.Process):
         for l in mlmc.levels:
             print("Sample values ", l.sample_values)
 
+
     def plot_temp_power(self, mlmc_est):
         """
         Plot temperature and power
         :param mlmc_est: mlmc.Estimate instance
         :return: None
         """
-        times_means, times_vars = self.get_all_results_by_param(mlmc_est, "value")
-        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
-        temp_times = times_means[:, 1]
-
-        # Temperature means and vars
-        temp_means, temp_vars = self.get_all_results_by_param(mlmc_est, "temp")
-        avg_temp = temp_means[:, 1]
-        avg_temp_std = np.sqrt(temp_vars[:, 1])[1:]
-        #avg_temp_err = np.sqrt(temp_vars[:, 1])
-        #avg_temp_std = np.sqrt(temp_means[:, 2])[1:]
-        #avg_temp_std_err = np.sqrt(temp_vars[:, 2])[1:]
-
-        # Power means and vars
-        power_means, power_vars = self.get_all_results_by_param(mlmc_est, "power")
-        power_series = power_means[:, 1]
-        power_series_std = np.sqrt(power_vars[:, 1])[1:]
-
-        # power_time_means, power_time_vars = self.get_all_results_by_param(mlmc_est, "power_time")
+        times = np.average(self.get_samples(mlmc_est, 'value'), axis=0)[1:]
 
         # Plot temperature
         fig, ax1 = plt.subplots()
         temp_color = 'red'
         ax1.set_xlabel('time [y]')
         ax1.set_ylabel('Temperature [C deg]', color=temp_color)
-        ydata = avg_temp[1:]
-        ax1.plot(temp_times[1:], ydata, color=temp_color)
-        ax1.fill_between(temp_times[1:], ydata - avg_temp_std, ydata + avg_temp_std,
-                         color=temp_color, alpha=0.2)
         ax1.tick_params(axis='y', labelcolor=temp_color)
+        self.plot_param(mlmc_est, ax1, times, temp_color, 'temp')
 
         # Plot power series
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
         pow_color = 'blue'
         ax2.set_ylabel('Power [MW]', color=pow_color)  # we already handled the x-label with ax1
-        ydata = power_series[1:]
-        ax2.plot(temp_times[1:], ydata, color=pow_color)
-
-        # Shaded uncertainty region
-        ax2.fill_between(temp_times[1:], ydata - power_series_std, ydata + power_series_std,
-                         color=pow_color, alpha=0.2)
         ax2.tick_params(axis='y', labelcolor=pow_color)
+        self.plot_param(mlmc_est, ax2, times, pow_color, 'power')
+
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig.savefig("temp_power.pdf")
         plt.show()
+
+    def plot_histogram(self, mlmc_est, quantity):
+        fig, ax1 = plt.subplots()
+        times = np.average(self.get_samples(mlmc_est, 'value'), axis=0)[1:]
+        t_min = 0
+        t_max = int(times[-1])
+        q = self.get_samples(mlmc_est, quantity)
+        for t in [1, int((t_min + t_max)/2), t_max]:
+            print(t)
+            ax1.hist(q[:,t], bins=20)
+        #fig.savefig("temp_power.pdf")
+        plt.show()
+
 
     def plot_density(self, mlmc):
         # for level in mlmc.levels:
