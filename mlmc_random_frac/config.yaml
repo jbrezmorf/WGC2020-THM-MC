@@ -1,7 +1,7 @@
 # The flow executable and arguments to use.
-# JB:
+# JB: ABSOLUTE PATH
 #flow_executable:
-#  - ../../../../../../flow123d_JB/bin/fterm
+#  - /home/jb/workspace/flow123d_JB/bin/fterm
 #  - --no-term
 #  - rel
 #  - run
@@ -26,8 +26,8 @@ mc_samples: 2
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
-# Set to None to generate new meshes. Directory relative to the script dir: mlmc_random_frac
-#mesh_repository: ./mesh_repository
+# Set to None to generate new meshes. ABSOLUTE PATH
+#mesh_repository: /home/jb/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository
 
 geometry:
   # depth of the center of the box and of the coordinate system

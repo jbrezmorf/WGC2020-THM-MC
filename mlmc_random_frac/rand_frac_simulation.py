@@ -69,7 +69,7 @@ class RandomFracSimulation(Simulation):
         # Prepare base workdir for this mesh_step
         output_dir = config['output_dir']
 
-        self.process_dir = src_path
+
         self.work_dir = os.path.join(output_dir, 'sim_%d_step_%f' % (self.sim_id, self.step))
 
         force_mkdir(self.work_dir, clean)
@@ -82,7 +82,8 @@ class RandomFracSimulation(Simulation):
         self.previous_length = 0
 
         root_dir, _ = os.path.split(output_dir)
-        self.config_dict = load_config_dict(os.path.join(root_dir, "config.yaml"))
+        self.process_dir = os.path.join(src_path, root_dir)
+        self.config_dict = load_config_dict(os.path.join(self.process_dir, "config.yaml"))
         super(Simulation, self).__init__()
 
     def n_ops_estimate(self):
@@ -159,14 +160,14 @@ class RandomFracSimulation(Simulation):
         finish_sleep = self.config_dict.get("finish_sleep", 30)
         self.pbs_script.append(
             """
-            cd {abs_proc_dir}
-            source {abs_proc_dir}/load_modules.sh
-            source {abs_proc_dir}/env/bin/activate
+            cd {script_dir}
+            source load_modules.sh
+            source env/bin/activate
             python {abs_proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
             sleep {finish_sleep}
             echo "done" >{sample_dir}/FINISHED
             """
-            .format(abs_proc_dir=self.process_dir, sample_dir=sample_dir, finish_sleep=finish_sleep))
+            .format(script_dir=src_path, abs_proc_dir=self.process_dir, sample_dir=sample_dir, finish_sleep=finish_sleep))
 
 
     def run_sim_sample(self, out_subdir):

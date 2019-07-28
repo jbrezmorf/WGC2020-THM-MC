@@ -87,13 +87,10 @@ class Process(base_process.Process):
         :return: mlmc.MLMC instance
         """
         # Set pbs config, flow123d, gmsh, ...
+        self.config_dict = load_config_dict(os.path.join(src_path, "config.yaml"))
 
-        orig_config = os.path.join(src_path, "config.yaml")
-        config_path = os.path.join(self.work_dir, "config.yaml")
-        if orig_config != config_path:
-            shutil.copy(orig_config, config_path)
 
-        self.config_dict = load_config_dict(config_path)
+
         self.set_environment_variables()
         output_dir = os.path.join(self.work_dir, "output_{}".format(n_levels))
 
@@ -106,6 +103,13 @@ class Process(base_process.Process):
         # remove existing files
         if clean:
             self.rm_files(output_dir)
+
+        if src_path != self.work_dir:
+            for f in ["config.yaml", "01_hm_tmpl.yaml", "02_th_tmpl.yaml", "03_th_tmpl.yaml", "process.py"]:
+                orig = os.path.join(src_path, f)
+                work = os.path.join(self.work_dir, f)
+                if clean or not os.path.isfile(work):
+                    shutil.copy(orig, work)
 
         # Init pbs object
         self.create_pbs_object(output_dir, clean)
