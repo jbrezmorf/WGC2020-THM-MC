@@ -17,9 +17,9 @@
 # Charon:
 flow_executable:
   # release
-  # - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+  - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
   # debug
-  - /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
+  # - /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
 mc_samples: 2
