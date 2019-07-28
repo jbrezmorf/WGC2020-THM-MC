@@ -126,13 +126,20 @@ class RandomFracSimulation(Simulation):
         # Get sample directory
         out_subdir = os.path.join("samples", str(sample_tag))
         sample_dir = os.path.join(self.work_dir, out_subdir)
-        force_mkdir(sample_dir, True)
+        reuse_samples = self.config_dict.get('reuse_samples', None)
+        if reuse_samples is None:
+            force_mkdir(sample_dir, True)
+        else:
+            force_mkdir(sample_dir, False)
 
         # Run part which can be run via pbs
         self.create_pbs_script(sample_dir)
 
         # Pbs package directory
         package_dir = self.run_sim_sample(out_subdir)
+        # if reuse_samples:
+        #     self.pbs_creater._number_of_realizations = 0
+        # else:
         self.pbs_creater.execute()
 
         return sample.Sample(directory=sample_dir, sample_id=sample_id,
@@ -144,16 +151,17 @@ class RandomFracSimulation(Simulation):
         :param sample_dir: Sample dir abs path
         :return: None
         """
+        finish_sleep = self.config_dict.get("finish_sleep", 30)
         self.pbs_script.append(
             """
             cd {abs_proc_dir}
             source {proc_dir}/load_modules.sh
             source {proc_dir}/env/bin/activate
             python {proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
-            sleep 30
+            sleep {finish_sleep}
             echo "done" >{sample_dir}/FINISHED
             """
-            .format(abs_proc_dir= os.path.abspath(self.process_dir), proc_dir=self.process_dir, sample_dir=sample_dir))
+            .format(abs_proc_dir= os.path.abspath(self.process_dir), proc_dir=self.process_dir, sample_dir=sample_dir, finish_sleep=finish_sleep))
 
 
     def run_sim_sample(self, out_subdir):
