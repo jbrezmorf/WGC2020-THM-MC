@@ -27,9 +27,10 @@ def force_mkdir(path, force=False):
     os.makedirs(path, mode=0o775, exist_ok=True)
 
 
-def load_config_dict():
-    with open("config.yaml", "r") as f:
+def load_config_dict(cfg):
+    with open(cfg, "r") as f:
         return yaml.safe_load(f)
+
 
 
 class RandomFracSimulation(Simulation):
@@ -80,7 +81,8 @@ class RandomFracSimulation(Simulation):
         # Auxiliary param for extracting results
         self.previous_length = 0
 
-        self.config_dict = load_config_dict()
+        root_dir, _ = os.path.split(output_dir)
+        self.config_dict = load_config_dict(os.path.join(root_dir, "config.yaml"))
         super(Simulation, self).__init__()
 
     def n_ops_estimate(self):
@@ -251,6 +253,9 @@ class RandomFracSimulation(Simulation):
                 power_times, th_result_values = self._extract_result_th(os.path.join(sample_dir, "output_02_th"))
                 power_times, th_ref_result_values = self._extract_result_th(os.path.join(sample_dir, "output_03_th"))
 
+                if power_times[0] == np.inf:
+                    return [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
+
                 if self.previous_length == 0:
                     self.previous_length = len(power_times)
 
@@ -325,4 +330,4 @@ class RandomFracSimulation(Simulation):
             return power_times, th_result_values
         else:
             print(th_outdir, "missing files", finished_map)
-            return None, [np.inf, np.inf, np.inf, np.inf, np.inf]
+            return [np.inf], [np.inf, np.inf, np.inf, np.inf, np.inf]
