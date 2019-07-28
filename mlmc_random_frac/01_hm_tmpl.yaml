@@ -16,7 +16,7 @@ problem: !Coupling_Sequential
   flow_equation: !Coupling_Iterative
     input_fields:
       - region: BULK
-        biot_alpha: 1
+        biot_alpha: 0.6
         fluid_density: 1000
     time:
       end_time: 86400 # 1 day
