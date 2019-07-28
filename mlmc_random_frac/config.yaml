@@ -96,9 +96,11 @@ hm_params:
     mesh: random_fractures.msh
     in_file: 01_hm
 
+    well_piezohead: 1e4 # h*rho*g = 1e4*1e3*10 = 100 MPa
+    
     fr_cross_section: &fr_cs_init 1e-3
-    fr_conductivity: &fr_cond_init 1e-3
-    bulk_conductivity: &bulk_cond_init 1e-9
+    fr_conductivity: &fr_cond_init 1e-4
+    bulk_conductivity: &bulk_cond_init 1e-7
 
     mechanics_solver__a_tol: 1e-14
     mechanics_solver__r_tol: 1e-7
@@ -180,8 +182,11 @@ th_params:
     mesh: random_fractures.msh
     in_file: 02_th
 
+    well_piezohead: 5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
+    
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: *bulk_cond_init
+    bulk_conductivity: 1e-6
+    sigma_bulk_conductivity: 1e-5
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol
@@ -210,9 +215,12 @@ th_params_ref:
     mesh: random_fractures.msh
     in_file: 03_th
 
+    well_piezohead: 5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
+    
     fr_cross_section: *fr_cs_init
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: *bulk_cond_init
+    bulk_conductivity: 1e-6
+    sigma_bulk_conductivity: 1e-5
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol
