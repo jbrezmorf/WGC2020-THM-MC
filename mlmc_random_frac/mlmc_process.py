@@ -156,7 +156,6 @@ class Process(base_process.Process):
 
 
 
-
     def process(self):
         """
         Use collected data
@@ -173,13 +172,22 @@ class Process(base_process.Process):
 
         # self.result_text(mlmc)
         # self.plot_density(mlmc)
+
+        mlmc_est.mlmc.clean_select()
         print("N all samples: ", mlmc_est.mlmc.n_samples[0])
-        self.select_samples_with_good_values(mlmc_est)
+        th_02_model_params = {"power": "power", "temp": "temp", "temp_min": "temp_min", "temp_max": "temp_max"}
+        th_03_model_params = {"power": "power_ref", "temp": "temp_ref", "temp_min": "temp_min_ref", "temp_max": "temp_max_ref"}
+        self.select_samples_with_good_values(mlmc_est, th_02_model_params)
+        self.select_samples_with_good_values(mlmc_est, th_03_model_params, add=1)
         print("N good samples: ", mlmc_est.mlmc.n_samples[0])
-        self.plot_temp_power(mlmc_est)
+        # self.plot_temp_power(mlmc_est, th_02_model_params)
+        # self.plot_temp_power(mlmc_est, th_03_model_params)
+
         self.plot_histogram(mlmc_est, 'temp')
         self.plot_histogram(mlmc_est, 'power')
 
+        self.plot_temp_ref_comparison(mlmc_est)
+        self.plot_power_ref_comparison(mlmc_est)
 
         # n_samples = int(mlmc_est.mlmc.n_samples)
         # print("N samples: ", n_samples)
@@ -193,6 +201,51 @@ class Process(base_process.Process):
         #     ty = i if bad_temp_flag[i] else n_samples + i
         #     tx = i if bad_ele_flag[i] else n_samples + i
         #     temp_v_ele[ty, tx] = 1
+        #     [np.sum(temp_v_ele[:n_samples, :n_samples]),
+        #      np.sum(temp_v_ele[:n_samples, n_samples:2 * n_samples])],
+        #     [np.sum(temp_v_ele[n_samples:2 * n_samples, :n_samples]),
+        #      np.sum(temp_v_ele[n_samples:2 * n_samples, n_samples:2 * n_samples])]]
+        #
+        # print("temp[BAD, GOOD]' x mesh[BAD, GOOD]]\n{}\n{}".format(temp_v_ele_sum[0], temp_v_ele_sum[1]))
+        #
+        # # print(n_bad_els.shape)
+        # n_bad_elements = np.zeros((len(n_bad_els),))
+        # for i in range(len(n_bad_els)):
+        #     n_bad_elements[i] = n_bad_els[i][0][0]
+        #
+        # print("min n_bad_element = ", min(n_bad_elements))
+        # print("max n_bad_element = ", max(n_bad_elements))
+        #
+        # # compute EX and varX
+        # bad_temp_ele_avg = 0    # EX of bad elements for bad temperature
+        # good_temp_ele_avg = 0   # EX of bad elements for good temperature
+        # for i in range(len(n_bad_els)):
+        #     if bad_temp_flag[i]:
+        #         bad_temp_ele_avg += n_bad_elements[i]
+        #     else:
+        #         good_temp_ele_avg += n_bad_elements[i]
+        # if temp_v_ele_sum[0][0] != 0:
+        #     bad_temp_ele_avg /= temp_v_ele_sum[0][0]
+        # if temp_v_ele_sum[1][0] != 0:
+        #     good_temp_ele_avg /= temp_v_ele_sum[1][0]
+        # print("bad_temp EX: ", bad_temp_ele_avg)
+        # print("good_temp EX: ", good_temp_ele_avg)
+        #
+        # bad_temp_ele_var = 0    # varX of bad elements for bad temperature
+        # good_temp_ele_var = 0   # varX of bad elements for good temperature
+        # for i in range(len(n_bad_els)):
+        #     if bad_temp_flag[i]:
+        #         bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
+        #     else:
+        #         good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
+        # if temp_v_ele_sum[0][0] != 0:
+        #     bad_temp_ele_var /= temp_v_ele_sum[0][0]
+        # if temp_v_ele_sum[1][0] != 0:
+        #     good_temp_ele_var /= temp_v_ele_sum[1][0]
+        # print("bad_temp varX: ", bad_temp_ele_var)
+        # print("good_temp varX: ", good_temp_ele_var)
+        # print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
+        # print("good_temp s: ", np.sqrt(good_temp_ele_var))
         #
         # # print("temp_v_ele:\n", temp_v_ele)
         # temp_v_ele_sum = [
@@ -257,13 +310,19 @@ class Process(base_process.Process):
         return q_array[:,0,:]
 
 
-    def select_samples_with_good_values(self, mlmc_est):
+    def select_samples_with_good_values(self, mlmc_est, result_params, add=0):
+        """
+        Selects samples according to the temperature, power, mesh results.
+
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
+        :return: None
+        """
         # determine samples with correct temperature
         n_bad_els = self.get_samples(mlmc_est, 'n_bad_els')
-        temp_min = self.get_samples(mlmc_est, 'temp_min')
-        temp_max = self.get_samples(mlmc_est, 'temp_max')
-        temp = self.get_samples(mlmc_est, 'temp')
-        power = self.get_samples(mlmc_est, 'power')
+        temp_min = self.get_samples(mlmc_est, result_params['temp_min'])
+        temp_max = self.get_samples(mlmc_est, result_params['temp_max'])
+        temp = self.get_samples(mlmc_est, result_params['temp'])
+        power = self.get_samples(mlmc_est, result_params['power'])
 
         abs_zero_temp = 273.15
         MIN_T = 250
@@ -284,10 +343,14 @@ class Process(base_process.Process):
         assert not np.any(np.isnan(temp_max[good_indices]))
         assert not np.any(np.isnan(temp_min[good_indices]))
         assert not np.any(np.isnan(temp[good_indices]))
-        mlmc_est.mlmc.subsample_by_indices(good_indices)
 
         print(np.sort(power[:, 30]))
-        self.good_indices = good_indices
+        if add:
+            assert len(good_mask) == len(self.good_indices)
+            good_mask = np.logical_and(good_mask, self.good_indices)
+        else:
+            self.good_indices = good_indices
+        mlmc_est.mlmc.subsample_by_indices(self.good_indices)
 
 
 
@@ -341,11 +404,11 @@ class Process(base_process.Process):
         for l in mlmc.levels:
             print("Sample values ", l.sample_values)
 
-
-    def plot_temp_power(self, mlmc_est):
+    def plot_temp_power(self, mlmc_est, result_params):
         """
         Plot temperature and power
         :param mlmc_est: mlmc.Estimate instance
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
         :return: None
         """
         times = np.average(self.get_samples(mlmc_est, 'value'), axis=0)[1:]
@@ -356,14 +419,14 @@ class Process(base_process.Process):
         ax1.set_xlabel('time [y]')
         ax1.set_ylabel('Temperature [C deg]', color=temp_color)
         ax1.tick_params(axis='y', labelcolor=temp_color)
-        self.plot_param(mlmc_est, ax1, times, temp_color, 'temp')
+        self.plot_param(mlmc_est, ax1, times, temp_color, result_params['temp'])
 
         # Plot power series
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
         pow_color = 'blue'
         ax2.set_ylabel('Power [MW]', color=pow_color)  # we already handled the x-label with ax1
         ax2.tick_params(axis='y', labelcolor=pow_color)
-        self.plot_param(mlmc_est, ax2, times, pow_color, 'power')
+        self.plot_param(mlmc_est, ax2, times, pow_color, result_params['power'])
 
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
         fig.savefig("temp_power.pdf")
@@ -379,6 +442,50 @@ class Process(base_process.Process):
             print(t)
             ax1.hist(q[:,t], bins=20)
         #fig.savefig("temp_power.pdf")
+        plt.show()
+
+    def plot_temp_ref_comparison(self, mlmc_est):
+        """
+        Plot temperature and power
+        :param mlmc_est: mlmc.Estimate instance
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
+        :return: None
+        """
+        times = np.average(self.get_samples(mlmc_est, 'power_time'), axis=0)[1:]
+
+        # Plot temperature
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel('time [y]')
+        ax1.set_ylabel('Temperature [C deg]', color='black')
+        ax1.tick_params(axis='y', labelcolor='black')
+        self.plot_param(mlmc_est, ax1, times, 'red', 'temp')
+
+        self.plot_param(mlmc_est, ax1, times, 'orange', 'temp_ref')
+
+        ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
+        fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        plt.show()
+
+    def plot_power_ref_comparison(self, mlmc_est):
+        """
+        Plot temperature and power
+        :param mlmc_est: mlmc.Estimate instance
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
+        :return: None
+        """
+        times = np.average(self.get_samples(mlmc_est, 'power_time'), axis=0)[1:]
+
+        # Plot temperature
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel('time [y]')
+        ax1.set_ylabel('Power [MW]', color='black')
+        ax1.tick_params(axis='y', labelcolor='black')
+        self.plot_param(mlmc_est, ax1, times, 'blue', 'power')
+
+        self.plot_param(mlmc_est, ax1, times, 'forestgreen', 'power_ref')
+
+        ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
+        fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.show()
 
 
