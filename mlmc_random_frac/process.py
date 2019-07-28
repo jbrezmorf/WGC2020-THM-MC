@@ -108,7 +108,7 @@ def generate_fractures(config_dict):
     for fr in fractures:
         fr.region = "fr"
     used_families = set((f.region for f in fractures))
-    for model in ["hm_params", "th_params"]:
+    for model in ["hm_params", "th_params", "th_params_ref"]:
         model_dict = config_dict[model]
         model_dict["fracture_regions"] = list(used_families)
         model_dict["left_well_fracture_regions"] = [".{}_left_well".format(f) for f in used_families]
@@ -497,12 +497,15 @@ def sample(config_dict):
     healed_mesh_bn = os.path.basename(healed_mesh)
     config_dict["hm_params"]["mesh"] = healed_mesh_bn
     config_dict["th_params"]["mesh"] = healed_mesh_bn
+    config_dict["th_params_ref"]["mesh"] = healed_mesh_bn
 
     hm_succeed = call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
+    th_succeed = call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
     th_succeed = False
     if hm_succeed:
         prepare_th_input(config_dict)
         th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
+        
         #if th_succeed:
         #    series = extract_results(config_dict)
         #    plot_exchanger_evolution(*series)

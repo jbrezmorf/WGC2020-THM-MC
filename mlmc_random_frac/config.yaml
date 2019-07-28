@@ -9,14 +9,14 @@
 # Charon:
 flow_executable:
   # release
-  # - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
   # debug
-  - /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
+  #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
 mc_samples: 2
 
-copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml]
+copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
 # Set to None to generate new meshes.
 mesh_repository: ./mesh_repository
@@ -88,9 +88,9 @@ hm_params:
     mesh: random_fractures.msh
     in_file: 01_hm
 
-    fr_cross_section: 1e-3
-    fr_conductivity: 1e-3
-    bulk_conductivity: 1e-9
+    fr_cross_section: &fr_cs_init 1e-3
+    fr_conductivity: &fr_cond_init 1e-3
+    bulk_conductivity: &bulk_cond_init 1e-9
 
     mechanics_solver__a_tol: 1e-14
     mechanics_solver__r_tol: 1e-7
@@ -172,8 +172,8 @@ th_params:
     mesh: random_fractures.msh
     in_file: 02_th
 
-    fr_conductivity: 1e-3
-    bulk_conductivity: 1e-9
+    fr_conductivity: *fr_cond_init
+    bulk_conductivity: *bulk_cond_init
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol
@@ -194,4 +194,34 @@ th_params:
     # out of memory 12GB
     heat_solver__options: -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
 
+    
+# parameters substituted into the TH model template
+th_params_ref: 
+    # The mesh to use in both simulations.
+    #mesh: three_frac_symmetric.msh
+    mesh: random_fractures.msh
+    in_file: 03_th
+
+    fr_cross_section: *fr_cs_init
+    fr_conductivity: *fr_cond_init
+    bulk_conductivity: *bulk_cond_init
+    min_fr_cross_section: 1e-4
+
+    flow_solver__a_tol: *fatol
+    flow_solver__r_tol: *frtol
+    flow_solver__options: *fopt
+
+    # residual is the energy balance which is in order of MW
+    # we prescribe a tol about # orders of mag. lower
+    heat_solver__a_tol: 1e+3
+    heat_solver__r_tol: 1e-5
+        # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+
+    #heat_solver__options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+    # faild fo indef PC
+    #heat_solver__options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+    # failed do to 1000 iterations
+    # heat_solver__options: -ksp_type preonly -pc_type lu -pc_factor_mat_solver_type mumps
+    # out of memory 12GB
+    heat_solver__options: -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
 

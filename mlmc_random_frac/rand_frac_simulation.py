@@ -204,14 +204,17 @@ class RandomFracSimulation(Simulation):
         abs_zero_temp = 273.15
         year_sec = 60 * 60 * 24 * 365
         # Sample result structure -> you can enlarge it and other stuff will be done automatically
-        self.result_struct = [["value", "power", "temp", "power_time", "temp_min", "temp_max", "n_bad_els"], ["f8", "f8", "f8", "f8",  "f8", "f8", "f8"]]
+        self.result_struct = [["value", "power_time",
+                               "power", "temp", "fluxes", "temp_min", "temp_max",
+                               "power_ref", "temp_ref", "fluxes_ref", "temp_min_ref", "temp_max_ref",
+                               "n_bad_els"],
+                              ["f8", "f8",
+                               "f8", "f8", "f8", "f8",  "f8",
+                               "f8", "f8", "f8", "f8", "f8",
+                               "f8"]]
 
         sample_dir = sample.directory
-
         heal_stat_file = os.path.join(sample_dir, "random_fractures_heal_stats.yaml")
-        water_balance_file = os.path.join(sample_dir, "output_02_th/water_balance.yaml")
-        energy_balance_file = os.path.join(sample_dir, "output_02_th/energy_balance.yaml")
-        heat_region_stat = os.path.join(sample_dir, "output_02_th/Heat_AdvectionDiffusion_region_stat.yaml")
         finished_file = os.path.join(sample_dir, "FINISHED")
 
         finished = False
@@ -222,7 +225,7 @@ class RandomFracSimulation(Simulation):
 
         if finished:
             print(sample_dir, "Finished")
-            finished_map = {f:os.path.exists(f) for f in [finished_file, heal_stat_file, water_balance_file, energy_balance_file, heat_region_stat]}
+            finished_map = {f:os.path.exists(f) for f in [finished_file, heal_stat_file]}
             files_exist = all(finished_map.values())
             if files_exist:
                 print(sample_dir, "Files exist")
@@ -230,69 +233,19 @@ class RandomFracSimulation(Simulation):
                 # if self.previous_length == 0:
                 #     t.sleep(60)
 
-                while True:
-                    # extract the flux
-                    bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
-                    regions = ['fr', 'box']
-                    out_regions = bc_regions[2:]
+                with open(heal_stat_file, "r") as f:
+                    stat_doc = yaml.safe_load(f)
+                    n_bad_els = len(stat_doc["flow_stats"]["bad_elements"]) + len(stat_doc["gamma_stats"]["bad_elements"])
 
-                    with open(heal_stat_file, "r") as f:
-                        stat_doc = yaml.safe_load(f)
-                        n_bad_els = len(stat_doc["flow_stats"]["bad_elements"]) + len(stat_doc["gamma_stats"]["bad_elements"])
-
-                    with open(energy_balance_file, "r") as f:
-                        power_times, reg_powers = self._extract_time_series(f, bc_regions,
-                                                                            extract=lambda frame: frame['data'][0])
-                    with open(heat_region_stat, "r") as f:
-                        temp_times, reg_temps = self._extract_time_series(f, out_regions,
-                                                                          extract=lambda frame: frame['average'][0])
-                    with open(heat_region_stat, "r") as f:
-                        temp_min_times, reg_temp_min = self._extract_time_series(f, regions,
-                                                                                 extract=lambda frame: frame['min'][0])
-                    with open(heat_region_stat, "r") as f:
-                        temp_max_times, reg_temp_max = self._extract_time_series(f, regions,
-                                                                                 extract=lambda frame: frame['max'][0])
-                    with open(water_balance_file, "r") as f:
-                        flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
-                                                                           extract=lambda frame: frame['data'][0])
-
-                    # if power_times is None or temp_times is None or flux_times is None:
-                    #     t.sleep(15)
-                    #     continue
-
-                    power_series = -sum(reg_powers)
-
-                    sum_flux = sum(reg_fluxes)
-                    avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
-
-                    power_series = power_series / 1e6
-                    power_times = power_times / year_sec
-                    avg_temp = avg_temp - abs_zero_temp
-
-                    # compute min and max temperature over regions
-                    temp_min = np.full(len(power_times), 1e10)
-                    temp_max = np.full(len(power_times), -1e10)
-                    for j in range(0, len(power_times)):
-                        for i in range(0, len(regions)):
-                            temp_min[j] = min([temp_min[j], reg_temp_min[i][j]])
-                            temp_max[j] = max([temp_max[j], reg_temp_max[i][j]])
-
-                    # if not (len(power_series) == len(power_times) == len(avg_temp)):
-                    #     t.sleep(15)
-                    # elif self.previous_length > len(power_series):
-                    #     t.sleep(15)
-                    # else:
-                    #     break
-                    break
+                power_times, th_result_values = self._extract_result_th(os.path.join(sample_dir, "output_02_th"))
+                power_times, th_ref_result_values = self._extract_result_th(os.path.join(sample_dir, "output_03_th"))
 
                 if self.previous_length == 0:
                     self.previous_length = len(power_times)
 
                 result_values = []
                 for i in range(len(power_times)):
-                    result_values.append((i, power_series[i], avg_temp[i], power_times[i],
-                                          temp_min[i], temp_max[i], n_bad_els))
-                
+                    result_values.append((i, power_times[i], *(th_result_values[i]), *(th_ref_result_values[i]), n_bad_els))
                 
                 return result_values
             else:
@@ -301,3 +254,64 @@ class RandomFracSimulation(Simulation):
 
         else:
             return [None, None, None, None, None, None, None]
+
+    def _extract_result_th(self, th_outdir):
+
+        abs_zero_temp = 273.15
+        year_sec = 60 * 60 * 24 * 365
+
+        water_balance_file = os.path.join(th_outdir, "water_balance.yaml")
+        energy_balance_file = os.path.join(th_outdir, "energy_balance.yaml")
+        heat_region_stat = os.path.join(th_outdir, "Heat_AdvectionDiffusion_region_stat.yaml")
+
+        finished_map = {f: os.path.exists(f) for f in
+                        [water_balance_file, energy_balance_file, heat_region_stat]}
+        files_exist = all(finished_map.values())
+        if files_exist:
+            print(th_outdir, "Files exist")
+
+            bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
+            regions = ['fr', 'box']
+            out_regions = bc_regions[2:]
+
+            with open(energy_balance_file, "r") as f:
+                power_times, reg_powers = self._extract_time_series(f, bc_regions,
+                                                                    extract=lambda frame: frame['data'][0])
+            with open(heat_region_stat, "r") as f:
+                temp_times, reg_temps = self._extract_time_series(f, out_regions,
+                                                                  extract=lambda frame: frame['average'][0])
+            with open(heat_region_stat, "r") as f:
+                temp_min_times, reg_temp_min = self._extract_time_series(f, regions,
+                                                                         extract=lambda frame: frame['min'][0])
+            with open(heat_region_stat, "r") as f:
+                temp_max_times, reg_temp_max = self._extract_time_series(f, regions,
+                                                                         extract=lambda frame: frame['max'][0])
+            with open(water_balance_file, "r") as f:
+                flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
+                                                                   extract=lambda frame: frame['data'][0])
+
+            power_series = -sum(reg_powers)
+
+            sum_flux = sum(reg_fluxes)
+            avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+
+            power_series = power_series / 1e6
+            power_times = power_times / year_sec
+            avg_temp = avg_temp - abs_zero_temp
+
+            # compute min and max temperature over regions
+            temp_min = np.full(len(power_times), 1e10)
+            temp_max = np.full(len(power_times), -1e10)
+            for j in range(0, len(power_times)):
+                for i in range(0, len(regions)):
+                    temp_min[j] = min([temp_min[j], reg_temp_min[i][j]])
+                    temp_max[j] = max([temp_max[j], reg_temp_max[i][j]])
+
+            th_result_values = []
+            for i in range(len(power_times)):
+                th_result_values.append((power_series[i], avg_temp[i], sum_flux, temp_min[i], temp_max[i]))
+
+            return power_times, th_result_values
+        else:
+            print(th_outdir, "missing files", finished_map)
+            return None, [np.inf, np.inf, np.inf, np.inf, np.inf]
