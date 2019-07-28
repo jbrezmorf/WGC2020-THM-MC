@@ -5,7 +5,10 @@ import yaml
 import numpy as np
 import time as t
 
-sys.path.append('../MLMC/src')
+src_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(src_path, '../MLMC/src'))
+sys.path.append(os.path.join(src_path, '../dfn/src'))
+
 import mlmc.sample as sample
 from mlmc.simulation import Simulation
 
@@ -65,7 +68,7 @@ class RandomFracSimulation(Simulation):
         # Prepare base workdir for this mesh_step
         output_dir = config['output_dir']
 
-        self.process_dir = os.path.split(output_dir)[0]
+        self.process_dir = src_path
         self.work_dir = os.path.join(output_dir, 'sim_%d_step_%f' % (self.sim_id, self.step))
 
         force_mkdir(self.work_dir, clean)
@@ -147,13 +150,13 @@ class RandomFracSimulation(Simulation):
         self.pbs_script.append(
             """
             cd {abs_proc_dir}
-            source {proc_dir}/load_modules.sh
-            source {proc_dir}/env/bin/activate
-            python {proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
+            source {abs_proc_dir}/load_modules.sh
+            source {abs_proc_dir}/env/bin/activate
+            python {abs_proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
             sleep 30
             echo "done" >{sample_dir}/FINISHED
             """
-            .format(abs_proc_dir= os.path.abspath(self.process_dir), proc_dir=self.process_dir, sample_dir=sample_dir))
+            .format(abs_proc_dir= self.process_dir, sample_dir=sample_dir))
 
 
     def run_sim_sample(self, out_subdir):
