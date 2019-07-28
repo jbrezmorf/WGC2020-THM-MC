@@ -168,12 +168,17 @@ class Process(base_process.Process):
         # self.result_text(mlmc)
         # self.plot_density(mlmc)
         print("N all samples: ", mlmc_est.mlmc.n_samples[0])
-        self.select_samples_with_good_values(mlmc_est)
-        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
-        self.plot_temp_power(mlmc_est)
+        th_02_model_params = {"power": "power", "temp": "temp", "temp_min": "temp_min", "temp_max": "temp_max"}
+        self.select_samples_with_good_values(mlmc_est, th_02_model_params)
+        print("N good samples [th_02_model]: ", mlmc_est.mlmc.n_samples[0])
+        self.plot_temp_power(mlmc_est, th_02_model_params)
 
-
-        self.plot_temp_power(mlmc_est)
+        mlmc_est.mlmc.clean_select()
+        mlmc_est.mlmc.clean_subsamples()
+        th_03_model_params = {"power": "power_ref", "temp": "temp_ref", "temp_min": "temp_min_ref", "temp_max": "temp_max_ref"}
+        self.select_samples_with_good_values(mlmc_est, th_03_model_params)
+        print("N good samples [th_03_model]: ", mlmc_est.mlmc.n_samples[0])
+        self.plot_temp_power(mlmc_est, th_03_model_params)
 
         # n_samples = int(mlmc_est.mlmc.n_samples)
         # temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
@@ -253,13 +258,19 @@ class Process(base_process.Process):
         return q_array[:,0,:]
 
 
-    def select_samples_with_good_values(self, mlmc_est):
+    def select_samples_with_good_values(self, mlmc_est, result_params):
+        """
+        Selects samples according to the temperature, power, mesh results.
+
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
+        :return: None
+        """
         # determine samples with correct temperature
         n_bad_els = self.get_samples(mlmc_est, 'n_bad_els')
-        temp_min = self.get_samples(mlmc_est, 'temp_min')
-        temp_max = self.get_samples(mlmc_est, 'temp_max')
-        temp = self.get_samples(mlmc_est, 'temp')
-        power = self.get_samples(mlmc_est, 'power')
+        temp_min = self.get_samples(mlmc_est, result_params['temp_min'])
+        temp_max = self.get_samples(mlmc_est, result_params['temp_max'])
+        temp = self.get_samples(mlmc_est, result_params['temp'])
+        power = self.get_samples(mlmc_est, result_params['power'])
 
         abs_zero_temp = 273.15
         MIN_T = 250
@@ -326,18 +337,19 @@ class Process(base_process.Process):
         for l in mlmc.levels:
             print("Sample values ", l.sample_values)
 
-    def plot_temp_power(self, mlmc_est):
+    def plot_temp_power(self, mlmc_est, result_params):
         """
         Plot temperature and power
         :param mlmc_est: mlmc.Estimate instance
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
         :return: None
         """
-        times_means, times_vars = self.get_all_results_by_param(mlmc_est, "value")
+        times_means, times_vars = self.get_all_results_by_param(mlmc_est, "power_time")
         print("N good samples: ", mlmc_est.mlmc.n_samples[0])
         temp_times = times_means[:, 1]
 
         # Temperature means and vars
-        temp_means, temp_vars = self.get_all_results_by_param(mlmc_est, "temp")
+        temp_means, temp_vars = self.get_all_results_by_param(mlmc_est, result_params["temp"])
         avg_temp = temp_means[:, 1]
         avg_temp_std = np.sqrt(temp_vars[:, 1])[1:]
         #avg_temp_err = np.sqrt(temp_vars[:, 1])
@@ -345,7 +357,7 @@ class Process(base_process.Process):
         #avg_temp_std_err = np.sqrt(temp_vars[:, 2])[1:]
 
         # Power means and vars
-        power_means, power_vars = self.get_all_results_by_param(mlmc_est, "power")
+        power_means, power_vars = self.get_all_results_by_param(mlmc_est, result_params["power"])
         power_series = power_means[:, 1]
         power_series_std = np.sqrt(power_vars[:, 1])[1:]
 
