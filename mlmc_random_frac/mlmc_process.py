@@ -1,6 +1,7 @@
 import sys
 import os
 import yaml
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 src_path = os.path.dirname(os.path.abspath(__file__))
@@ -16,8 +17,8 @@ import pbs
 from rand_frac_simulation import RandomFracSimulation
 
 
-def load_config_dict():
-    with open("config.yaml", "r") as f:
+def load_config_dict(cfg):
+    with open(cfg, "r") as f:
         return yaml.safe_load(f)
 
 
@@ -86,7 +87,13 @@ class Process(base_process.Process):
         :return: mlmc.MLMC instance
         """
         # Set pbs config, flow123d, gmsh, ...
-        self.config_dict = load_config_dict()
+
+        orig_config = os.path.join(src_path, "config.yaml")
+        config_path = os.path.join(self.work_dir, "config.yaml")
+        if orig_config != config_path:
+            shutil.copy(orig_config, config_path)
+
+        self.config_dict = load_config_dict(config_path)
         self.set_environment_variables()
         output_dir = os.path.join(self.work_dir, "output_{}".format(n_levels))
 

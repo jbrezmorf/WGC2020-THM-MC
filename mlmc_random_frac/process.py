@@ -484,8 +484,9 @@ def setup_dir(config_dict, clean=False):
     for f in config_dict["copy_files"]:
         shutil.copyfile(os.path.join(script_dir, f), os.path.join(".", f))
     flow_exec = config_dict["flow_executable"].copy()
+    if not os.path.isabs(flow_exec[0]):
+        flow_exec[0] = os.path.join(script_dir, flow_exec[0])
     config_dict["_aux_flow_path"] = flow_exec
-
 
 def sample(config_dict):
 
@@ -518,9 +519,15 @@ def sample(config_dict):
 
 if __name__ == "__main__":
     sample_dir = sys.argv[1]
+    sub_dirs = sample_dir.split(os.sep)
+    iout = sub_dirs.index("output_1")
+    if iout > 0:
+        cfg_path = os.path.join(script_dir, *sub_dirs[:iout])
+    else:
+        cfg_path = script_dir
+    with open(os.path.join(cfg_path, "config.yaml"), "r") as f:
+        config_dict = yaml.safe_load(f)
+
     os.chdir(sample_dir)
     np.random.seed()
-
-    with open(os.path.join(script_dir, "config.yaml"), "r") as f:
-        config_dict = yaml.safe_load(f)
     sample(config_dict)
