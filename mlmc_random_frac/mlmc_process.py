@@ -22,146 +22,6 @@ def load_config_dict():
 
 
 class Process(base_process.Process):
-    def run(self):
-        """
-        Run mlmc
-        :return: None
-        """
-        os.makedirs(self.work_dir, mode=0o775, exist_ok=True)
-        self.n_moments = 10
-
-        mlmc_list = []
-        # Run one level Monte-Carlo method
-        for nl in [1]:  # , 2, 3, 4,5, 7, 9]:
-            mlmc = self.setup_config(nl, clean=True)
-
-            # self.n_sample_estimate(mlmc)
-            self.generate_jobs(mlmc, n_samples=[self.mc_samples])
-            mlmc_list.append(mlmc)
-
-        self.all_collect(mlmc_list)
-
-
-    def get_samples(self, mlmc_est, quantity):
-        mlmc_est.mlmc.select_values(None, selected_param=quantity)
-        q_array = mlmc_est.mlmc.levels[0].sample_values
-        mlmc_est.mlmc.clean_select()
-        return q_array[:,0,:]
-
-
-    def select_samples_with_good_values(self, mlmc_est):
-        # determine samples with correct temperature
-        n_bad_els = self.get_samples(mlmc_est, 'n_bad_els')
-        temp_min = self.get_samples(mlmc_est, 'temp_min')
-        temp_max = self.get_samples(mlmc_est, 'temp_max')
-        temp = self.get_samples(mlmc_est, 'temp')
-
-        abs_zero_temp = 273.15
-        MIN_T = 250
-        MAX_T = 470
-        temp_good_min = np.min(temp_min[:, :], axis=1) > MIN_T
-        temp_good_max = np.max(temp_max[:, :], axis=1) < MAX_T
-        temp_good = np.logical_and(np.min(temp, axis=1) > MIN_T - 273.15, np.max(temp, axis=1) < MAX_T - 273.15)
-        no_bad_els = n_bad_els[:, 0] == 0
-        good_mask = np.logical_and(temp_good_min, temp_good_max)
-        good_mask = np.logical_and(good_mask, no_bad_els)
-        good_mask = np.logical_and(good_mask, temp_good)
-        good_indices = np.arange(0, len(good_mask))[good_mask]
-        bad_indices = np.arange(0, len(good_mask))[~good_mask]
-        mlmc_est.mlmc.subsample_by_indices(good_indices)
-
-
-    def process(self):
-        """
-        Use collected data
-        :return: None
-        """
-        assert os.path.isdir(self.work_dir)
-        mlmc_est_list = []
-
-        for nl in [1]:  # high resolution fields
-            mlmc = self.setup_config(nl, clean=False)
-            # Use wrapper object for working with collected data
-            mlmc_est = Estimate(mlmc)
-            mlmc_est_list.append(mlmc_est)
-
-        # self.result_text(mlmc)
-        # self.plot_density(mlmc)
-        print("N all samples: ", mlmc_est.mlmc.n_samples[0])
-        self.select_samples_with_good_values(mlmc_est)
-        self.plot_temp_power(mlmc_est)
-        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
-
-
-        n_samples = int(mlmc_est.mlmc.n_samples)
-        print("N samples: ", n_samples)
-        temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
-        print("good temperature interval: <{},{}>".format(MIN_T, MAX_T))
-        bad_temp_flag = np.zeros((len(n_bad_els),))
-        bad_ele_flag = np.zeros((len(n_bad_els),))
-        for i in range(0, n_samples):
-            bad_temp_flag[i] = min(temp_min[i][0]) < MIN_T or max(temp_max[i][0]) > MAX_T
-            bad_ele_flag[i] = n_bad_els[i][0][0] > 0
-            ty = i if bad_temp_flag[i] else n_samples + i
-            tx = i if bad_ele_flag[i] else n_samples + i
-            temp_v_ele[ty, tx] = 1
-
-        # print("temp_v_ele:\n", temp_v_ele)
-        temp_v_ele_sum = [
-            [np.sum(temp_v_ele[:n_samples, :n_samples]),
-             np.sum(temp_v_ele[:n_samples, n_samples:2 * n_samples])],
-            [np.sum(temp_v_ele[n_samples:2 * n_samples, :n_samples]),
-             np.sum(temp_v_ele[n_samples:2 * n_samples, n_samples:2 * n_samples])]]
-
-        print("temp[BAD, GOOD]' x mesh[BAD, GOOD]]\n{}\n{}".format(temp_v_ele_sum[0], temp_v_ele_sum[1]))
-
-        # print(n_bad_els.shape)
-        n_bad_elements = np.zeros((len(n_bad_els),))
-        for i in range(len(n_bad_els)):
-            n_bad_elements[i] = n_bad_els[i][0][0]
-
-        print("min n_bad_element = ", min(n_bad_elements))
-        print("max n_bad_element = ", max(n_bad_elements))
-
-        # compute EX and varX
-        bad_temp_ele_avg = 0    # EX of bad elements for bad temperature
-        good_temp_ele_avg = 0   # EX of bad elements for good temperature
-        for i in range(len(n_bad_els)):
-            if bad_temp_flag[i]:
-                bad_temp_ele_avg += n_bad_elements[i]
-            else:
-                good_temp_ele_avg += n_bad_elements[i]
-        bad_temp_ele_avg /= temp_v_ele_sum[0][0]
-        good_temp_ele_avg /= temp_v_ele_sum[1][0]
-        print("bad_temp EX: ", bad_temp_ele_avg)
-        print("good_temp EX: ", good_temp_ele_avg)
-
-        bad_temp_ele_var = 0    # varX of bad elements for bad temperature
-        good_temp_ele_var = 0   # varX of bad elements for good temperature
-        for i in range(len(n_bad_els)):
-            if bad_temp_flag[i]:
-                bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
-            else:
-                good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
-        bad_temp_ele_var /= temp_v_ele_sum[0][0]
-        good_temp_ele_var /= temp_v_ele_sum[1][0]
-        print("bad_temp varX: ", bad_temp_ele_var)
-        print("good_temp varX: ", good_temp_ele_var)
-        print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
-        print("good_temp s: ", np.sqrt(good_temp_ele_var))
-
-        # print("n_bad_els:\n", n_bad_els)
-
-        # print("TEMP_MIN: ", temp_min)
-        # print("TEMP_MAX: ", temp_max)
-        #
-        # print("TEMP_MIN: ", min(temp_min[0][0]))
-        # print("TEMP_MAX: ", max(temp_max[1][0]))
-
-        print("PROCESS FINISHED :)")
-
-        # self.process_analysis(cl)
-
     def set_environment_variables(self):
         """
         Set pbs config, flow123d, gmsh
@@ -267,23 +127,154 @@ class Process(base_process.Process):
             mlmc_obj.load_from_file()
         return mlmc_obj
 
-    def plot_density(self, mlmc):
-        # for level in mlmc.levels:
-        #     for f_sample, c_sample in level.collected_samples:
-        #         print("f sample ", f_sample.result_data)
-        mlmc.select_values({"power_time": (0, "=")}, selected_param="power")
-        # for level in mlmc.levels:
-        #     for f_sample, c_sample in level.collected_samples:
-        #         print("f sample ", f_sample.result)
 
-        cl = CompareLevels([mlmc],
-                           output_dir=src_path,
-                           quantity_name="Q [m/s]",
-                           moment_class=Legendre,
-                           log_scale=False,
-                           n_moments=8, )
-        cl.construct_densities()
-        cl.plot_densities()
+    def run(self):
+        """
+        Run mlmc
+        :return: None
+        """
+        os.makedirs(self.work_dir, mode=0o775, exist_ok=True)
+        self.n_moments = 10
+
+        mlmc_list = []
+        # Run one level Monte-Carlo method
+        for nl in [1]:  # , 2, 3, 4,5, 7, 9]:
+            mlmc = self.setup_config(nl, clean=True)
+
+            # self.n_sample_estimate(mlmc)
+            self.generate_jobs(mlmc, n_samples=[self.mc_samples])
+            mlmc_list.append(mlmc)
+
+        self.all_collect(mlmc_list)
+
+
+
+
+    def process(self):
+        """
+        Use collected data
+        :return: None
+        """
+        assert os.path.isdir(self.work_dir)
+        mlmc_est_list = []
+
+        for nl in [1]:  # high resolution fields
+            mlmc = self.setup_config(nl, clean=False)
+            # Use wrapper object for working with collected data
+            mlmc_est = Estimate(mlmc)
+            mlmc_est_list.append(mlmc_est)
+
+        # self.result_text(mlmc)
+        # self.plot_density(mlmc)
+        print("N all samples: ", mlmc_est.mlmc.n_samples[0])
+        self.select_samples_with_good_values(mlmc_est)
+        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
+        self.plot_temp_power(mlmc_est)
+
+
+
+        n_samples = int(mlmc_est.mlmc.n_samples)
+        print("N samples: ", n_samples)
+        temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
+        print("good temperature interval: <{},{}>".format(MIN_T, MAX_T))
+        bad_temp_flag = np.zeros((len(n_bad_els),))
+        bad_ele_flag = np.zeros((len(n_bad_els),))
+        for i in range(0, n_samples):
+            bad_temp_flag[i] = min(temp_min[i][0]) < MIN_T or max(temp_max[i][0]) > MAX_T
+            bad_ele_flag[i] = n_bad_els[i][0][0] > 0
+            ty = i if bad_temp_flag[i] else n_samples + i
+            tx = i if bad_ele_flag[i] else n_samples + i
+            temp_v_ele[ty, tx] = 1
+
+        # print("temp_v_ele:\n", temp_v_ele)
+        temp_v_ele_sum = [
+            [np.sum(temp_v_ele[:n_samples, :n_samples]),
+             np.sum(temp_v_ele[:n_samples, n_samples:2 * n_samples])],
+            [np.sum(temp_v_ele[n_samples:2 * n_samples, :n_samples]),
+             np.sum(temp_v_ele[n_samples:2 * n_samples, n_samples:2 * n_samples])]]
+
+        print("temp[BAD, GOOD]' x mesh[BAD, GOOD]]\n{}\n{}".format(temp_v_ele_sum[0], temp_v_ele_sum[1]))
+
+        # print(n_bad_els.shape)
+        n_bad_elements = np.zeros((len(n_bad_els),))
+        for i in range(len(n_bad_els)):
+            n_bad_elements[i] = n_bad_els[i][0][0]
+
+        print("min n_bad_element = ", min(n_bad_elements))
+        print("max n_bad_element = ", max(n_bad_elements))
+
+        # compute EX and varX
+        bad_temp_ele_avg = 0    # EX of bad elements for bad temperature
+        good_temp_ele_avg = 0   # EX of bad elements for good temperature
+        for i in range(len(n_bad_els)):
+            if bad_temp_flag[i]:
+                bad_temp_ele_avg += n_bad_elements[i]
+            else:
+                good_temp_ele_avg += n_bad_elements[i]
+        bad_temp_ele_avg /= temp_v_ele_sum[0][0]
+        good_temp_ele_avg /= temp_v_ele_sum[1][0]
+        print("bad_temp EX: ", bad_temp_ele_avg)
+        print("good_temp EX: ", good_temp_ele_avg)
+
+        bad_temp_ele_var = 0    # varX of bad elements for bad temperature
+        good_temp_ele_var = 0   # varX of bad elements for good temperature
+        for i in range(len(n_bad_els)):
+            if bad_temp_flag[i]:
+                bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
+            else:
+                good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
+        bad_temp_ele_var /= temp_v_ele_sum[0][0]
+        good_temp_ele_var /= temp_v_ele_sum[1][0]
+        print("bad_temp varX: ", bad_temp_ele_var)
+        print("good_temp varX: ", good_temp_ele_var)
+        print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
+        print("good_temp s: ", np.sqrt(good_temp_ele_var))
+
+        # print("n_bad_els:\n", n_bad_els)
+
+        # print("TEMP_MIN: ", temp_min)
+        # print("TEMP_MAX: ", temp_max)
+        #
+        # print("TEMP_MIN: ", min(temp_min[0][0]))
+        # print("TEMP_MAX: ", max(temp_max[1][0]))
+
+        print("PROCESS FINISHED :)")
+
+        # self.process_analysis(cl)
+
+    def get_samples(self, mlmc_est, quantity):
+        mlmc_est.mlmc.select_values(None, selected_param=quantity)
+        q_array = mlmc_est.mlmc.levels[0].sample_values
+        mlmc_est.mlmc.clean_select()
+        return q_array[:,0,:]
+
+
+    def select_samples_with_good_values(self, mlmc_est):
+        # determine samples with correct temperature
+        n_bad_els = self.get_samples(mlmc_est, 'n_bad_els')
+        temp_min = self.get_samples(mlmc_est, 'temp_min')
+        temp_max = self.get_samples(mlmc_est, 'temp_max')
+        temp = self.get_samples(mlmc_est, 'temp')
+
+        abs_zero_temp = 273.15
+        MIN_T = 250
+        MAX_T = 470
+        temp_good_min = np.min(temp_min[:, :], axis=1) > MIN_T
+        temp_good_max = np.max(temp_max[:, :], axis=1) < MAX_T
+        temp_good = np.logical_and(np.min(temp, axis=1) > MIN_T - 273.15, np.max(temp, axis=1) < MAX_T - 273.15)
+        no_bad_els = n_bad_els[:, 0] == 0
+        good_mask = np.logical_and(temp_good_min, temp_good_max)
+        good_mask = np.logical_and(good_mask, no_bad_els)
+        good_mask = np.logical_and(good_mask, temp_good)
+        good_indices = np.arange(0, len(good_mask))[good_mask]
+        bad_indices = np.arange(0, len(good_mask))[~good_mask]
+        assert not np.any(np.isnan(temp_max[good_indices]))
+        assert not np.any(np.isnan(temp_min[good_indices]))
+        assert not np.any(np.isnan(temp[good_indices]))
+        mlmc_est.mlmc.subsample_by_indices(good_indices)
+        self.good_indices = good_indices
+
+
 
     def get_all_results_by_param(self, mlmc_est, param_name):
         """
@@ -292,9 +283,14 @@ class Process(base_process.Process):
         :param param_name: Sample result param name
         :return: moments means, moments vars -> two numpy arrays
         """
+        assert np.all(self.good_indices == mlmc_est.mlmc.levels[0].sample_indices)
         n_moments = 3
         mlmc_est.mlmc.clean_select()
         mlmc_est.mlmc.select_values(None, selected_param=param_name)
+        print("results:", param_name)
+        samples = mlmc_est.mlmc.levels[0].sample_values[:,0,:]
+        print(samples.shape)
+        #print(np.any(np.isnan(samples), axis=1))
         domain = Estimate.estimate_domain(mlmc_est.mlmc)
         moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
         means, vars = mlmc_est.estimate_moments(moments_fn)
@@ -318,14 +314,16 @@ class Process(base_process.Process):
         :return: None
         """
         times_means, times_vars = self.get_all_results_by_param(mlmc_est, "value")
+        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
         temp_times = times_means[:, 1]
 
         # Temperature means and vars
         temp_means, temp_vars = self.get_all_results_by_param(mlmc_est, "temp")
         avg_temp = temp_means[:, 1]
-        avg_temp_err = np.sqrt(temp_vars[:, 1])
-        avg_temp_std = np.sqrt(temp_means[:, 2])[1:]
-        avg_temp_std_err = np.sqrt(temp_vars[:, 2])[1:]
+        avg_temp_std = np.sqrt(temp_vars[:, 1])[1:]
+        #avg_temp_err = np.sqrt(temp_vars[:, 1])
+        #avg_temp_std = np.sqrt(temp_means[:, 2])[1:]
+        #avg_temp_std_err = np.sqrt(temp_vars[:, 2])[1:]
 
         # Power means and vars
         power_means, power_vars = self.get_all_results_by_param(mlmc_est, "power")
@@ -358,6 +356,24 @@ class Process(base_process.Process):
         ax2.tick_params(axis='y', labelcolor=pow_color)
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.show()
+
+    def plot_density(self, mlmc):
+        # for level in mlmc.levels:
+        #     for f_sample, c_sample in level.collected_samples:
+        #         print("f sample ", f_sample.result_data)
+        mlmc.select_values({"power_time": (0, "=")}, selected_param="power")
+        # for level in mlmc.levels:
+        #     for f_sample, c_sample in level.collected_samples:
+        #         print("f sample ", f_sample.result)
+
+        cl = CompareLevels([mlmc],
+                           output_dir=src_path,
+                           quantity_name="Q [m/s]",
+                           moment_class=Legendre,
+                           log_scale=False,
+                           n_moments=8, )
+        cl.construct_densities()
+        cl.plot_densities()
 
 
 if __name__ == "__main__":
