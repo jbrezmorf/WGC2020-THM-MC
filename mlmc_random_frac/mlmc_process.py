@@ -180,6 +180,12 @@ class Process(base_process.Process):
         print("N good samples [th_03_model]: ", mlmc_est.mlmc.n_samples[0])
         self.plot_temp_power(mlmc_est, th_03_model_params)
 
+        mlmc_est.mlmc.clean_select()
+        mlmc_est.mlmc.clean_subsamples()
+        self.select_samples_with_good_values(mlmc_est, th_02_model_params)
+        self.select_samples_with_good_values(mlmc_est, th_03_model_params, add=1)
+        self.plot_ref_comparison(mlmc_est, {*th_02_model_params, *th_03_model_params})
+
         # n_samples = int(mlmc_est.mlmc.n_samples)
         # temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
         # bad_temp_flag = np.zeros((len(n_bad_els),))
@@ -258,7 +264,7 @@ class Process(base_process.Process):
         return q_array[:,0,:]
 
 
-    def select_samples_with_good_values(self, mlmc_est, result_params):
+    def select_samples_with_good_values(self, mlmc_est, result_params, add=0):
         """
         Selects samples according to the temperature, power, mesh results.
 
@@ -291,10 +297,14 @@ class Process(base_process.Process):
         assert not np.any(np.isnan(temp_max[good_indices]))
         assert not np.any(np.isnan(temp_min[good_indices]))
         assert not np.any(np.isnan(temp[good_indices]))
-        mlmc_est.mlmc.subsample_by_indices(good_indices)
 
         print(np.sort(power[:, 30]))
-        self.good_indices = good_indices
+        if add:
+            assert len(good_mask) == len(self.good_indices)
+            good_mask = np.logical_and(good_mask, self.good_indices)
+        else:
+            self.good_indices = good_indices
+        mlmc_est.mlmc.subsample_by_indices(self.good_indices)
 
 
 
@@ -386,6 +396,56 @@ class Process(base_process.Process):
                          color=pow_color, alpha=0.2)
         ax2.tick_params(axis='y', labelcolor=pow_color)
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        plt.show()
+
+    def plot_ref_comparison(self, mlmc_est, result_params):
+        """
+        Plot temperature and power
+        :param mlmc_est: mlmc.Estimate instance
+        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
+        :return: None
+        """
+        times_means, times_vars = self.get_all_results_by_param(mlmc_est, "power_time")
+        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
+        times = times_means[:, 1]
+
+        # Temperature means and vars
+        temp_means, temp_vars = self.get_all_results_by_param(mlmc_est, "temp")
+        avg_temp = temp_means[:, 1]
+        avg_temp_std = np.sqrt(temp_vars[:, 1])[1:]
+        #avg_temp_err = np.sqrt(temp_vars[:, 1])
+        #avg_temp_std = np.sqrt(temp_means[:, 2])[1:]
+        #avg_temp_std_err = np.sqrt(temp_vars[:, 2])[1:]
+
+        # Reference temperature means and vars
+        temp_ref_means, temp_ref_vars = self.get_all_results_by_param(mlmc_est, "temp_ref")
+        temp_ref_series = temp_ref_means[:, 1]
+        temp_ref_series_std = np.sqrt(temp_ref_vars[:, 1])[1:]
+
+        # Plot temperature
+        fig, ax1 = plt.subplots()
+        temp_color = 'red'
+        ax1.set_xlabel('time [y]')
+        ax1.set_ylabel('Temperature [C deg]')
+        ydata = avg_temp[1:]
+        ax1.plot(times[1:], ydata, color=temp_color, label="HM+TH")
+        ax1.fill_between(times[1:], ydata - avg_temp_std, ydata + avg_temp_std,
+                         color=temp_color, alpha=0.2)
+        # ax1.tick_params(axis='y', labelcolor=temp_color)
+
+        # Plot power series
+        # ax2 = ax1.twinx() # instantiate a second axes that shares the same x-axis
+        temp_ref_color = 'blue'
+        # ax2.set_ylabel('Power [MW]', color=temp_ref_color)  # we already handled the x-label with ax1
+        ydata = temp_ref_series[1:]
+        ax1.plot(times[1:], ydata, color=temp_ref_color, label="TH only")
+
+        # Shaded uncertainty region
+        ax1.fill_between(times[1:], ydata - temp_ref_series_std, ydata + temp_ref_series_std,
+                         color=temp_ref_color, alpha=0.2)
+        # ax1.tick_params(axis='y', labelcolor=temp_ref_color)
+        ax1.legend()
+        fig.tight_layout()  # otherwise the right y-label is sslightly clipped
         plt.show()
 
     def plot_density(self, mlmc):
