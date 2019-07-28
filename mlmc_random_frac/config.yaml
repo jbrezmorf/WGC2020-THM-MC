@@ -42,6 +42,13 @@ geometry:
   well_distance: 200
   # upper limit on the number of fractures
   n_frac_limit: 100
+
+  fracture_mesh_step: 15
+
+  # Uniform distribution of the fracture centers near the existing surfaces
+  # in order to enhance connectivity.
+  connected_position_distr: true
+
   fracture_stats:
       # SKB data
       -   name: NS
