@@ -259,23 +259,30 @@ class Process(base_process.Process):
         temp_min = self.get_samples(mlmc_est, 'temp_min')
         temp_max = self.get_samples(mlmc_est, 'temp_max')
         temp = self.get_samples(mlmc_est, 'temp')
+        power = self.get_samples(mlmc_est, 'power')
 
         abs_zero_temp = 273.15
         MIN_T = 250
         MAX_T = 470
+        min_power= 1e-2
+        max_power= 10
         temp_good_min = np.min(temp_min[:, :], axis=1) > MIN_T
         temp_good_max = np.max(temp_max[:, :], axis=1) < MAX_T
         temp_good = np.logical_and(np.min(temp, axis=1) > MIN_T - 273.15, np.max(temp, axis=1) < MAX_T - 273.15)
+        power_good = np.logical_and(np.min(power, axis=1) > min_power, np.max(power, axis=1) < max_power)
         no_bad_els = n_bad_els[:, 0] == 0
         good_mask = np.logical_and(temp_good_min, temp_good_max)
         good_mask = np.logical_and(good_mask, no_bad_els)
         good_mask = np.logical_and(good_mask, temp_good)
+        good_mask = np.logical_and(good_mask, power_good)
         good_indices = np.arange(0, len(good_mask))[good_mask]
         bad_indices = np.arange(0, len(good_mask))[~good_mask]
         assert not np.any(np.isnan(temp_max[good_indices]))
         assert not np.any(np.isnan(temp_min[good_indices]))
         assert not np.any(np.isnan(temp[good_indices]))
         mlmc_est.mlmc.subsample_by_indices(good_indices)
+
+        print(np.sort(power[:, 30]))
         self.good_indices = good_indices
 
 
@@ -296,10 +303,18 @@ class Process(base_process.Process):
         print(samples.shape)
         #print(np.any(np.isnan(samples), axis=1))
         domain = Estimate.estimate_domain(mlmc_est.mlmc)
+        domain_diff = domain[1] - domain[0]
+        print(domain)
         moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
-        means, vars = mlmc_est.estimate_moments(moments_fn)
 
-        return means, vars
+        N = mlmc_est.mlmc.n_samples[0]
+        mom_means, mom_vars = mlmc_est.estimate_moments(moments_fn)
+        q_mean = mom_means[:, 1]
+        q_mean_err = np.sqrt(mom_vars[:, 1])
+        q_std = np.sqrt((mom_means[:, 2] - N * q_mean ** 2) * N / (N-1))
+        q_std_err = np.sqrt(mom_vars[:, 2] * N / (N-1))
+
+        return mom_means, mom_vars
 
     def result_text(self, mlmc):
         for level in mlmc.levels:
