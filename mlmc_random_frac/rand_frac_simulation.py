@@ -5,7 +5,10 @@ import yaml
 import numpy as np
 import time as t
 
-sys.path.append('../MLMC/src')
+src_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(src_path, '../MLMC/src'))
+sys.path.append(os.path.join(src_path, '../dfn/src'))
+
 import mlmc.sample as sample
 from mlmc.simulation import Simulation
 
@@ -65,7 +68,7 @@ class RandomFracSimulation(Simulation):
         # Prepare base workdir for this mesh_step
         output_dir = config['output_dir']
 
-        self.process_dir = os.path.split(output_dir)[0]
+        self.process_dir = src_path
         self.work_dir = os.path.join(output_dir, 'sim_%d_step_%f' % (self.sim_id, self.step))
 
         force_mkdir(self.work_dir, clean)
@@ -126,13 +129,20 @@ class RandomFracSimulation(Simulation):
         # Get sample directory
         out_subdir = os.path.join("samples", str(sample_tag))
         sample_dir = os.path.join(self.work_dir, out_subdir)
-        force_mkdir(sample_dir, True)
+        reuse_samples = self.config_dict.get('reuse_samples', None)
+        if reuse_samples is None:
+            force_mkdir(sample_dir, True)
+        else:
+            force_mkdir(sample_dir, False)
 
         # Run part which can be run via pbs
         self.create_pbs_script(sample_dir)
 
         # Pbs package directory
         package_dir = self.run_sim_sample(out_subdir)
+        # if reuse_samples:
+        #     self.pbs_creater._number_of_realizations = 0
+        # else:
         self.pbs_creater.execute()
 
         return sample.Sample(directory=sample_dir, sample_id=sample_id,
@@ -144,16 +154,17 @@ class RandomFracSimulation(Simulation):
         :param sample_dir: Sample dir abs path
         :return: None
         """
+        finish_sleep = self.config_dict.get("finish_sleep", 30)
         self.pbs_script.append(
             """
             cd {abs_proc_dir}
-            module load python36-modules-gcc
-            source {proc_dir}/env/bin/activate
-            python {proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
-            sleep 30
+            source {abs_proc_dir}/load_modules.sh
+            source {abs_proc_dir}/env/bin/activate
+            python {abs_proc_dir}/process.py {sample_dir} >{sample_dir}/STDOUT 2>&1
+            sleep {finish_sleep}
             echo "done" >{sample_dir}/FINISHED
             """
-            .format(abs_proc_dir= os.path.abspath(self.process_dir), proc_dir=self.process_dir, sample_dir=sample_dir))
+            .format(abs_proc_dir=self.process_dir, sample_dir=sample_dir, finish_sleep=finish_sleep))
 
 
     def run_sim_sample(self, out_subdir):

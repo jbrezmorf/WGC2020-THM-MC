@@ -1,8 +1,12 @@
 import os
 from shutil import copyfile
 
+
+
 samples_dir = os.path.join("output_1", "sim_0_step_0.010000", "samples")
 mesh_repository_dir = os.path.join("mesh_repository")
+os.makedirs(mesh_repository_dir, exist_ok=True)
+
 meshes = {}
 mesh_indices = []
 for mesh_file in os.listdir(os.fsencode(mesh_repository_dir)):

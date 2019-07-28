@@ -34,6 +34,7 @@ class Process(base_process.Process):
         # Run one level Monte-Carlo method
         for nl in [1]:  # , 2, 3, 4,5, 7, 9]:
             mlmc = self.setup_config(nl, clean=True)
+
             # self.n_sample_estimate(mlmc)
             self.generate_jobs(mlmc, n_samples=[self.mc_samples])
             mlmc_list.append(mlmc)
@@ -211,6 +212,13 @@ class Process(base_process.Process):
         self.config_dict = load_config_dict()
         self.set_environment_variables()
         output_dir = os.path.join(self.work_dir, "output_{}".format(n_levels))
+
+        reuse_samples = self.config_dict.get('reuse_samples', None)
+        if reuse_samples:
+            clean = False
+            self.config_dict['metacentrum'] = False
+            self.config_dict['finish_sleep'] = 0
+
         # remove existing files
         if clean:
             self.rm_files(output_dir)

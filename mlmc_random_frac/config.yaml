@@ -1,10 +1,18 @@
 # The flow executable and arguments to use.
 # JB:
-# flow_executable:
-#  - ../../flow123d/bin/fterm
+#flow_executable:
+#  - ../../../../../../flow123d_JB/bin/fterm
 #  - --no-term
 #  - rel
 #  - run
+#finish_sleep: 0
+#metacentrum: false
+
+# reuse existing sample directories and existing results
+# None - clean dir
+# False - keep dir, rerun process.py
+# True - reuse existing results
+#reuse_samples: true
 
 # Charon:
 flow_executable:
@@ -19,7 +27,7 @@ mc_samples: 2
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
 # Set to None to generate new meshes.
-mesh_repository: ./mesh_repository
+#mesh_repository: ./mesh_repository
 
 geometry:
   # depth of the center of the box and of the coordinate system
