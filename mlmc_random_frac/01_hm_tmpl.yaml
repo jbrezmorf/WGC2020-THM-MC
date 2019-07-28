@@ -106,24 +106,24 @@ problem: !Coupling_Sequential
 
           - region: .left_well_fr
             bc_type: total_flux
-            bc_piezo_head: 1e3
+            bc_piezo_head: <well_piezohead>
             bc_robin_sigma: !FieldFormula # computed using analytic solution near well as: conductivity / (R * ln(R/rho))
               value: <fr_conductivity> / (10*log(10/0.15))
           - region: .left_well
             bc_type: total_flux
-            bc_piezo_head: 1e3
+            bc_piezo_head: <well_piezohead>
             bc_robin_sigma: !FieldFormula
               value: <bulk_conductivity> / (10*log(10/0.15))
               
 
           - region: .right_well_fr
             bc_type: total_flux
-            bc_piezo_head: 1e3
+            bc_piezo_head: <well_piezohead>
             bc_robin_sigma: !FieldFormula
               value: <fr_conductivity> / (10*log(10/0.15))
           - region: .right_well
             bc_type: total_flux
-            bc_piezo_head: 1e3
+            bc_piezo_head: <well_piezohead>
             bc_robin_sigma: !FieldFormula
               value: <bulk_conductivity> / (10*log(10/0.15))
 
