@@ -41,6 +41,36 @@ class Process(base_process.Process):
 
         self.all_collect(mlmc_list)
 
+
+    def get_samples(self, mlmc_est, quantity):
+        mlmc_est.mlmc.select_values(None, selected_param=quantity)
+        q_array = mlmc_est.mlmc.levels[0].sample_values
+        mlmc_est.mlmc.clean_select()
+        return q_array[:,0,:]
+
+
+    def select_samples_with_good_values(self, mlmc_est):
+        # determine samples with correct temperature
+        n_bad_els = self.get_samples(mlmc_est, 'n_bad_els')
+        temp_min = self.get_samples(mlmc_est, 'temp_min')
+        temp_max = self.get_samples(mlmc_est, 'temp_max')
+        temp = self.get_samples(mlmc_est, 'temp')
+
+        abs_zero_temp = 273.15
+        MIN_T = 250
+        MAX_T = 470
+        temp_good_min = np.min(temp_min[:, :], axis=1) > MIN_T
+        temp_good_max = np.max(temp_max[:, :], axis=1) < MAX_T
+        temp_good = np.logical_and(np.min(temp, axis=1) > MIN_T - 273.15, np.max(temp, axis=1) < MAX_T - 273.15)
+        no_bad_els = n_bad_els[:, 0] == 0
+        good_mask = np.logical_and(temp_good_min, temp_good_max)
+        good_mask = np.logical_and(good_mask, no_bad_els)
+        good_mask = np.logical_and(good_mask, temp_good)
+        good_indices = np.arange(0, len(good_mask))[good_mask]
+        bad_indices = np.arange(0, len(good_mask))[~good_mask]
+        mlmc_est.mlmc.subsample_by_indices(good_indices)
+
+
     def process(self):
         """
         Use collected data
@@ -57,29 +87,16 @@ class Process(base_process.Process):
 
         # self.result_text(mlmc)
         # self.plot_density(mlmc)
+        print("N all samples: ", mlmc_est.mlmc.n_samples[0])
+        self.select_samples_with_good_values(mlmc_est)
+        self.plot_temp_power(mlmc_est)
+        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
 
-        # self.plot_temp_power(mlmc_est)
-
-        mlmc_est.mlmc.clean_select()
-        mlmc_est.mlmc.select_values({"n_bad_els": (-10, ">=")}, selected_param="n_bad_els")
-        n_bad_els = mlmc_est.mlmc.levels[0].sample_values
-
-        mlmc_est.mlmc.clean_select()
-        # mlmc_est.mlmc.select_values(None, selected_param="temp_min")
-        # mlmc_est.mlmc.select_values(None, selected_param="temp")
-        mlmc_est.mlmc.select_values({"temp_min": (100000, "<=")}, selected_param="temp_min")
-        temp_min = mlmc_est.mlmc.levels[0].sample_values
-
-        mlmc_est.mlmc.clean_select()
-        mlmc_est.mlmc.select_values({"temp_max": (-100000, ">=")}, selected_param="temp_max")
-        temp_max = mlmc_est.mlmc.levels[0].sample_values
 
         n_samples = int(mlmc_est.mlmc.n_samples)
         print("N samples: ", n_samples)
         temp_v_ele = np.zeros((2 * n_samples, 2 * n_samples), dtype=int)
-        MIN_T = 250
-        MAX_T = 470
-        print("goot temperature interval: <{},{}>".format(MIN_T, MAX_T))
+        print("good temperature interval: <{},{}>".format(MIN_T, MAX_T))
         bad_temp_flag = np.zeros((len(n_bad_els),))
         bad_ele_flag = np.zeros((len(n_bad_els),))
         for i in range(0, n_samples):
@@ -277,7 +294,7 @@ class Process(base_process.Process):
         """
         n_moments = 3
         mlmc_est.mlmc.clean_select()
-        mlmc_est.mlmc.select_values({param_name: (0, ">=")})
+        mlmc_est.mlmc.select_values(None, selected_param=param_name)
         domain = Estimate.estimate_domain(mlmc_est.mlmc)
         moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
         means, vars = mlmc_est.estimate_moments(moments_fn)
@@ -306,7 +323,9 @@ class Process(base_process.Process):
         # Temperature means and vars
         temp_means, temp_vars = self.get_all_results_by_param(mlmc_est, "temp")
         avg_temp = temp_means[:, 1]
-        avg_temp_std = np.sqrt(temp_vars[:, 1])[1:]
+        avg_temp_err = np.sqrt(temp_vars[:, 1])
+        avg_temp_std = np.sqrt(temp_means[:, 2])[1:]
+        avg_temp_std_err = np.sqrt(temp_vars[:, 2])[1:]
 
         # Power means and vars
         power_means, power_vars = self.get_all_results_by_param(mlmc_est, "power")
