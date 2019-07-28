@@ -26,7 +26,7 @@ mc_samples: 2
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
-# Set to None to generate new meshes.
+# Set to None to generate new meshes. Directory relative to the script dir: mlmc_random_frac
 #mesh_repository: ./mesh_repository
 
 geometry:
