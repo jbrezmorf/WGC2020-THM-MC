@@ -58,7 +58,7 @@ class Process(base_process.Process):
         # self.result_text(mlmc)
         # self.plot_density(mlmc)
 
-        # self.plot_temp_power(mlmc_est)
+        self.plot_temp_power(mlmc_est)
 
         mlmc_est.mlmc.clean_select()
         mlmc_est.mlmc.select_values({"n_bad_els": (-10, ">=")}, selected_param="n_bad_els")
@@ -114,8 +114,10 @@ class Process(base_process.Process):
                 bad_temp_ele_avg += n_bad_elements[i]
             else:
                 good_temp_ele_avg += n_bad_elements[i]
-        bad_temp_ele_avg /= temp_v_ele_sum[0][0]
-        good_temp_ele_avg /= temp_v_ele_sum[1][0]
+        if temp_v_ele_sum[0][0] != 0:
+            bad_temp_ele_avg /= temp_v_ele_sum[0][0]
+        if temp_v_ele_sum[1][0] != 0:
+            good_temp_ele_avg /= temp_v_ele_sum[1][0]
         print("bad_temp EX: ", bad_temp_ele_avg)
         print("good_temp EX: ", good_temp_ele_avg)
 
@@ -126,8 +128,10 @@ class Process(base_process.Process):
                 bad_temp_ele_var += (n_bad_elements[i]-bad_temp_ele_avg)**2
             else:
                 good_temp_ele_var += (n_bad_elements[i]-good_temp_ele_avg)**2
-        bad_temp_ele_var /= temp_v_ele_sum[0][0]
-        good_temp_ele_var /= temp_v_ele_sum[1][0]
+        if temp_v_ele_sum[0][0] != 0:
+            bad_temp_ele_var /= temp_v_ele_sum[0][0]
+        if temp_v_ele_sum[1][0] != 0:
+            good_temp_ele_var /= temp_v_ele_sum[1][0]
         print("bad_temp varX: ", bad_temp_ele_var)
         print("good_temp varX: ", good_temp_ele_var)
         print("bad_temp s: ", np.sqrt(bad_temp_ele_var))
@@ -277,7 +281,7 @@ class Process(base_process.Process):
         """
         n_moments = 3
         mlmc_est.mlmc.clean_select()
-        mlmc_est.mlmc.select_values({param_name: (0, ">=")})
+        mlmc_est.mlmc.select_values(None, param_name)
         domain = Estimate.estimate_domain(mlmc_est.mlmc)
         moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
         means, vars = mlmc_est.estimate_moments(moments_fn)
