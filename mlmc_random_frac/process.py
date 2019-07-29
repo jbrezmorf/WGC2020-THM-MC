@@ -278,7 +278,7 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     factory.make_mesh(mesh_groups)
     factory.write_mesh(format=gmsh.MeshFormat.msh2)
     os.rename(mesh_name + ".msh2", mesh_file)
-    factory.show()
+    #factory.show()
 
 
 def prepare_mesh(config_dict, fractures):
