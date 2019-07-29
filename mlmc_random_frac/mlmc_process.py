@@ -130,7 +130,7 @@ class Process(base_process.Process):
         mlmc_obj = mlmc.MLMC(n_levels, RandomFracSimulation.factory(self.step_range, config=simulation_config, clean=clean),
                                   self.step_range, self.options)
 
-        if clean:
+        if clean or reuse_samples:
             # Create new execution of mlmc
             mlmc_obj.create_new_execution()
         else:
