@@ -106,7 +106,9 @@ def generate_fractures(config_dict):
         eps = well_r / 2
         left_well_box = [-well_dist/2-eps, -eps, well_z0, -well_dist/2+eps, +eps, well_z1]
         right_well_box = [well_dist/2-eps, -eps, well_z0, well_dist/2+eps, +eps, well_z1]
-        pos_gen = fracture.ConnectedPosition([left_well_box, right_well_box])
+        pos_gen = fracture.ConnectedPosition(
+            confining_box=fracture_box,
+            init_boxes=[left_well_box, right_well_box])
     else:
         pos_gen = fracture.UniformBoxPosition(fracture_box)
     fractures = pop.sample(pos_distr=pos_gen, keep_nonempty=True)

@@ -47,7 +47,7 @@ geometry:
 
   # Uniform distribution of the fracture centers near the existing surfaces
   # in order to enhance connectivity.
-  connected_position_distr: true
+  #connected_position_distr: true
 
   fracture_stats:
       # SKB data
