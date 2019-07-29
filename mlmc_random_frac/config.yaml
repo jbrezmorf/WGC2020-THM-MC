@@ -22,12 +22,13 @@ flow_executable:
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
-mc_samples: 200
+mc_samples: 2
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
 # Set to None to generate new meshes. ABSOLUTE PATH
 #mesh_repository: /home/jb/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository
+mesh_repository: /home/pavel_exner/WGC2020-THM-MC/mlmc_random_frac/mesh_repository
 
 geometry:
   # depth of the center of the box and of the coordinate system
@@ -105,9 +106,9 @@ hm_params:
 
     well_piezohead: 1e4 # h*rho*g = 1e4*1e3*10 = 100 MPa
     
-    fr_cross_section: &fr_cs_init 1e-3
-    fr_conductivity: &fr_cond_init 1e-4
-    bulk_conductivity: &bulk_cond_init 1e-7
+    fr_cross_section: &fr_cs_init 1e-4
+    fr_conductivity: &fr_cond_init 1e-2     # k = 1/12 * cs^2 * rho*g/visc = 1/12 1e-8 * 1000*10*1e3 =approx. 1e-2
+    bulk_conductivity: &bulk_cond_init 1e-9
 
     mechanics_solver__a_tol: 1e-14
     mechanics_solver__r_tol: 1e-7
@@ -189,11 +190,12 @@ th_params:
     mesh: random_fractures.msh
     in_file: 02_th
 
-    well_piezohead: 5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
+    well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
+    well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
     
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-6
-    sigma_bulk_conductivity: 1e-5
+    bulk_conductivity: 1e-8
+    sigma_bulk_conductivity: 1e-6
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol
@@ -222,12 +224,13 @@ th_params_ref:
     mesh: random_fractures.msh
     in_file: 03_th
 
-    well_piezohead: 5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
+    well_piezohead_inject: *w_p_inject
+    well_piezohead_pump: *w_p_pump
     
     fr_cross_section: *fr_cs_init
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-6
-    sigma_bulk_conductivity: 1e-5
+    bulk_conductivity: 1e-8
+    sigma_bulk_conductivity: 1e-6
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol
