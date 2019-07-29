@@ -4,6 +4,8 @@ import shutil
 import yaml
 import numpy as np
 import time as t
+from typing import Any, List
+import attr
 
 src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(src_path, '../MLMC/src'))
@@ -31,6 +33,16 @@ def load_config_dict(cfg):
     with open(cfg, "r") as f:
         return yaml.safe_load(f)
 
+@attr.s(auto_attribs=True)
+class Quantity:
+    name: str     
+    file: str 
+    extractor: Any  # function, returning time series
+    args: List[Any]
+    np_type: str = "f8"
+    value: Any = None
+    
+    
 
 
 class RandomFracSimulation(Simulation):
@@ -185,52 +197,116 @@ class RandomFracSimulation(Simulation):
         self.pbs_script = []
         return package_dir
 
-    def _extract_time_series(self, yaml_stream, regions, extract):
+
+    def _extract_time_series(self, fname, regions, key, index):
         """
         :param yaml_stream:
         :param regions:
         :return: times list, list: for every region the array of value series
         """
-        content = yaml.safe_load(yaml_stream)
+        with open(fname, "r") as f:
+            content = yaml.safe_load(f)
         if content is None:
-            return None, None
+            return None
 
         data = content['data']
-        times = set()
         reg_series = {reg: [] for reg in regions}
 
         for time_data in data:
             region = time_data['region']
             if region in reg_series:
-                times.add(time_data['time'])
-                power_in_time = extract(time_data)
-                reg_series[region].append(power_in_time)
-        times = list(times)
-        times.sort()
+                time_data_key = time_data[key]
+                if type(time_data_key) is not list:
+                    time_data_key = [time_data_key]
+                reg_series[region].append(time_data_key[index])        
         series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
-        return np.array(times, dtype=float), series
+        return series
+
+
+    def get_heal_stat(self, f):
+        with open(f, "r") as f:
+            stat_doc = yaml.safe_load(f)
+            return  len(stat_doc["flow_stats"]["bad_elements"]) + len(stat_doc["gamma_stats"]["bad_elements"])
+
+
+    def compute_th_quantities(self, power, temp, flux, t_min, t_max):
+        """
+        Every q.value is list of time series np.array for every region, we perform sort of integration over regions to
+        obtain just scalar time series.
+        """
+        sum_power = -np.sum(power.value, axis=0) / 1e6
+        sum_flux = np.sum(flux.value, axis=0)
+
+        avg_temp = np.sum(np.array(flux.value) * np.array(temp.value), axis=0) / sum_flux
+        abs_zero_temp = 273.15
+        avg_temp = avg_temp - abs_zero_temp
+
+        temp_min = np.min(np.array(t_min.value), axis=0) # min over regions
+        temp_max = np.max(np.array(t_max.value), axis=0)
+
+        power.value = sum_power
+        temp.value = avg_temp
+        flux.value = sum_flux
+        t_min.value = temp_min
+        t_max.value = temp_max
+
+    def manipulate_quantities(self, q_dict):
+        # manipulate values
+        year_sec = 60 * 60 * 24 * 365
+        q_dict['power_time'].value =  np.array(q_dict['power_time'].value)[0] / year_sec
+        self.compute_th_quantities(q_dict['power'], q_dict['temp'], q_dict['fluxes'], q_dict['temp_min'],
+                                   q_dict['temp_max'])
+        self.compute_th_quantities(q_dict['power_ref'], q_dict['temp_ref'], q_dict['fluxes_ref'],
+                                   q_dict['temp_min_ref'], q_dict['temp_max_ref'])
+
+    def define_quantities(self):
+        bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
+        regions = ['fr', 'box']
+        out_regions = bc_regions[2:]
+
+        wb_file = "water_balance.yaml"
+        eb_file = "energy_balance.yaml"
+        heat_file = "Heat_AdvectionDiffusion_region_stat.yaml"
+        heal_file = "random_fractures_heal_stats.yaml"
+        extract_series = self._extract_time_series
+
+        th_dir = "output_02_th/"
+        ref_dir = "output_03_th/"
+
+        quantities = [
+            Quantity("power_time", ref_dir + eb_file, extract_series, [['ALL'], 'time', 0]),
+
+            Quantity("power", th_dir + eb_file, extract_series, [bc_regions, 'data', 0]),
+            Quantity("temp", th_dir + heat_file, extract_series, [out_regions, 'average', 0]),
+            Quantity("fluxes", th_dir + wb_file, extract_series, [out_regions, 'data', 0]),
+            Quantity("temp_min", th_dir + heat_file, extract_series, [regions, 'min', 0]),
+            Quantity("temp_max", th_dir + heat_file, extract_series, [regions, 'max', 0]),
+
+            Quantity("power_ref", ref_dir + eb_file, extract_series, [bc_regions, 'data', 0]),
+            Quantity("temp_ref", ref_dir + heat_file, extract_series, [out_regions, 'average', 0]),
+            Quantity("fluxes_ref", ref_dir + wb_file, extract_series, [out_regions, 'data', 0]),
+            Quantity("temp_min_ref", ref_dir + heat_file, extract_series, [regions, 'min', 0]),
+            Quantity("temp_max_ref", ref_dir + heat_file, extract_series, [regions, 'max', 0]),
+
+            Quantity("n_bad_els", heal_file, self.get_heal_stat, [])
+        ]
+        return quantities
+
 
     def _extract_result(self, sample):
         """
         :param config_dict: Parsed config.yaml. see key comments there.
         : return
         """
-        abs_zero_temp = 273.15
-        year_sec = 60 * 60 * 24 * 365
-        # Sample result structure -> you can enlarge it and other stuff will be done automatically
-        self.result_struct = [["value", "power_time",
-                               "power", "temp", "fluxes", "temp_min", "temp_max",
-                               "power_ref", "temp_ref", "fluxes_ref", "temp_min_ref", "temp_max_ref",
-                               "n_bad_els"],
-                              ["f8", "f8",
-                               "f8", "f8", "f8", "f8",  "f8",
-                               "f8", "f8", "f8", "f8", "f8",
-                               "f8"]]
-
+        quantities = self.define_quantities()
+        q_dict = {q.name: q for q in quantities}
+        self.result_struct = [ ["value"] + [q.name for q in quantities],
+                               ["f8"] + [q.np_type for q in quantities] ]
         sample_dir = sample.directory
-        heal_stat_file = os.path.join(sample_dir, "random_fractures_heal_stats.yaml")
-        finished_file = os.path.join(sample_dir, "FINISHED")
+        for q in quantities:
+            q.file = os.path.join(sample_dir, q.file)
 
+        finished_file = os.path.join(sample_dir, "FINISHED")
         finished = False
         if os.path.exists(finished_file):
             with open(finished_file, "r") as f:
@@ -239,96 +315,34 @@ class RandomFracSimulation(Simulation):
 
         if finished:
             print(sample_dir, "Finished")
-            finished_map = {f:os.path.exists(f) for f in [finished_file, heal_stat_file]}
+            files = {q.file for q in quantities}
+            finished_map = {f:os.path.exists(f) for f in files}
             files_exist = all(finished_map.values())
             if files_exist:
                 print(sample_dir, "Files exist")
-                # Sometimes content of files is not complete, sleep() seems to be workaround
-                # if self.previous_length == 0:
-                #     t.sleep(60)
 
-                with open(heal_stat_file, "r") as f:
-                    stat_doc = yaml.safe_load(f)
-                    n_bad_els = len(stat_doc["flow_stats"]["bad_elements"]) + len(stat_doc["gamma_stats"]["bad_elements"])
+                # read values
+                for q in quantities:
+                    q.value = q.extractor(q.file, *q.args)
+                self.manipulate_quantities(q_dict)
 
-                power_times, th_result_values = self._extract_result_th(os.path.join(sample_dir, "output_02_th"))
-                power_times, th_ref_result_values = self._extract_result_th(os.path.join(sample_dir, "output_03_th"))
+                # scalars to vectors
+                n_times = len(quantities[0].value)
+                for q in quantities:
+                    v = np.atleast_1d(q.value)
+                    if len(v) == 1:
+                        v = np.full(n_times, v[0])
+                    q.value = v
+                    assert n_times == len(q.value)
 
-                if power_times[0] == np.inf:
-                    return [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
-
-                if self.previous_length == 0:
-                    self.previous_length = len(power_times)
-
-                result_values = []
-                for i in range(len(power_times)):
-                    result_values.append((i, power_times[i], *(th_result_values[i]), *(th_ref_result_values[i]), n_bad_els))
-                
-                return result_values
+                q_val_table = np.array([q.value for q in quantities])
+                result = []
+                for i_time in range(n_times):
+                    result.append((i_time, *q_val_table[:, i_time]))
+                return result
             else:
                 print(sample_dir, "missing files", finished_map)
-                return [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
-
+                return [np.inf for q in quantities]
         else:
-            return [None, None, None, None, None, None, None]
+            return [None for q in quantities]
 
-    def _extract_result_th(self, th_outdir):
-
-        abs_zero_temp = 273.15
-        year_sec = 60 * 60 * 24 * 365
-
-        water_balance_file = os.path.join(th_outdir, "water_balance.yaml")
-        energy_balance_file = os.path.join(th_outdir, "energy_balance.yaml")
-        heat_region_stat = os.path.join(th_outdir, "Heat_AdvectionDiffusion_region_stat.yaml")
-
-        finished_map = {f: os.path.exists(f) for f in
-                        [water_balance_file, energy_balance_file, heat_region_stat]}
-        files_exist = all(finished_map.values())
-        if files_exist:
-            print(th_outdir, "Files exist")
-
-            bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
-            regions = ['fr', 'box']
-            out_regions = bc_regions[2:]
-
-            with open(energy_balance_file, "r") as f:
-                power_times, reg_powers = self._extract_time_series(f, bc_regions,
-                                                                    extract=lambda frame: frame['data'][0])
-            with open(heat_region_stat, "r") as f:
-                temp_times, reg_temps = self._extract_time_series(f, out_regions,
-                                                                  extract=lambda frame: frame['average'][0])
-            with open(heat_region_stat, "r") as f:
-                temp_min_times, reg_temp_min = self._extract_time_series(f, regions,
-                                                                         extract=lambda frame: frame['min'][0])
-            with open(heat_region_stat, "r") as f:
-                temp_max_times, reg_temp_max = self._extract_time_series(f, regions,
-                                                                         extract=lambda frame: frame['max'][0])
-            with open(water_balance_file, "r") as f:
-                flux_times, reg_fluxes = self._extract_time_series(f, out_regions,
-                                                                   extract=lambda frame: frame['data'][0])
-
-            power_series = -sum(reg_powers)
-
-            sum_flux = sum(reg_fluxes)
-            avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
-
-            power_series = power_series / 1e6
-            power_times = power_times / year_sec
-            avg_temp = avg_temp - abs_zero_temp
-
-            # compute min and max temperature over regions
-            temp_min = np.full(len(power_times), 1e10)
-            temp_max = np.full(len(power_times), -1e10)
-            for j in range(0, len(power_times)):
-                for i in range(0, len(regions)):
-                    temp_min[j] = min([temp_min[j], reg_temp_min[i][j]])
-                    temp_max[j] = max([temp_max[j], reg_temp_max[i][j]])
-
-            th_result_values = []
-            for i in range(len(power_times)):
-                th_result_values.append((power_series[i], avg_temp[i], sum_flux, temp_min[i], temp_max[i]))
-
-            return power_times, th_result_values
-        else:
-            print(th_outdir, "missing files", finished_map)
-            return [np.inf], [np.inf, np.inf, np.inf, np.inf, np.inf]
