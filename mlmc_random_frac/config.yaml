@@ -43,9 +43,7 @@ geometry:
   # mesh step on fractures
   fracture_mesh_step: 10
   # upper limit on the number of fractures
-  n_frac_limit: 100
-
-  fracture_mesh_step: 15
+  n_frac_limit: 300
 
   # Uniform distribution of the fracture centers near the existing surfaces
   # in order to enhance connectivity.
