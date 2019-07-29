@@ -371,7 +371,6 @@ def prepare_th_input(config_dict):
     time_idx = 1
     time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
 
-
     cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
 
     K = np.where(
@@ -379,6 +378,26 @@ def prepare_th_input(config_dict):
         init_bulk_K,    # true array
         init_fr_K * (cs / init_fr_cs) ** 2
     )
+
+    # get cs and K on fracture elements only
+    fr_indices = np.array([int(key) for key, val in field_cs.items() if val[0] != 1])
+    cs_fr = np.array([cs[i] for i in fr_indices])
+    k_fr = np.array([K[i] for i in fr_indices])
+
+    # compute cs and K statistics and write it to a file
+    fr_param = {}
+    avg = float(np.average(cs_fr))
+    median = float(np.median(cs_fr))
+    interquantile = float(1.5 * (np.quantile(cs_fr, 0.75) - np.quantile(cs_fr, 0.25)))
+    fr_param["fr_cross_section"] = {"avg": avg, "median": median, "interquantile": interquantile}
+
+    avg = float(np.average(k_fr))
+    median = float(np.median(k_fr))
+    interquantile = float(1.5 * (np.quantile(k_fr, 0.75) - np.quantile(k_fr, 0.25)))
+    fr_param["fr_conductivity"] = {"avg": avg, "median": median, "interquantile": interquantile}
+
+    with open('fr_param_output.yaml', 'w') as outfile:
+        yaml.dump(fr_param, outfile, default_flow_style=False)
 
     # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
     th_input_file = 'th_input.msh'
