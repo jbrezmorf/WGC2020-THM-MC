@@ -22,7 +22,7 @@ flow_executable:
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
-mc_samples: 2
+mc_samples: 200
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
@@ -40,6 +40,8 @@ geometry:
   well_effective_radius: 10
   # horizontal distance of the well axes
   well_distance: 200
+  # mesh step on fractures
+  fracture_mesh_step: 10
   # upper limit on the number of fractures
   n_frac_limit: 100
 
