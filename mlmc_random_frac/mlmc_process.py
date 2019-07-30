@@ -544,6 +544,8 @@ class Process(base_process.Process):
 
         ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig.savefig(os.path.join(self.work_dir, "temp_ref_comparison.pdf"))
+        fig.savefig(os.path.join(self.work_dir, "temp_ref_comparison.png"))
         plt.show()
 
     def plot_power_ref_comparison(self, mlmc_est):
@@ -566,6 +568,8 @@ class Process(base_process.Process):
 
         ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig.savefig(os.path.join(self.work_dir, "power_ref_comparison.pdf"))
+        fig.savefig(os.path.join(self.work_dir, "power_ref_comparison.png"))
         plt.show()
 
 
