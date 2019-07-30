@@ -22,13 +22,13 @@ flow_executable:
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
-mc_samples: 2
+mc_samples: 10
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
 # Set to None to generate new meshes. ABSOLUTE PATH
-#mesh_repository: /home/jb/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository
-mesh_repository: /home/pavel_exner/WGC2020-THM-MC/mlmc_random_frac/mesh_repository
+mesh_repository: /storage/liberec3-tul/home/jan_brezina/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository/
+#mesh_repository: /home/pavel_exner/WGC2020-THM-MC/mlmc_random_frac/mesh_repository
 
 geometry:
   # depth of the center of the box and of the coordinate system
@@ -42,14 +42,59 @@ geometry:
   # horizontal distance of the well axes
   well_distance: 200
   # mesh step on fractures
-  fracture_mesh_step: 10
+  fracture_mesh_step: 15
   # upper limit on the number of fractures
-  n_frac_limit: 300
+  n_frac_limit: 200
 
   # Uniform distribution of the fracture centers near the existing surfaces
   # in order to enhance connectivity.
   #connected_position_distr: true
 
+  #fracture_stats:
+      ## SKB data
+      #-   name: NS
+          #trend: 292
+          #plunge: 1
+          #concentration: 17.8
+          #power: 2.5
+          #r_min: 0.038
+          #r_max: 564
+          #p_32: 0.073
+      #-   name: NE
+          #trend: 326
+          #plunge: 2
+          #concentration: 14.3
+          #power: 2.7
+          #r_min: 0.038
+          #r_max: 564
+          #p_32: 0.319
+      #-   name: NW
+          #trend: 60
+          #plunge: 6
+          #concentration: 12.9
+          #power: 3.1
+          #r_min: 0.038
+          #r_max: 564
+          #p_32: 0.107
+      #-   name: EW
+          #trend: 15
+          #plunge: 2
+          #concentration: 14.0
+          #power: 3.1
+          #r_min: 0.038
+          #r_max: 564
+          #p_32: 0.088
+      #-   name: HZ
+          #trend: 5
+          #plunge: 86
+          #concentration: 15.2
+          #power: 2.38
+          #r_min: 0.038
+          #r_max: 564
+          #p_32: 0.543
+
+          
+            # deep data <400m
   fracture_stats:
       # SKB data
       -   name: NS
@@ -59,7 +104,7 @@ geometry:
           power: 2.5
           r_min: 0.038
           r_max: 564
-          p_32: 0.073
+          p_32: 0.094
       -   name: NE
           trend: 326
           plunge: 2
@@ -67,7 +112,7 @@ geometry:
           power: 2.7
           r_min: 0.038
           r_max: 564
-          p_32: 0.319
+          p_32: 0.163
       -   name: NW
           trend: 60
           plunge: 6
@@ -75,7 +120,7 @@ geometry:
           power: 3.1
           r_min: 0.038
           r_max: 564
-          p_32: 0.107
+          p_32: 0.098
       -   name: EW
           trend: 15
           plunge: 2
@@ -83,7 +128,7 @@ geometry:
           power: 3.1
           r_min: 0.038
           r_max: 564
-          p_32: 0.088
+          p_32: 0.039
       -   name: HZ
           trend: 5
           plunge: 86
@@ -91,7 +136,7 @@ geometry:
           power: 2.38
           r_min: 0.038
           r_max: 564
-          p_32: 0.543
+          p_32: 0.141
 
 # base of the mesh file name
 mesh_name: random_fractures

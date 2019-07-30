@@ -268,6 +268,7 @@ class RandomFracSimulation(Simulation):
         eb_file = "energy_balance.yaml"
         heat_file = "Heat_AdvectionDiffusion_region_stat.yaml"
         heal_file = "random_fractures_heal_stats.yaml"
+        fr_param_file = "fr_param_output.yaml"
         extract_series = self._extract_time_series
 
         th_dir = "output_02_th/"
@@ -288,6 +289,7 @@ class RandomFracSimulation(Simulation):
             Quantity("temp_min_ref", ref_dir + heat_file, extract_series, [regions, 'min', 0]),
             Quantity("temp_max_ref", ref_dir + heat_file, extract_series, [regions, 'max', 0]),
 
+            #Quantity("median_cs", fr_param_file
             Quantity("n_bad_els", heal_file, self.get_heal_stat, [])
         ]
         return quantities
