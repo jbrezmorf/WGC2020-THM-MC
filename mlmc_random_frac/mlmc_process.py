@@ -178,20 +178,25 @@ class Process(base_process.Process):
         # self.plot_density(mlmc)
 
         mlmc_est.mlmc.clean_select()
-        print("N all samples: ", mlmc_est.mlmc.n_samples[0])
-        th_02_model_params = {"power": "power", "temp": "temp", "temp_min": "temp_min", "temp_max": "temp_max"}
-        th_03_model_params = {"power": "power_ref", "temp": "temp_ref", "temp_min": "temp_min_ref", "temp_max": "temp_max_ref"}
-        self.select_samples_with_good_values(mlmc_est, th_02_model_params)
-        self.select_samples_with_good_values(mlmc_est, th_03_model_params, add=1)
-        print("N good samples: ", mlmc_est.mlmc.n_samples[0])
+
+        th_02_model_params = ["power", "temp", "temp_min", "temp_max"]
+        th_03_model_params = [n + "_ref" for n in th_02_model_params]
+        print("02_th - stimulated EGS")
+        good_mask = self.select_samples_with_good_values(mlmc_est, th_02_model_params)
+        print("03_th - reference EGS")
+        good_mask = self.select_samples_with_good_values(mlmc_est, th_03_model_params, good_mask=good_mask)
+        #good_mask[np.random.choice(len(good_mask), int(len(good_mask)*0.93))] = False
+        #print("N Random choice: ", sum(good_mask))
+        mlmc_est.mlmc.subsample_by_indices(good_mask)
+
         # self.plot_temp_power(mlmc_est, th_02_model_params)
         # self.plot_temp_power(mlmc_est, th_03_model_params)
 
         self.plot_histogram(mlmc_est, 'temp')
-        self.plot_histogram(mlmc_est, 'power')
+        #self.plot_histogram(mlmc_est, 'power')
 
         self.plot_temp_ref_comparison(mlmc_est)
-        self.plot_power_ref_comparison(mlmc_est)
+        #self.plot_power_ref_comparison(mlmc_est)
 
         # n_samples = int(mlmc_est.mlmc.n_samples)
         # print("N samples: ", n_samples)
@@ -314,7 +319,7 @@ class Process(base_process.Process):
         return q_array[:,0,:]
 
 
-    def select_samples_with_good_values(self, mlmc_est, result_params, add=0):
+    def select_samples_with_good_values(self, mlmc_est, result_params, good_mask=None):
         """
         Selects samples according to the temperature, power, mesh results.
 
@@ -322,39 +327,56 @@ class Process(base_process.Process):
         :return: None
         """
         # determine samples with correct temperature
+        power, temp, temp_min, temp_max = result_params
         n_bad_els = self.get_samples(mlmc_est, 'n_bad_els')
-        temp_min = self.get_samples(mlmc_est, result_params['temp_min'])
-        temp_max = self.get_samples(mlmc_est, result_params['temp_max'])
-        temp = self.get_samples(mlmc_est, result_params['temp'])
-        power = self.get_samples(mlmc_est, result_params['power'])
+        temp_min = self.get_samples(mlmc_est, temp_min)
+        temp_max = self.get_samples(mlmc_est, temp_max)
+        temp = self.get_samples(mlmc_est, temp)
+        power = self.get_samples(mlmc_est, power)
 
         abs_zero_temp = 273.15
         MIN_T = 250
         MAX_T = 470
-        min_power= 1e-2
-        max_power= 10
+        min_power= 0
+        max_power= 30
+        temp_not_nan = ~np.any(np.isnan(temp), axis=1)
         temp_good_min = np.min(temp_min[:, :], axis=1) > MIN_T
         temp_good_max = np.max(temp_max[:, :], axis=1) < MAX_T
-        temp_good = np.logical_and(np.min(temp, axis=1) > MIN_T - 273.15, np.max(temp, axis=1) < MAX_T - 273.15)
-        power_good = np.logical_and(np.min(power, axis=1) > min_power, np.max(power, axis=1) < max_power)
+        temp_good = np.logical_and(np.min(temp[:, :], axis=1) > MIN_T - 273.15,
+                                   np.max(temp[:, :], axis=1) < MAX_T - 273.15)
+        power_good = np.logical_and(np.min(power, axis=1) > min_power,
+                                    np.max(power, axis=1) < max_power)
         no_bad_els = n_bad_els[:, 0] == 0
-        good_mask = np.logical_and(temp_good_min, temp_good_max)
-        good_mask = np.logical_and(good_mask, no_bad_els)
+        N = mlmc_est.mlmc.n_samples[0]
+        print("  N all samples: ", N)
+
+        if good_mask is None:
+            good_mask = np.full_like(power_good, True)
+        good_mask = np.logical_and(good_mask, temp_not_nan)
+        N_old, N = N, np.sum(good_mask)
+        print("  N not nan: {} removed: {}".format(N, N_old - N))
+
+        good_mask = np.logical_and(good_mask, temp_good_max)
+        good_mask = np.logical_and(good_mask, temp_good_min)
         good_mask = np.logical_and(good_mask, temp_good)
+        N_old, N = N, np.sum(good_mask)
+        print("  N good temperature: {} removed: {}".format(N, N_old - N))
+
+        good_mask = np.logical_and(good_mask, no_bad_els)
+        N_old, N = N, np.sum(good_mask)
+        print("  N good elements: {} removed: {}".format(N, N_old - N))
+
         good_mask = np.logical_and(good_mask, power_good)
+        N_old, N = N, np.sum(good_mask)
+        print("  N good power: {} removed: {}".format(N, N_old - N))
+
         good_indices = np.arange(0, len(good_mask))[good_mask]
         bad_indices = np.arange(0, len(good_mask))[~good_mask]
         assert not np.any(np.isnan(temp_max[good_indices]))
         assert not np.any(np.isnan(temp_min[good_indices]))
         assert not np.any(np.isnan(temp[good_indices]))
 
-        print(np.sort(power[:, 30]))
-        if add:
-            assert len(good_mask) == len(self.good_indices)
-            good_mask = np.logical_and(good_mask, self.good_indices)
-        else:
-            self.good_indices = good_indices
-        mlmc_est.mlmc.subsample_by_indices(self.good_indices)
+        return good_mask
 
 
 
@@ -365,37 +387,42 @@ class Process(base_process.Process):
         :param param_name: Sample result param name
         :return: moments means, moments vars -> two numpy arrays
         """
-        assert np.all(self.good_indices == mlmc_est.mlmc.levels[0].sample_indices)
+
         n_moments = 3
         mlmc_est.mlmc.clean_select()
         mlmc_est.mlmc.select_values(None, selected_param=param_name)
-        print("results:", param_name)
+        print("plot param:", param_name)
         samples = mlmc_est.mlmc.levels[0].sample_values[:,0,:]
-        print(samples.shape)
+        print("    shape: ", samples.shape)
         #print(np.any(np.isnan(samples), axis=1))
         domain = Estimate.estimate_domain(mlmc_est.mlmc)
         domain_diff = domain[1] - domain[0]
-        print(domain)
+        print("    domain: ", domain)
         moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
-
         N = mlmc_est.mlmc.n_samples[0]
         mom_means, mom_vars = mlmc_est.estimate_moments(moments_fn)
-        mom_means, mom_vars = mom_means[1:,], mom_vars[1:,]
+
+        mom_means, mom_vars = mom_means[1:, :], mom_vars[1:, :] # omit time=0
         q_mean = mom_means[:, 1]
         q_mean_err = np.sqrt(mom_vars[:, 1])
-        #q_var = (mom_means[:, 2] - q_mean ** 2) * N**2 / (N-1)
-        q_var = q_mean_err * N
+        q_var = (mom_means[:, 2] - q_mean ** 2) * N / (N-1)
+        # print("    means: ", mom_means[-1, :])
+        # print("    vars: ", mom_vars[-1, :])
+        # print("    alt var: ", mom_vars[-1, 1]*N)
+        # print("    qvar : ", q_var[-1])
+        # print("    qvar_err : ", q_var[-1])
+        #q_var = q_mean_err * N
         q_std = np.sqrt(q_var)
-        q_std_err = np.sqrt( q_var + mom_vars[:, 2] * N / (N-1))
+        q_std_err = np.sqrt(q_var + np.sqrt(mom_vars[:, 2] * N / (N-1)))
 
         ax.fill_between(X, q_mean - q_mean_err, q_mean + q_mean_err,
                          color=col, alpha=1)
         ax.fill_between(X, q_mean - q_std, q_mean + q_std,
                          color=col, alpha=0.2)
-        #ax.fill_between(X, q_mean - q_std_err, q_mean - q_std,
-        #                 color=col, alpha=0.4)
-        #ax.fill_between(X, q_mean + q_std, q_mean + q_std_err,
-        #                 color=col, alpha=0.4)
+        ax.fill_between(X, q_mean - q_std_err, q_mean - q_std,
+                         color=col, alpha=0.4)
+        ax.fill_between(X, q_mean + q_std, q_mean + q_std_err,
+                         color=col, alpha=0.4)
 
 
     def result_text(self, mlmc):
@@ -463,7 +490,6 @@ class Process(base_process.Process):
         ax1.set_ylabel('Temperature [C deg]', color='black')
         ax1.tick_params(axis='y', labelcolor='black')
         self.plot_param(mlmc_est, ax1, times, 'red', 'temp')
-
         self.plot_param(mlmc_est, ax1, times, 'orange', 'temp_ref')
 
         ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
