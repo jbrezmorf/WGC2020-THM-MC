@@ -187,6 +187,10 @@ class Process(base_process.Process):
         # self.plot_temp_power(mlmc_est, th_02_model_params)
         # self.plot_temp_power(mlmc_est, th_03_model_params)
 
+        self.plot_histogram_const(mlmc_est, 'fr_cs_med', "fr_cs_median", "Median of $\delta_f$ [mm]", bins=30, scale=1000)
+        self.plot_histogram_const(mlmc_est, 'fr_cond_med', "fr_cond_median", "Median of $k_f$ [m.s$^{-1}$]", bins=30, scale=1)
+        self.plot_histogram_flux(mlmc_est, 'bc_flux', "total_flux_histogram", bins=30)
+
         self.plot_histogram(mlmc_est, 'temp', "temp_histogram", "Temperature [$^\circ$C]", bins=30)
         self.plot_histogram(mlmc_est, 'power', "power_histogram", "Power [MW]", bins=30)
 
@@ -449,13 +453,75 @@ class Process(base_process.Process):
         for t in [1, int((t_min + t_max)/2), t_max]:
             print(t)
             label = "t = " + str(t) + " y"
-            ax1.hist(q[:, t], alpha=0.5, bins=bins, label=label)
+            ax1.hist(q[:, t], alpha=0.5, bins=bins, label=label) #edgecolor='white')
 
         ns = "N = " + str(mlmc_est.mlmc.n_samples[0])
         ax1.set_title(ns)
         ax1.legend()
         fig.savefig(os.path.join(self.work_dir, name + ".pdf"))
         fig.savefig(os.path.join(self.work_dir, name + ".png"))
+        plt.show()
+
+    def plot_histogram_const(self, mlmc_est, quantity, name, ylabel, bins=20, scale=1.0):
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel(ylabel)
+        ax1.set_ylabel('Frequency [-]')
+        ax1.tick_params(axis='y', labelcolor='black')
+
+        q = self.get_samples(mlmc_est, quantity)
+
+        ax1.hist(scale * q[:, 0], alpha=1.0, bins=bins) #edgecolor='white')
+
+        ns = "N = " + str(mlmc_est.mlmc.n_samples[0])
+        ax1.set_title(ns)
+        ax1.legend()
+        fig.savefig(os.path.join(self.work_dir, name + ".pdf"))
+        fig.savefig(os.path.join(self.work_dir, name + ".png"))
+        plt.show()
+
+    def plot_histogram_flux(self, mlmc_est, quantity, name, bins=20):
+        scale = -1000 # l.s^{-1}
+        q_fr = self.get_samples(mlmc_est, quantity + "_fr")
+        q_bulk = self.get_samples(mlmc_est, quantity + "_bulk")
+        q_scaled = (q_fr[:, 0] + q_bulk[:, 0]) * scale
+
+        q_fr_ref = self.get_samples(mlmc_est, quantity + "_fr_ref")
+        q_bulk_ref = self.get_samples(mlmc_est, quantity + "_bulk_ref")
+        q_ref_scaled = (q_fr_ref[:, 0] + q_bulk_ref[:, 0]) * scale
+
+        # plot total flux
+        fig1, ax1 = plt.subplots()
+        ax1.set_xlabel("Logarithm of total flux out [l$s^{-1}$]")
+        ax1.set_ylabel('Frequency [-]')
+        ax1.tick_params(axis='y', labelcolor='black')
+        ax1.hist(np.log10(q_scaled), alpha=0.5, bins=bins, label="stimulated")
+        ax1.hist(np.log10(q_ref_scaled), alpha=0.5, bins=bins, label="reference")
+        # ax1.hist(np.log10(q_scaled), alpha=0.5, bins=bins, label="stimulated", density="true")
+        # ax1.hist(np.log10(q_ref_scaled), alpha=0.5, bins=bins, label="reference", density="true")
+
+        ns = "N = " + str(mlmc_est.mlmc.n_samples[0])
+        ax1.set_title(ns)
+        ax1.legend()
+        fig1.savefig(os.path.join(self.work_dir, "total_" + name + ".pdf"))
+        fig1.savefig(os.path.join(self.work_dir, "total_" + name + ".png"))
+        plt.show()
+
+        # plot flux ratio
+        fig2, ax2 = plt.subplots()
+        ax2.set_xlabel("Ratio fr/bulk flux out [-]")
+        ax2.set_ylabel('Frequency [-]')
+        ax2.tick_params(axis='y', labelcolor='black')
+
+        q_ratio = scale * q_fr[:, 0] / q_scaled
+        q_ratio_ref = scale * q_fr_ref[:, 0] / q_ref_scaled
+        ax2.hist(q_ratio, alpha=0.5, bins=bins, label="stimulated")
+        ax2.hist(q_ratio_ref, alpha=0.5, bins=bins, label="reference")
+
+        ns = "N = " + str(mlmc_est.mlmc.n_samples[0])
+        ax2.set_title(ns)
+        ax2.legend()
+        fig2.savefig(os.path.join(self.work_dir, "ratio_" + name + ".pdf"))
+        fig2.savefig(os.path.join(self.work_dir, "ratio_" + name + ".png"))
         plt.show()
 
     def plot_temp_ref_comparison(self, mlmc_est):
