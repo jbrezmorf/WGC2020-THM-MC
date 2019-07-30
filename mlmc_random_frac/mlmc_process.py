@@ -187,8 +187,8 @@ class Process(base_process.Process):
         # self.plot_temp_power(mlmc_est, th_02_model_params)
         # self.plot_temp_power(mlmc_est, th_03_model_params)
 
-        self.plot_histogram(mlmc_est, 'temp')
-        self.plot_histogram(mlmc_est, 'power')
+        self.plot_histogram(mlmc_est, 'temp', "temp_histogram", "Temperature [$^\circ$C]", bins=30)
+        self.plot_histogram(mlmc_est, 'power', "power_histogram", "Power [MW]", bins=30)
 
         self.plot_temp_ref_comparison(mlmc_est)
         self.plot_power_ref_comparison(mlmc_est)
@@ -329,10 +329,10 @@ class Process(base_process.Process):
         power = self.get_samples(mlmc_est, result_params['power'])
 
         abs_zero_temp = 273.15
-        MIN_T = 250
+        MIN_T = 273.15
         MAX_T = 470
         min_power= 1e-2
-        max_power= 10
+        max_power= 50
         temp_good_min = np.min(temp_min[:, :], axis=1) > MIN_T
         temp_good_max = np.max(temp_max[:, :], axis=1) < MAX_T
         temp_good = np.logical_and(np.min(temp, axis=1) > MIN_T - 273.15, np.max(temp, axis=1) < MAX_T - 273.15)
@@ -421,7 +421,7 @@ class Process(base_process.Process):
         fig, ax1 = plt.subplots()
         temp_color = 'red'
         ax1.set_xlabel('time [y]')
-        ax1.set_ylabel('Temperature [C deg]', color=temp_color)
+        ax1.set_ylabel('Temperature [$^\circ$C]', color=temp_color)
         ax1.tick_params(axis='y', labelcolor=temp_color)
         self.plot_param(mlmc_est, ax1, times, temp_color, result_params['temp'])
 
@@ -436,16 +436,26 @@ class Process(base_process.Process):
         fig.savefig("temp_power.pdf")
         plt.show()
 
-    def plot_histogram(self, mlmc_est, quantity):
+    def plot_histogram(self, mlmc_est, quantity, name, ylabel, bins):
         fig, ax1 = plt.subplots()
+        ax1.set_xlabel(ylabel)
+        ax1.set_ylabel('Frequency [-]')
+        ax1.tick_params(axis='y', labelcolor='black')
+
         times = np.average(self.get_samples(mlmc_est, 'value'), axis=0)[1:]
         t_min = 0
         t_max = int(times[-1])
         q = self.get_samples(mlmc_est, quantity)
         for t in [1, int((t_min + t_max)/2), t_max]:
             print(t)
-            ax1.hist(q[:,t], bins=20)
-        #fig.savefig("temp_power.pdf")
+            label = "t = " + str(t) + " y"
+            ax1.hist(q[:, t], alpha=0.5, bins=bins, label=label)
+
+        ns = "N = " + str(mlmc_est.mlmc.n_samples[0])
+        ax1.set_title(ns)
+        ax1.legend()
+        fig.savefig(os.path.join(self.work_dir, name + ".pdf"))
+        fig.savefig(os.path.join(self.work_dir, name + ".png"))
         plt.show()
 
     def plot_temp_ref_comparison(self, mlmc_est):
@@ -460,7 +470,7 @@ class Process(base_process.Process):
         # Plot temperature
         fig, ax1 = plt.subplots()
         ax1.set_xlabel('time [y]')
-        ax1.set_ylabel('Temperature [C deg]', color='black')
+        ax1.set_ylabel('Temperature [$^\circ$C]', color='black')
         ax1.tick_params(axis='y', labelcolor='black')
         self.plot_param(mlmc_est, ax1, times, 'red', 'temp')
 
