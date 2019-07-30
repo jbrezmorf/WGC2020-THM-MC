@@ -1,0 +1,7 @@
+output_por_disp_01
+    - no dispersivity
+output_por_disp_02
+    - no dispersivity
+    - increase porosity 0.8
+output_por_disp_03
+    - increase porosity 0.8

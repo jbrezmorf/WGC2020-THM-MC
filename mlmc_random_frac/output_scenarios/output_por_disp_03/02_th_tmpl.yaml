@@ -1,0 +1,136 @@
+flow123d_version: 2.0.0
+problem: !Coupling_Sequential
+  description: Heat transfer in EGS after stimulation of fractures
+  mesh:
+    mesh_file: <mesh>
+    regions:
+      - !Union
+        name: fractures
+        regions: <fracture_regions>
+      - !Union
+        name: .left_well_fr
+        regions: <left_well_fracture_regions>
+      - !Union
+        name: .right_well_fr
+        regions: <right_well_fracture_regions>
+
+  flow_equation: !Flow_Darcy_MH
+    output_specific:
+    nonlinear_solver:
+      linear_solver: !Petsc
+        a_tol: <flow_solver__a_tol>
+        r_tol: <flow_solver__r_tol>
+        options: <flow_solver__options>
+
+        #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+#        options: -ksp_type preonly -pc_type lu
+    n_schurs: 2
+    input_fields:
+      - region: box   # we assume steady flow, hence storativity is not set
+        conductivity: <bulk_conductivity>
+        init_piezo_head: 0
+
+      - region: fractures
+        cross_section: !FieldFE  # loaded from HM simulation
+          mesh_data_file: th_input.msh
+          field_name: cross_section_updated
+          default_value: 1e-3
+          # ???
+          read_time_shift: [1, 'd']   # 86400
+        conductivity: !FieldFE  # loaded from HM simulation
+          mesh_data_file: th_input.msh
+          field_name: conductivity
+          default_value: <fr_conductivity>
+          init_piezo_head: 0
+
+        init_piezo_head: 0
+
+      - region: .left_well_fr
+        bc_type: total_flux
+        bc_piezo_head: <well_piezohead_inject> 
+        bc_robin_sigma: !FieldFormula
+          value: <fr_conductivity> / (10*log(10/0.15)) # cca 5.5e-5
+      - region: .left_well
+        bc_type: total_flux
+        bc_piezo_head: <well_piezohead_inject>
+        bc_robin_sigma: !FieldFormula
+          value: <sigma_bulk_conductivity> / (10*log(10/0.15))
+
+      - region: .right_well_fr
+        bc_type: total_flux
+        bc_piezo_head: <well_piezohead_pump>
+        bc_robin_sigma: !FieldFormula
+          value: <fr_conductivity> / (10*log(10/0.15))
+      - region: .right_well
+        bc_type: total_flux
+        bc_piezo_head: <well_piezohead_pump>
+        bc_robin_sigma: !FieldFormula
+          value: <sigma_bulk_conductivity> / (10*log(10/0.15))
+
+
+    output:
+      fields:
+        - piezo_head_p0
+        - pressure_p0
+        - velocity_p0
+        - region_id
+        - cross_section
+    balance:
+      cumulative: true
+    output_stream: 
+      format: !vtk
+        variant: ascii
+
+  heat_equation: !Heat_AdvectionDiffusion_DG
+    balance:
+      cumulative: true
+    input_fields:
+      - region: BULK
+        fluid_density: 1000
+        fluid_heat_capacity: 4000
+        fluid_heat_conductivity: 0.5
+        solid_density: 2700
+        solid_heat_capacity: 790
+        solid_heat_conductivity: 2.5
+        disp_l: 20             # conservative according to Sahimi 1986
+        disp_t: 2
+        fracture_sigma: 1.0   #2000   # 2/cross_section; cs = 1e-3
+        dg_penalty: 0.5
+        init_temperature: !FieldFormula
+          value: 10-(z-5000)/5000*150+273.15  # geothermal gradient 30 K/km, temperature 10 C at surface (5 km above well end)
+      - region: box
+        porosity: 5e-3   # value of porosity does not influence the results
+      - region: fractures
+        porosity: 8e-1
+
+      - region:
+          - .left_well_fr
+          - .left_well
+        bc_type: dirichlet  # dirichlet is not optimal, temperature 15 C at left "well" should be extrapolated from the well radius and artificial mesh radius
+        bc_temperature: !FieldFormula
+          value: 15+273.15
+      - region: [ .side_x0, .side_x1, .side_y0, .side_y1, .side_z0 ]
+        bc_type: inflow
+        bc_temperature: !FieldFormula
+          value: 10-(z-5000)/5000*150+273.15
+    output_stream:
+      file: heat
+      format: !vtk
+        variant: ascii
+      #observe_points:
+        #- point: [ 90.875, -4.091, -17.826 ]   # observe temperature at intersection of right fracture and right "well"
+          #snap_region: right_fr
+    output:
+      fields:
+        - temperature
+        - region_id
+      #observe_fields: temperature
+      times:
+        - {step: 1, time_unit: 'y'}      # 31557600       # 1 yr
+    solver: !Petsc
+      a_tol: <heat_solver__a_tol>
+      r_tol: <heat_solver__r_tol>
+      options: <heat_solver__options>
+
+    time:
+      end_time: [30, 'y'] #946728000       # 30 yr
