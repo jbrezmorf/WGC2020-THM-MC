@@ -502,8 +502,10 @@ class Process(base_process.Process):
         self.plot_param(mlmc_est, ax1, times, 'red', 'temp')
         self.plot_param(mlmc_est, ax1, times, 'orange', 'temp_ref')
 
-        ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
+        ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig.savefig(os.path.join(self.work_dir, "temp_comparison.pdf"))
+        fig.savefig(os.path.join(self.work_dir, "temp_comparison.png"))
         plt.show()
 
     def plot_power_ref_comparison(self, mlmc_est):
@@ -524,8 +526,10 @@ class Process(base_process.Process):
 
         self.plot_param(mlmc_est, ax1, times, 'forestgreen', 'power_ref')
 
-        ax1.legend(["MH+TH", "var(T)", "TH only", "var(T)"])
+        ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig.savefig(os.path.join(self.work_dir, "power_comparison.pdf"))
+        fig.savefig(os.path.join(self.work_dir, "power_comparison.png"))
         plt.show()
 
 
