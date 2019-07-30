@@ -22,7 +22,7 @@ flow_executable:
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
 metacentrum: true
 
-mc_samples: 2
+mc_samples: 1000
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
@@ -104,10 +104,10 @@ hm_params:
     mesh: random_fractures.msh
     in_file: 01_hm
 
-    well_piezohead: 1e4 # h*rho*g = 1e4*1e3*10 = 100 MPa
+    well_piezohead: 5e3 # h*rho*g = 1e4*1e3*10 = 100 MPa
     
-    fr_cross_section: &fr_cs_init 1e-4
-    fr_conductivity: &fr_cond_init 1e-2     # k = 1/12 * cs^2 * rho*g/visc = 1/12 1e-8 * 1000*10*1e3 =approx. 1e-2
+    fr_cross_section: &fr_cs_init 5e-5
+    fr_conductivity: &fr_cond_init 2.5e-3     # k = 1/12 * cs^2 * rho*g/visc = 1/12 1e-8 * 1000*10*1e3 =approx. 1e-2
     bulk_conductivity: &bulk_cond_init 1e-9
 
     mechanics_solver__a_tol: 1e-14
@@ -195,8 +195,9 @@ th_params:
     
     fr_conductivity: *fr_cond_init
     bulk_conductivity: 1e-8
-    sigma_bulk_conductivity: 1e-6
-    min_fr_cross_section: 1e-4
+    sigma_bulk_conductivity: 1e-7
+    min_fr_cross_section: 5e-5
+    max_fr_cross_section: 5e-3
 
     flow_solver__a_tol: *fatol
     flow_solver__r_tol: *frtol
@@ -230,7 +231,7 @@ th_params_ref:
     fr_cross_section: *fr_cs_init
     fr_conductivity: *fr_cond_init
     bulk_conductivity: 1e-8
-    sigma_bulk_conductivity: 1e-6
+    sigma_bulk_conductivity: 1e-7
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol
