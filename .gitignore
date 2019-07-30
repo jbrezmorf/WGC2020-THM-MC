@@ -12,3 +12,10 @@ venv/*
 
 #
 */output_1/*
+
+mlmc_random_frac/fr*
+mlmc_random_frac/_save/*
+mlmc_random_frac/pe_fr*
+mlmc_random_frac/tst_cfg
+fixed-3-frac/output_th
+
