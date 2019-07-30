@@ -101,7 +101,7 @@ problem: !Coupling_Sequential
       - region: box
         porosity: 5e-3   # value of porosity does not influence the results
       - region: fractures
-        porosity: 5e-2
+        porosity: 8e-1
 
       - region:
           - .left_well_fr
