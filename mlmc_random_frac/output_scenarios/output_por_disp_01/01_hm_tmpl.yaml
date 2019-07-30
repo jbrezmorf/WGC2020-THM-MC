@@ -1,0 +1,216 @@
+flow123d_version: 2.0.0
+problem: !Coupling_Sequential
+  description: Hydraulic stimulation of fractures connecting two open well ends
+  mesh:
+    mesh_file: <mesh>
+    regions:
+      - !Union
+        name: fractures
+        regions: <fracture_regions>
+      - !Union
+        name: .left_well_fr
+        regions: <left_well_fracture_regions>
+      - !Union
+        name: .right_well_fr
+        regions: <right_well_fracture_regions>
+  flow_equation: !Coupling_Iterative
+    input_fields:
+      - region: BULK
+        biot_alpha: 0.6
+        fluid_density: 1000
+    time:
+      end_time: 86400 # 1 day
+    iteration_parameter: 0.5 # affects convergence of HM coupling (defaults to 1, lower value sometimes helps)
+    a_tol: 0
+    r_tol: 1e-3
+    flow_equation: !Flow_Richards_LMH
+        output_specific:
+        nonlinear_solver:
+          linear_solver: !Petsc
+            a_tol: <flow_solver__a_tol>
+            r_tol: <flow_solver__r_tol>
+            options: <flow_solver__options>
+            # Boomeramg options:
+            # -ksp_type richardson              - recomended usage when solving just by multigrid
+            #  -pc_hypre_boomeramg_cycle_type <V> Cycle type (choose one of) V W (None)
+            #                                 cans try: V, W
+            #  -pc_hypre_boomeramg_max_levels <25>: Number of levels (of grids) allowed (None)
+            #  -pc_hypre_boomeramg_max_iter <1>: Maximum iterations used PER hypre call (None)
+            #                                  PETSC recomend more then 1 when just richardson KSP is used
+            #  -pc_hypre_boomeramg_tol <0.>: Convergence tolerance PER hypre call (0.0 = use a fixed number of iterations) (None)
+            #                                  PETSC says 1e-7 is default, when previous is not set
+            #  -pc_hypre_boomeramg_strong_threshold <0.25>: Threshold for being strongly connected (None)
+            #                                  HYPRE recommends 0.5 for 3d problems
+            #
+            #  -pc_hypre_boomeramg_P_max <0>: Max elements per row for interpolation operator (0=unlimited) (None)
+            #  -pc_hypre_boomeramg_agg_nl <0>: Number of levels of aggressive coarsening (None)
+            #  -pc_hypre_boomeramg_agg_num_paths <1>: Number of paths for aggressive coarsening (None)
+            #  -pc_hypre_boomeramg_strong_threshold <0.25>: Threshold for being strongly connected (None)
+            #  -pc_hypre_boomeramg_coarsen_type <Falgout> Coarsen type (choose one of) CLJP Ruge-Stueben  modifiedRuge-Stueben   Falgout  PMIS  HMIS (None)
+            #  -pc_hypre_boomeramg_interp_type <classical> Interpolation type (choose one of) classical   direct multipass multipass-wts ext+i ext+i-cc standard standard-wts block block-wtd FF FF1 (None)
+
+            #  -pc_hypre_boomeramg_relax_type_all <symmetric-SOR/Jacobi> Relax type for the up and down cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+            #  -pc_hypre_boomeramg_relax_type_down <symmetric-SOR/Jacobi> Relax type for the down cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+            #  -pc_hypre_boomeramg_relax_type_up <symmetric-SOR/Jacobi> Relax type for the up cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+            #  -pc_hypre_boomeramg_relax_type_coarse <Gaussian-elimination> Relax type on coarse grid (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+            #  -pc_hypre_boomeramg_relax_weight_all <1.>: Relaxation weight for all levels (0 = hypre estimates, -k = determined with k CG steps) (None)
+            #  -pc_hypre_boomeramg_relax_weight_level <1.>: Set the relaxation weight for a particular level (weight,level) (None)
+            #  -pc_hypre_boomeramg_outer_relax_weight_all <1.>: Outer relaxation weight for all levels (-k = determined with k CG steps) (None)
+            #  -pc_hypre_boomeramg_outer_relax_weight_level <1.>: Set the outer relaxation weight for a particular level (weight,level) (None)
+            #  -pc_hypre_boomeramg_no_CF: <FALSE> Do not use CF-relaxation (None)
+
+
+            # -pc_hypre_boomeramg_max_iter <1>  - number of V/W cycles
+            # -pc_hypre_boomeramg_tol <1e-7>    - tolerance of MG solver
+            # -pc_hypre_boomeramg_coarsen_type  [PMIS  HMIS]  - recomenden for 3d problems
+            # -pc_hypre_boomeramg_interp_type [ext+i ext+i-cc] - probably recomended for 3d problems
+            # -pc_hypre_boomeramg_strong_threshold <0.5> - recomended for 3d problems
+            # for cg one must use symmetric smoother (default is hybrid Gauss-Siedel)
+            # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+
+            # Experiements:
+            # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+            # it: 421 r_tol 1e-7
+            #options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5 -ksp_monitor
+            # it: 696 r_tol 1e-7
+            #options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type HMIS -pc_hypre_boomeramg_strong_threshold 0.5 -ksp_monitor
+            # it: 705 r_tol 1e-7
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+            # it: 414 r_tol 1e-7
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all FCF-Jacobi
+            # failed: indefinite PC
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Jacobi
+            # failed: indefinite PC
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Chebyshev
+
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type HMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+            # it: 414 r_tol 1e-7
+
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all symmetric-SOR/Jacobi
+            #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor -pc_hypre_boomeramg_relax_type_all Jacobi
+
+            # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
+            # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.4  -ksp_monitor
+            # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.6  -ksp_monitor
+        n_schurs: 2
+        input_fields:
+          - region: box
+            conductivity: <bulk_conductivity>
+            storativity: 2e-7
+            init_piezo_head: 0    # piezometric head is shifted so that at the center of wells the pressure height is zero
+          - region: fractures
+            cross_section: <fr_cross_section>
+            conductivity: <fr_conductivity>
+            storativity: 2e-7
+            init_piezo_head: 0
+
+          - region: .left_well_fr
+            bc_type: total_flux
+            bc_piezo_head: <well_piezohead>
+            bc_robin_sigma: !FieldFormula # computed using analytic solution near well as: conductivity / (R * ln(R/rho))
+              value: <fr_conductivity> / (10*log(10/0.15))
+          - region: .left_well
+            bc_type: total_flux
+            bc_piezo_head: <well_piezohead>
+            bc_robin_sigma: !FieldFormula
+              value: <bulk_conductivity> / (10*log(10/0.15))
+              
+
+          - region: .right_well_fr
+            bc_type: total_flux
+            bc_piezo_head: <well_piezohead>
+            bc_robin_sigma: !FieldFormula
+              value: <fr_conductivity> / (10*log(10/0.15))
+          - region: .right_well
+            bc_type: total_flux
+            bc_piezo_head: <well_piezohead>
+            bc_robin_sigma: !FieldFormula
+              value: <bulk_conductivity> / (10*log(10/0.15))
+
+          - region: [ .side_x0, .side_x1, .side_y0, .side_y1 ]
+            bc_type: dirichlet
+            bc_piezo_head: 0
+        output:
+          fields:
+            - piezo_head_p0
+            - pressure_p0
+            - velocity_p0
+            - region_id
+        balance:
+          cumulative: true
+        output_stream: 
+          format: !vtk
+            variant: ascii
+    mechanics_equation:
+        output_stream:
+          file: mechanics.pvd
+          format: !gmsh
+            variant: ascii
+        output:
+          fields:
+            - displacement
+            - stress
+            - cross_section_updated
+            - displacement_divergence
+            - region_id
+        solver: !Petsc
+          a_tol: <mechanics_solver__a_tol>
+          r_tol: <mechanics_solver__r_tol>
+          options: <mechanics_solver__options>
+          # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
+          #options: -ksp_type cg -pc_type icc -pc_factor_levels 2 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 3.0 -ksp_monitor
+        input_fields:
+          - region: box
+            young_modulus: 50e9
+            poisson_ratio: 0.25
+          - region: fractures
+            young_modulus: 50e0
+            poisson_ratio: 0.25
+
+          - region: [ .side_z0 ]
+            bc_type: displacement
+            bc_displacement: 0
+          - region: [ .side_x0, .side_x1, .side_y0, .side_y1 ]
+            bc_type: displacement_n  # lateral sides can move in vertical direction
+            bc_displacement: 0
+
+# Boomer options
+
+#  -pc_hypre_type <boomeramg> HYPRE preconditioner type (choose one of) pilut parasails boomeramg ams (PCHYPRESetType) HYPRE BoomerAMG Options
+#  -pc_hypre_boomeramg_cycle_type <V> Cycle type (choose one of) V W (None)
+#  -pc_hypre_boomeramg_max_levels <25>: Number of levels (of grids) allowed (None)
+#  -pc_hypre_boomeramg_max_iter <1>: Maximum iterations used PER hypre call (None)
+#  -pc_hypre_boomeramg_tol <0.>: Convergence tolerance PER hypre call (0.0 = use a fixed number of iterations) (None)
+#  -pc_hypre_boomeramg_truncfactor <0.>: Truncation factor for interpolation (0=no truncation) (None)
+#  -pc_hypre_boomeramg_P_max <0>: Max elements per row for interpolation operator (0=unlimited) (None)
+#  -pc_hypre_boomeramg_agg_nl <0>: Number of levels of aggressive coarsening (None)
+#  -pc_hypre_boomeramg_agg_num_paths <1>: Number of paths for aggressive coarsening (None)
+#  -pc_hypre_boomeramg_strong_threshold <0.25>: Threshold for being strongly connected (None)
+#  -pc_hypre_boomeramg_max_row_sum <0.9>: Maximum row sum (None)
+#  -pc_hypre_boomeramg_grid_sweeps_all <1>: Number of sweeps for the up and down grid levels (None)
+#  -pc_hypre_boomeramg_nodal_coarsen <0>: Use a nodal based coarsening 1-6 (HYPRE_BoomerAMGSetNodal)
+#  -pc_hypre_boomeramg_vec_interp_variant <0>: Variant of algorithm 1-3 (HYPRE_BoomerAMGSetInterpVecVariant)
+#  -pc_hypre_boomeramg_grid_sweeps_down <1>: Number of sweeps for the down cycles (None)
+#  -pc_hypre_boomeramg_grid_sweeps_up <1>: Number of sweeps for the up cycles (None)
+#  -pc_hypre_boomeramg_grid_sweeps_coarse <1>: Number of sweeps for the coarse level (None)
+#  -pc_hypre_boomeramg_smooth_type <Schwarz-smoothers> Enable more complex smoothers (choose one of) Schwarz-smoothers Pilut ParaSails Euclid (None)
+#  -pc_hypre_boomeramg_smooth_num_levels <25>: Number of levels on which more complex smoothers are used (None)
+#  -pc_hypre_boomeramg_eu_level <0>: Number of levels for ILU(k) in Euclid smoother (None)
+#  -pc_hypre_boomeramg_eu_droptolerance <0.>: Drop tolerance for ILU(k) in Euclid smoother (None)
+#  -pc_hypre_boomeramg_eu_bj: <FALSE> Use Block Jacobi for ILU in Euclid smoother? (None)
+#  -pc_hypre_boomeramg_relax_type_all <symmetric-SOR/Jacobi> Relax type for the up and down cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+#  -pc_hypre_boomeramg_relax_type_down <symmetric-SOR/Jacobi> Relax type for the down cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+#  -pc_hypre_boomeramg_relax_type_up <symmetric-SOR/Jacobi> Relax type for the up cycles (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+#  -pc_hypre_boomeramg_relax_type_coarse <Gaussian-elimination> Relax type on coarse grid (choose one of) Jacobi sequential-Gauss-Seidel seqboundary-Gauss-Seidel SOR/Jacobi backward-SOR/Jacobi  symmetric-SOR/Jacobi  l1scaled-SOR/Jacobi Gaussian-elimination      CG Chebyshev FCF-Jacobi l1scaled-Jacobi (None)
+#  -pc_hypre_boomeramg_relax_weight_all <1.>: Relaxation weight for all levels (0 = hypre estimates, -k = determined with k CG steps) (None)
+#  -pc_hypre_boomeramg_relax_weight_level <1.>: Set the relaxation weight for a particular level (weight,level) (None)
+#  -pc_hypre_boomeramg_outer_relax_weight_all <1.>: Outer relaxation weight for all levels (-k = determined with k CG steps) (None)
+#  -pc_hypre_boomeramg_outer_relax_weight_level <1.>: Set the outer relaxation weight for a particular level (weight,level) (None)
+#  -pc_hypre_boomeramg_no_CF: <FALSE> Do not use CF-relaxation (None)
+#  -pc_hypre_boomeramg_measure_type <local> Measure type (choose one of) local global (None)
+#  -pc_hypre_boomeramg_coarsen_type <Falgout> Coarsen type (choose one of) CLJP Ruge-Stueben  modifiedRuge-Stueben   Falgout  PMIS  HMIS (None)
+#  -pc_hypre_boomeramg_interp_type <classical> Interpolation type (choose one of) classical   direct multipass multipass-wts ext+i ext+i-cc standard standard-wts block block-wtd FF FF1 (None)
+#  -pc_hypre_boomeramg_print_statistics: Print statistics (None)
+#  -pc_hypre_boomeramg_print_debug: Print debug information (None)
+#  -pc_hypre_boomeramg_nodal_relaxation: <FALSE> Nodal relaxation via Schwarz (None)
+
