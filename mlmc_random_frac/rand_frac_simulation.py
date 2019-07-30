@@ -222,11 +222,18 @@ class RandomFracSimulation(Simulation):
         series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
         return series
 
-
-    def get_heal_stat(self, f):
+    def extract_yaml_const(self, f, *keys):
         with open(f, "r") as f:
-            stat_doc = yaml.safe_load(f)
-            return  len(stat_doc["flow_stats"]["bad_elements"]) + len(stat_doc["gamma_stats"]["bad_elements"])
+            content = yaml.safe_load(f)
+            for k in keys:
+                content = content[k]
+            assert np.isscalar(content)
+            return content
+
+    def get_heal_stat(self, fname):
+        with open(fname, "r") as f:
+            content = yaml.safe_load(f)
+            return  len(content["flow_stats"]["bad_elements"]) + len(content["gamma_stats"]["bad_elements"])
 
 
     def compute_th_quantities(self, power, temp, flux, t_min, t_max):
@@ -249,6 +256,10 @@ class RandomFracSimulation(Simulation):
         flux.value = sum_flux
         t_min.value = temp_min
         t_max.value = temp_max
+
+    def get_fr_param(self, f, ):
+        with open(f, "r") as f:
+            stat_doc = yaml.safe_load(f)
 
     def manipulate_quantities(self, q_dict):
         # manipulate values
@@ -279,17 +290,32 @@ class RandomFracSimulation(Simulation):
 
             Quantity("power", th_dir + eb_file, extract_series, [bc_regions, 'data', 0]),
             Quantity("temp", th_dir + heat_file, extract_series, [out_regions, 'average', 0]),
-            Quantity("fluxes", th_dir + wb_file, extract_series, [out_regions, 'data', 0]),
             Quantity("temp_min", th_dir + heat_file, extract_series, [regions, 'min', 0]),
             Quantity("temp_max", th_dir + heat_file, extract_series, [regions, 'max', 0]),
+            Quantity("fluxes", th_dir + wb_file, extract_series, [out_regions, 'data', 0]),
+            Quantity("bc_flux_bulk", th_dir + wb_file, extract_series, [['.right_well'], 'data', 0]),
+            Quantity("bc_flux_fr", th_dir + wb_file, extract_series, [['.fr_right_well'], 'data', 0]),
+            Quantity("bc_influx_bulk_ref", ref_dir + wb_file, extract_series, [['.left_well'], 'data', 0]),
+            Quantity("bc_influx_fr_ref", ref_dir + wb_file, extract_series, [['.fr_left_well'], 'data', 0]),
 
             Quantity("power_ref", ref_dir + eb_file, extract_series, [bc_regions, 'data', 0]),
             Quantity("temp_ref", ref_dir + heat_file, extract_series, [out_regions, 'average', 0]),
-            Quantity("fluxes_ref", ref_dir + wb_file, extract_series, [out_regions, 'data', 0]),
             Quantity("temp_min_ref", ref_dir + heat_file, extract_series, [regions, 'min', 0]),
             Quantity("temp_max_ref", ref_dir + heat_file, extract_series, [regions, 'max', 0]),
+            Quantity("fluxes_ref", ref_dir + wb_file, extract_series, [out_regions, 'data', 0]),
+            Quantity("bc_flux_bulk_ref", ref_dir + wb_file, extract_series, [['.right_well'], 'data', 0]),
+            Quantity("bc_flux_fr_ref", ref_dir + wb_file, extract_series, [['.fr_right_well'], 'data', 0]),
+            Quantity("bc_influx_bulk_ref", ref_dir + wb_file, extract_series, [['.left_well'], 'data', 0]),
+            Quantity("bc_influx_fr_ref", ref_dir + wb_file, extract_series, [['.fr_left_well'], 'data', 0]),
 
-            #Quantity("median_cs", fr_param_file
+            Quantity("fr_cs_med", fr_param_file, self.extract_yaml_const, ["fr_cross_section", "median"]),
+            Quantity("fr_cs_iqr", fr_param_file, self.extract_yaml_const, ["fr_cross_section", "interquantile"]),
+            Quantity("fr_cs_avg", fr_param_file, self.extract_yaml_const, ["fr_cross_section", "avg"]),
+            Quantity("fr_cond_med", fr_param_file, self.extract_yaml_const, ["fr_conductivity", "median"]),
+            Quantity("fr_cond_iqr", fr_param_file, self.extract_yaml_const, ["fr_conductivity", "interquantile"]),
+            Quantity("fr_cond_avg", fr_param_file, self.extract_yaml_const, ["fr_conductivity", "avg"]),
+
+
             Quantity("n_bad_els", heal_file, self.get_heal_stat, [])
         ]
         return quantities
