@@ -367,11 +367,14 @@ def prepare_th_input(config_dict):
     init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
     init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
     min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
+    max_fr_cross_section = float(config_dict['th_params']['max_fr_cross_section'])
 
     time_idx = 1
     time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
 
+    # cut small and large values of cross-section
     cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
+    cs = np.minimum(cs, max_fr_cross_section)
 
     K = np.where(
         cs == 1.0,      # condition
