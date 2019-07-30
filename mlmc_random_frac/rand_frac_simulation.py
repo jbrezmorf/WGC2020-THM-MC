@@ -295,8 +295,8 @@ class RandomFracSimulation(Simulation):
             Quantity("fluxes", th_dir + wb_file, extract_series, [out_regions, 'data', 0]),
             Quantity("bc_flux_bulk", th_dir + wb_file, extract_series, [['.right_well'], 'data', 0]),
             Quantity("bc_flux_fr", th_dir + wb_file, extract_series, [['.fr_right_well'], 'data', 0]),
-            Quantity("bc_influx_bulk_ref", ref_dir + wb_file, extract_series, [['.left_well'], 'data', 0]),
-            Quantity("bc_influx_fr_ref", ref_dir + wb_file, extract_series, [['.fr_left_well'], 'data', 0]),
+            Quantity("bc_influx_bulk", ref_dir + wb_file, extract_series, [['.left_well'], 'data', 0]),
+            Quantity("bc_influx_fr", ref_dir + wb_file, extract_series, [['.fr_left_well'], 'data', 0]),
 
             Quantity("power_ref", ref_dir + eb_file, extract_series, [bc_regions, 'data', 0]),
             Quantity("temp_ref", ref_dir + heat_file, extract_series, [out_regions, 'average', 0]),
