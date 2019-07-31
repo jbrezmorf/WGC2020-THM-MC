@@ -1,10 +1,13 @@
 import os
 from shutil import copyfile
 
-
-
+if len(sys.argv) > 1:
+    mesh_repo = sys.argv[1]
+else:
+    mesh_repo = "mesh_repository"
+    
 samples_dir = os.path.join("output_1", "sim_0_step_0.010000", "samples")
-mesh_repository_dir = os.path.join("mesh_repository")
+mesh_repository_dir = os.path.join(mesh_repo)
 os.makedirs(mesh_repository_dir, exist_ok=True)
 
 meshes = {}
