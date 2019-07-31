@@ -192,9 +192,9 @@ class Process(base_process.Process):
         # self.plot_temp_power(mlmc_est, th_02_model_params)
         # self.plot_temp_power(mlmc_est, th_03_model_params)
 
-        self.plot_histogram_const(mlmc_est, 'fr_cs_med', "fr_cs_median", "Median of $\delta_f$ [mm]", bins=30, scale=1000)
-        self.plot_histogram_const(mlmc_est, 'fr_cond_med', "fr_cond_median", "Median of $k_f$ [m.s$^{-1}$]", bins=30, scale=1)
-        self.plot_histogram_flux(mlmc_est, 'bc_flux', "total_flux_histogram", bins=30)
+        #self.plot_histogram_const(mlmc_est, 'fr_cs_med', "fr_cs_median", "Median of $\delta_f$ [mm]", bins=30, scale=1000)
+        #self.plot_histogram_const(mlmc_est, 'fr_cond_med', "fr_cond_median", "Median of $k_f$ [m.s$^{-1}$]", bins=30, scale=1)
+        #self.plot_histogram_flux(mlmc_est, 'bc_flux', "total_flux_histogram", bins=30)
 
         self.plot_histogram(mlmc_est, 'temp', "temp_histogram", "Temperature [$^\circ$C]", bins=30)
         self.plot_histogram(mlmc_est, 'power', "power_histogram", "Power [MW]", bins=30)
@@ -384,7 +384,7 @@ class Process(base_process.Process):
 
 
 
-    def plot_param(self, mlmc_est, ax, X, col, param_name):
+    def plot_param(self, mlmc_est, ax, X, col, param_name, legend):
         """
         Get all result values by given param name, e.g. param_name = "temp" - return all temperatures...
         :param mlmc_est: Estimate instance
@@ -420,13 +420,13 @@ class Process(base_process.Process):
         q_std_err = np.sqrt(q_var + np.sqrt(mom_vars[:, 2] * N / (N-1)))
 
         ax.fill_between(X, q_mean - q_mean_err, q_mean + q_mean_err,
-                         color=col, alpha=1)
+                         color=col, alpha=1, label=legend + " - mean")
         ax.fill_between(X, q_mean - q_std, q_mean + q_std,
-                         color=col, alpha=0.2)
+                         color=col, alpha=0.2, label=legend + " - std")
         ax.fill_between(X, q_mean - q_std_err, q_mean - q_std,
-                         color=col, alpha=0.4)
+                         color=col, alpha=0.4, label = None)
         ax.fill_between(X, q_mean + q_std, q_mean + q_std_err,
-                         color=col, alpha=0.4)
+                         color=col, alpha=0.4, label = None)
 
 
     def result_text(self, mlmc):
@@ -565,10 +565,11 @@ class Process(base_process.Process):
         ax1.set_xlabel('time [y]')
         ax1.set_ylabel('Temperature [$^\circ$C]', color='black')
         ax1.tick_params(axis='y', labelcolor='black')
-        self.plot_param(mlmc_est, ax1, times, 'red', 'temp')
-        self.plot_param(mlmc_est, ax1, times, 'orange', 'temp_ref')
+        self.plot_param(mlmc_est, ax1, times, 'red', 'temp', 'stimulated')
+        self.plot_param(mlmc_est, ax1, times, 'orange', 'temp_ref', 'unmodified')
 
-        ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
+        #ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
+        ax1.legend()
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
         fig.savefig(os.path.join(self.work_dir, "temp_comparison.pdf"))
         fig.savefig(os.path.join(self.work_dir, "temp_comparison.png"))
@@ -588,11 +589,12 @@ class Process(base_process.Process):
         ax1.set_xlabel('time [y]')
         ax1.set_ylabel('Power [MW]', color='black')
         ax1.tick_params(axis='y', labelcolor='black')
-        self.plot_param(mlmc_est, ax1, times, 'blue', 'power')
+        self.plot_param(mlmc_est, ax1, times, 'blue', 'power', 'stimulated')
 
-        self.plot_param(mlmc_est, ax1, times, 'forestgreen', 'power_ref')
+        self.plot_param(mlmc_est, ax1, times, 'forestgreen', 'power_ref', 'unmodified')
 
-        ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
+        #ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
+        ax1.legend()
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
         fig.savefig(os.path.join(self.work_dir, "power_comparison.pdf"))
         fig.savefig(os.path.join(self.work_dir, "power_comparison.png"))
