@@ -5,17 +5,21 @@ output_por_disp_02
     - increase porosity 0.8
 output_por_disp_03
     - increase porosity 0.8
+output_por_disp_04
+    - same as "output_por_disp_02"
+    - 03_th low conductivities as 01_hm
+    - new extract results
 output_deep_mesh_100fr
     - test of deep mesh, new extraxt results, same as "output_por_disp_02"
     - (output_tuesday_05), 1000s, 212s failed, 10s probably killed
-    
+
     
 notes:
 tuesday:
-01 - 10 samples, same configuration as "output_por_disp_02", new extraxt results
+01 - 10 samples, same configuration as "output_por_disp_02", new extraxt results /DELETED
 02 - same as "tuesday_01", lower bulk conductivities by factor 10
 03 - same as "tuesday_01", lower bulk conductivities by factor 2
 04 - same as 01, running on charon_2h
-06 - same as "output_por_disp_02", new extraxt results
+
 
 
