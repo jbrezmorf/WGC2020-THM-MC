@@ -1,5 +1,6 @@
 import sys
 import os
+import itertools
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '../../MLMC/src'))
 sys.path.append(os.path.join(script_dir, '../../dfn/src'))
@@ -341,6 +342,83 @@ def call_flow(config_dict, param_key, result_files):
     return status # and conv_check
 
 
+def find_fracture_neigh(mesh, n_levels=3):
+    """
+    Find neighboring elements in the bulk rock in the vicinity of the fractures.
+    Creates several levels of neighbors.
+    :param mesh: GmshIO mesh object
+    :return: 
+    """
+
+    # {(int)level: [list of elements]}
+    fracture_neighbors = [[]]
+
+    # make node -> element map
+    node_els = collections.defaultdict(set)
+    for eid, e in mesh.elements.items():
+        type, tags, node_ids = e
+        for n in node_ids:
+            node_els[n].add(eid)
+
+    # for n in node_els:
+    #     if len(node_els[n]) > 1:
+    #         print(node_els[n])
+
+    # ele type: 1 - line, 2-triangle, 4-tetrahedron, 15-node
+    for eid, e in mesh.elements.items():
+        type, tags, node_ids = e
+        if type == 2: # fracture elements
+            ngh_elements = common_elements(node_ids, mesh, node_els)
+            # for ngh_eid, ngh_ele in [mesh.elements[i] for i in ngh_elements]:
+            for ngh_eid in ngh_elements:
+                ngh_ele = mesh.elements[ngh_eid]
+                ngh_type, ngh_tags, ngh_node_ids = ngh_ele
+                if ngh_type == 4:                                   # if they are bulk elements and not already added
+                    if ngh_eid not in fracture_neighbors[0]:
+                        fracture_neighbors[0].append(ngh_eid)     # add them to the first level
+
+    for lev in range(1, n_levels):                                # for all levels
+        fracture_neighbors.append([])
+        print("Finding fracture neighbors - level: {}".format(lev))
+        i = 0
+        for bulk_eid in fracture_neighbors[lev-1]:                  # go through already found fracture neighbors
+            i += 1
+            if i % 500 == 0:
+                n = len(fracture_neighbors[lev])
+                print("Bulk elements inspected: {0} Found neighbors: {1}".format(i, n))
+            bulk_type, bulk_tags, bulk_node_ids = mesh.elements[bulk_eid]
+            ngh_elements = common_elements(bulk_node_ids, mesh, node_els, subset=True)   # find their neighbors
+            for ngh_eid in ngh_elements:
+                ngh_type, ngh_tags, ngh_node_ids = mesh.elements[ngh_eid]
+                if ngh_type == 4:                                   # if they are bulk elements and not already added
+                    if ngh_eid not in itertools.chain.from_iterable(fracture_neighbors):
+                        fracture_neighbors[lev].append(ngh_eid)     # add them to current level of fracture neighbors
+
+    return fracture_neighbors
+
+
+def common_elements(node_ids, mesh, node_els, subset=False, max=1000):
+    # Generates active elements common to given nodes.
+    node_sets = [node_els[n] for n in node_ids]
+    if subset:
+        elements = list(set(itertools.chain.from_iterable(node_sets)))  # remove duplicities
+    else:
+        elements = set.intersection(*node_sets)
+
+    if len(elements) > max:
+        print("Too many connected elements:", len(elements), " > ", max)
+        for eid in elements:
+            type, tags, node_ids = mesh.elements[eid]
+            print("  eid: ", eid, node_ids)
+    # return elements
+    return active(mesh, elements)
+
+
+def active(mesh, element_iterable):
+    for eid in element_iterable:
+        if eid in mesh.elements:
+            yield eid
+
 
 def prepare_th_input(config_dict):
     """
@@ -358,6 +436,7 @@ def prepare_th_input(config_dict):
 
     # read mesh and mechanichal output data
     mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
+    # mechanics_output = 'L00_F_S0000000/output_01_hm/mechanics.msh'
     mesh = gmsh_io.GmshIO(mechanics_output)
 
     n_bulk = len(mesh.elements)
@@ -386,6 +465,14 @@ def prepare_th_input(config_dict):
     fr_indices = np.array([int(key) for key, val in field_cs.items() if val[0] != 1])
     cs_fr = np.array([cs[i] for i in fr_indices])
     k_fr = np.array([K[i] for i in fr_indices])
+
+    # mesh_orig = gmsh_io.GmshIO('L00_F_S0000000/random_fractures_healed.msh')
+    # Extremely slow algorithm fot finding neighboring elements of fractures in several levels
+    # fracture_neighbors = find_fracture_neigh(mesh_orig, 1)
+    # for level, i in zip(fracture_neighbors, range(0, len(fracture_neighbors))):
+    #     coeff = i
+    #     for eid, ele in level:
+    #         K[eid] = coeff
 
     # compute cs and K statistics and write it to a file
     fr_param = {}
@@ -558,5 +645,6 @@ if __name__ == "__main__":
         config_dict = yaml.safe_load(f)
 
     os.chdir(sample_dir)
+    # prepare_th_input(config_dict)
     np.random.seed()
     sample(config_dict)
