@@ -320,7 +320,6 @@ class RandomFracSimulation(Simulation):
         ]
         return quantities
 
-
     def _extract_result(self, sample):
         """
         :param config_dict: Parsed config.yaml. see key comments there.
@@ -328,9 +327,10 @@ class RandomFracSimulation(Simulation):
         """
         quantities = self.define_quantities()
         q_dict = {q.name: q for q in quantities}
-        self.result_struct = [ ["value"] + [q.name for q in quantities],
-                               ["f8"] + [q.np_type for q in quantities] ]
+        self.result_additional_data_struct = [["value"] + [q.name for q in quantities],
+                                              ["f8"] + [q.np_type for q in quantities]]
         sample_dir = sample.directory
+
         for q in quantities:
             q.file = os.path.join(sample_dir, q.file)
 
@@ -338,17 +338,14 @@ class RandomFracSimulation(Simulation):
         finished = False
         if os.path.exists(finished_file):
             with open(finished_file, "r") as f:
-                content = f.read().split()                
-            finished = len(content)==1 and content[0] == "done"
+                content = f.read().split()
+            finished = len(content) == 1 and content[0] == "done"
 
         if finished:
-            print(sample_dir, "Finished")
             files = {q.file for q in quantities}
-            finished_map = {f:os.path.exists(f) for f in files}
+            finished_map = {f: os.path.exists(f) for f in files}
             files_exist = all(finished_map.values())
             if files_exist:
-                print(sample_dir, "Files exist")
-
                 # read values
                 for q in quantities:
                     q.value = q.extractor(q.file, *q.args)
@@ -370,7 +367,6 @@ class RandomFracSimulation(Simulation):
                 return result
             else:
                 print(sample_dir, "missing files", finished_map)
-                return [np.inf for q in quantities]
+                return [tuple([np.inf] * (len(quantities) + 1))]
         else:
-            return [None for q in quantities]
-
+            return [tuple([np.nan] * (len(quantities) + 1))]
