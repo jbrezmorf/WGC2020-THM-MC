@@ -4,3 +4,6 @@
 [submodule "dfn"]
 	path = dfn
 	url = git@github.com:GeoMop/dfn.git
+[submodule "bgem"]
+	path = bgem
+	url = git@github.com:GeoMop/bgem.git
