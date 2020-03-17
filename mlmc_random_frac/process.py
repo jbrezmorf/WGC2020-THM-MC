@@ -2,8 +2,8 @@ import sys
 import os
 import itertools
 script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, '../../MLMC/src'))
-sys.path.append(os.path.join(script_dir, '../../dfn/src'))
+sys.path.append(os.path.join(script_dir, '../MLMC/src'))
+sys.path.append(os.path.join(script_dir, '../dfn/src'))
 
 import shutil
 import subprocess
