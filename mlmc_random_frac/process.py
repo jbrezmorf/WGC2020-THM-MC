@@ -16,6 +16,12 @@ import gmsh_io
 
 import fracture
 
+from bgem.gmsh import gmsh
+from bgem.gmsh import options as gmsh_options
+from bgem.gmsh import field as gmsh_field
+from bgem.gmsh import heal_mesh
+
+
 # TODO:
 # - enforce creation of empty physical groups, or creation of empty regions in the flow input
 # - speedup mechanics
@@ -172,12 +178,8 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     well_dist = geom["well_distance"]
     print("load gmsh api")
 
-    from gmsh_api import gmsh
-    from gmsh_api import options
-    from gmsh_api import field
-
     factory = gmsh.GeometryOCC(mesh_name, verbose=True)
-    gopt = options.Geometry()
+    gopt = gmsh_options.Geometry()
     gopt.Tolerance = 0.0001
     gopt.ToleranceBoolean = 0.001
     # gopt.MatchMeshTolerance = 1e-1
@@ -254,11 +256,11 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     max_el_size = np.max(dimensions) / 8
 
 
-    fracture_el_size = field.constant(fracture_mesh_step, 10000)
-    frac_el_size_only = field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
-    field.set_mesh_step_field(frac_el_size_only)
+    fracture_el_size = gmsh_field.constant(fracture_mesh_step, 10000)
+    frac_el_size_only = gmsh_field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
+    gmsh_field.set_mesh_step_field(frac_el_size_only)
 
-    mesh = options.Mesh()
+    mesh = gmsh_options.Mesh()
     #mesh.Algorithm = options.Algorithm2d.MeshAdapt # produce some degenerated 2d elements on fracture boundaries ??
     #mesh.Algorithm = options.Algorithm2d.Delaunay
     #mesh.Algorithm = options.Algorithm2d.FrontalDelaunay
@@ -290,7 +292,6 @@ def prepare_mesh(config_dict, fractures):
 
     mesh_healed = mesh_name + "_healed.msh"
     if not os.path.isfile(mesh_healed):
-        import heal_mesh
         hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
         hm.heal_mesh(gamma_tol=0.01)
         hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
