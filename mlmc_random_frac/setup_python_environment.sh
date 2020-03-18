@@ -13,6 +13,7 @@ pip -V
 
 pip install pyyaml attrs numpy
 pip install -e ../bgem
+pip install -e ../MLMC
 
 #pip freeze
 deactivate

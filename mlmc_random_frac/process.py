@@ -2,8 +2,6 @@ import sys
 import os
 import itertools
 script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, '../MLMC/src'))
-sys.path.append(os.path.join(script_dir, '../dfn/src'))
 
 import shutil
 import subprocess
@@ -11,11 +9,13 @@ import yaml
 import attr
 import numpy as np
 import collections
-import gmsh_io
 # import matplotlib.pyplot as plt
 
+# from MLMC
+import gmsh_io
 import fracture
 
+# from bgem
 from bgem.gmsh import gmsh
 from bgem.gmsh import options as gmsh_options
 from bgem.gmsh import field as gmsh_field
