@@ -41,7 +41,6 @@ problem: !Coupling_Sequential
           mesh_data_file: th_input.msh
           field_name: conductivity
           default_value: <fr_conductivity>
-          init_piezo_head: 0
 
         init_piezo_head: 0
 
@@ -75,6 +74,7 @@ problem: !Coupling_Sequential
         - velocity_p0
         - region_id
         - cross_section
+        - conductivity
     balance:
       cumulative: true
     output_stream: 

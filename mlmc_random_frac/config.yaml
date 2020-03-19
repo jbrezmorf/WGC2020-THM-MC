@@ -143,13 +143,14 @@ geometry:
 
 # base of the mesh file name
 mesh_name: random_fractures
+fracture_regions: ['fr']
 
 
 # parameters substituted into the HM model template
 hm_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: random_fractures.msh
+    mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
     in_file: 01_hm
 
     well_piezohead: 5e3 # h*rho*g = 1e4*1e3*10 = 100 MPa
@@ -235,7 +236,7 @@ hm_params:
 th_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: random_fractures.msh
+    mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
     in_file: 02_th
 
     well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
@@ -243,6 +244,7 @@ th_params:
     
     fr_conductivity: *fr_cond_init
     bulk_conductivity: 1e-8
+    increased_bulk_cond_levels: 2
     sigma_bulk_conductivity: 1e-7
     min_fr_cross_section: 5e-5
     max_fr_cross_section: 5e-3
@@ -270,7 +272,7 @@ th_params:
 th_params_ref: 
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: random_fractures.msh
+    mesh: random_fractures.msh  # healed mesh is used at the end (programmatically replaced)
     in_file: 03_th
 
     well_piezohead_inject: *w_p_inject
