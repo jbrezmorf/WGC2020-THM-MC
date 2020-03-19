@@ -12,11 +12,12 @@ import collections
 # import matplotlib.pyplot as plt
 
 # from MLMC
-import gmsh_io
+# import gmsh_io
 import fracture
 
 # from bgem
 from bgem.gmsh import gmsh
+from bgem.gmsh import gmsh_io
 from bgem.gmsh import options as gmsh_options
 from bgem.gmsh import field as gmsh_field
 from bgem.gmsh import heal_mesh
