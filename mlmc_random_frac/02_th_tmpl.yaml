@@ -27,7 +27,11 @@ problem: !Coupling_Sequential
     n_schurs: 2
     input_fields:
       - region: box   # we assume steady flow, hence storativity is not set
-        conductivity: <bulk_conductivity>
+#        conductivity: <bulk_conductivity>
+        conductivity: !FieldFE  # loaded from HM simulation
+          mesh_data_file: th_input.msh
+          field_name: conductivity
+          default_value: <bulk_conductivity>
         init_piezo_head: 0
 
       - region: fractures

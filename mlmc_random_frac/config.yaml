@@ -243,7 +243,7 @@ th_params:
     well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
     
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-8
+    bulk_conductivity: 1e-9
     increased_bulk_cond_levels: 2
     sigma_bulk_conductivity: 1e-7
     min_fr_cross_section: 5e-5
