@@ -2,8 +2,6 @@ import sys
 import os
 import itertools
 script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, '../../MLMC/src'))
-sys.path.append(os.path.join(script_dir, '../../dfn/src'))
 
 import shutil
 import subprocess
@@ -11,10 +9,19 @@ import yaml
 import attr
 import numpy as np
 import collections
-import gmsh_io
 # import matplotlib.pyplot as plt
 
+# from MLMC
+# import gmsh_io
 import fracture
+
+# from bgem
+from bgem.gmsh import gmsh
+from bgem.gmsh import gmsh_io
+from bgem.gmsh import options as gmsh_options
+from bgem.gmsh import field as gmsh_field
+from bgem.gmsh import heal_mesh
+
 
 # TODO:
 # - enforce creation of empty physical groups, or creation of empty regions in the flow input
@@ -172,12 +179,8 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     well_dist = geom["well_distance"]
     print("load gmsh api")
 
-    from gmsh_api import gmsh
-    from gmsh_api import options
-    from gmsh_api import field
-
     factory = gmsh.GeometryOCC(mesh_name, verbose=True)
-    gopt = options.Geometry()
+    gopt = gmsh_options.Geometry()
     gopt.Tolerance = 0.0001
     gopt.ToleranceBoolean = 0.001
     # gopt.MatchMeshTolerance = 1e-1
@@ -254,11 +257,11 @@ def make_mesh(config_dict, fractures, mesh_name, mesh_file):
     max_el_size = np.max(dimensions) / 8
 
 
-    fracture_el_size = field.constant(fracture_mesh_step, 10000)
-    frac_el_size_only = field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
-    field.set_mesh_step_field(frac_el_size_only)
+    fracture_el_size = gmsh_field.constant(fracture_mesh_step, 10000)
+    frac_el_size_only = gmsh_field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
+    gmsh_field.set_mesh_step_field(frac_el_size_only)
 
-    mesh = options.Mesh()
+    mesh = gmsh_options.Mesh()
     #mesh.Algorithm = options.Algorithm2d.MeshAdapt # produce some degenerated 2d elements on fracture boundaries ??
     #mesh.Algorithm = options.Algorithm2d.Delaunay
     #mesh.Algorithm = options.Algorithm2d.FrontalDelaunay
@@ -290,7 +293,6 @@ def prepare_mesh(config_dict, fractures):
 
     mesh_healed = mesh_name + "_healed.msh"
     if not os.path.isfile(mesh_healed):
-        import heal_mesh
         hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
         hm.heal_mesh(gamma_tol=0.01)
         hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
@@ -364,11 +366,12 @@ def find_fracture_neigh(mesh, fract_regions, n_levels=1):
     print("max_ele_id = %d" % max_ele_id)
 
     # select ids of fracture regions
-    fr_regs = []
-    for fr in fract_regions:
-        rid, dim = mesh.physical['fr']
-        assert dim == 2
-        fr_regs.append(rid)
+    fr_regs = fract_regions
+    # fr_regs = []
+    # for fr in fract_regions:
+    #     rid, dim = mesh.physical['fr']
+    #     assert dim == 2
+    #     fr_regs.append(rid)
 
     # for n in node_els:
     #     if len(node_els[n]) > 1:
@@ -449,7 +452,6 @@ def active(mesh, element_iterable):
         if eid in mesh.elements:
             yield eid
 
-
 def prepare_th_input(config_dict):
     """
     Prepare FieldFE input file for the TH simulation.
@@ -465,12 +467,21 @@ def prepare_th_input(config_dict):
     #     is_bc_region[id] = (unquoted_name[0] == '.')
 
     # read mesh and mechanichal output data
-    mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
-    # mechanics_output = 'L00_F_S0000000/output_01_hm/mechanics.msh'
-    mesh = gmsh_io.GmshIO(mechanics_output)
+    # mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
+    mechanics_output = 'output_01_hm/mechanics.msh'
 
-    n_bulk = len(mesh.elements)
+    # hm = heal_mesh.HealMesh.read_mesh(mechanics_output, node_tol=1e-4)
+    # hm.heal_mesh(gamma_tol=0.01)
+    # hm.stats_to_yaml(mechanics_output + "_heal_stats.yaml")
+    # hm.write()
+    # hm.healed_mesh_name
+
+    mesh = gmsh_io.GmshIO(mechanics_output)
+    # map eid to the element position in the array
     ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
+    ele_ids_map = dict()
+    for i in range(len(ele_ids)):
+        ele_ids_map[ele_ids[i]] = i
 
     init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
     init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
@@ -478,31 +489,37 @@ def prepare_th_input(config_dict):
     min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
     max_fr_cross_section = float(config_dict['th_params']['max_fr_cross_section'])
 
+    # read cross-section from HM model
     time_idx = 1
     time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
-
     # cut small and large values of cross-section
     cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
     cs = np.minimum(cs, max_fr_cross_section)
 
-    K = np.where(
-        cs == 1.0,      # condition
-        init_bulk_K,    # true array
-        init_fr_K * (cs / init_fr_cs) ** 2
-    )
+    # IMPORTANT - we suppose that the output mesh has the same ELEMENT NUMBERING as the input mesh
+    # get fracture regions ids
+    orig_mesh = gmsh_io.GmshIO(config_dict["th_params"]["mesh"])
+    fr_regs = orig_mesh.get_reg_ids_by_physical_names(config_dict["fracture_regions"], 2)
+    fr_indices = orig_mesh.get_elements_of_regions(fr_regs)
+    # find bulk elements neighboring to the fractures
+    fr_n_levels = config_dict["th_params"]["increased_bulk_cond_levels"]
+    fracture_neighbors = find_fracture_neigh(orig_mesh, fr_regs, n_levels=fr_n_levels)
+
+    # create and fill conductivity field
+    # set all values to initial bulk conductivity
+    K = init_bulk_K * np.ones(shape=(len(ele_ids_map),1))
+    # increase conductivity in fractures due to power law
+    for eid in fr_indices:
+        i = ele_ids_map[eid]
+        K[i] = init_fr_K * (cs[i] / init_fr_cs) ** 2
+    # increase the bulk conductivity in the vicinity of the fractures
+    level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
+    for eid, lev in fracture_neighbors:
+        K[ele_ids_map[eid]] = init_bulk_K * level_factor[lev]
 
     # get cs and K on fracture elements only
-    fr_indices = np.array([int(key) for key, val in field_cs.items() if val[0] != 1])
-    cs_fr = np.array([cs[i] for i in fr_indices])
-    k_fr = np.array([K[i] for i in fr_indices])
-
-    # mesh_orig = gmsh_io.GmshIO('L00_F_S0000000/random_fractures_healed.msh')
-    # Extremely slow algorithm fot finding neighboring elements of fractures in several levels
-    # fracture_neighbors = find_fracture_neigh(mesh_orig, 1)
-    # for level, i in zip(fracture_neighbors, range(0, len(fracture_neighbors))):
-    #     coeff = i
-    #     for eid, ele in level:
-    #         K[eid] = coeff
+    cs_fr = np.array([cs[ele_ids_map[i]] for i in fr_indices])
+    k_fr = np.array([K[ele_ids_map[i]] for i in fr_indices])
 
     # compute cs and K statistics and write it to a file
     fr_param = {}
@@ -523,7 +540,7 @@ def prepare_th_input(config_dict):
     th_input_file = 'th_input.msh'
     with open(th_input_file, "w") as fout:
         mesh.write_ascii(fout)
-        mesh.write_element_data(fout, ele_ids, 'conductivity', K[:, None])
+        mesh.write_element_data(fout, ele_ids, 'conductivity', K)
         mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs[:, None])
 
     # create field for K (copy cs)
@@ -683,11 +700,12 @@ def sample(config_dict):
 
     setup_dir(config_dict, clean=True)
     mesh_repo = config_dict.get('mesh_repository', None)
-    fractures = generate_fractures(config_dict)
+
     if mesh_repo:
         healed_mesh = sample_mesh_repository(mesh_repo)
     else:
         # plot_fr_orientation(fractures)
+        fractures = generate_fractures(config_dict)
         healed_mesh = prepare_mesh(config_dict, fractures)
 
     healed_mesh_bn = os.path.basename(healed_mesh)

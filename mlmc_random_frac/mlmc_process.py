@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(src_path, '../MLMC/src'))
-sys.path.append(os.path.join(src_path, '../dfn/src'))
 
 from mlmc import mlmc
 from mlmc import base_process

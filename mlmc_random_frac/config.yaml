@@ -1,10 +1,11 @@
 # The flow executable and arguments to use.
 # JB: ABSOLUTE PATH
-#flow_executable:
+flow_executable:
 #  - /home/jb/workspace/flow123d_JB/bin/fterm
-#  - --no-term
-#  - rel
-#  - run
+  - /home/paulie/docker_flow123d/flow123d/bin/fterm
+  - --no-term
+  - rel
+  - run
 #finish_sleep: 0
 #metacentrum: false
 
@@ -15,19 +16,21 @@
 #reuse_samples: true
 
 # Charon:
-flow_executable:
+#flow_executable:
   # release
-   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+#   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
   # debug
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
-metacentrum: true
+metacentrum: false
 
 mc_samples: 10
 
 copy_files: [01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
 
 # Set to None to generate new meshes. ABSOLUTE PATH
-mesh_repository: /storage/liberec3-tul/home/jan_brezina/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository/
+mesh_repository:
+#mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/mlmc_random_frac/mesh_repository
+#mesh_repository: /storage/liberec3-tul/home/jan_brezina/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository/
 #mesh_repository: /home/pavel_exner/WGC2020-THM-MC/mlmc_random_frac/mesh_repository
 
 geometry:
@@ -140,13 +143,14 @@ geometry:
 
 # base of the mesh file name
 mesh_name: random_fractures
+fracture_regions: ['fr']
 
 
 # parameters substituted into the HM model template
 hm_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: random_fractures.msh
+    mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
     in_file: 01_hm
 
     well_piezohead: 5e3 # h*rho*g = 1e4*1e3*10 = 100 MPa
@@ -232,14 +236,15 @@ hm_params:
 th_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: random_fractures.msh
+    mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
     in_file: 02_th
 
     well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
     well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
     
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-8
+    bulk_conductivity: 1e-9
+    increased_bulk_cond_levels: 2
     sigma_bulk_conductivity: 1e-7
     min_fr_cross_section: 5e-5
     max_fr_cross_section: 5e-3
@@ -267,7 +272,7 @@ th_params:
 th_params_ref: 
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
-    mesh: random_fractures.msh
+    mesh: random_fractures.msh  # healed mesh is used at the end (programmatically replaced)
     in_file: 03_th
 
     well_piezohead_inject: *w_p_inject
