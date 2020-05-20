@@ -125,12 +125,15 @@ def generate_fractures(config_dict):
     for fr in fractures:
         fr.region = "fr"
     used_families = set((f.region for f in fractures))
+    config_fracture_regions(used_families)
+    return fractures
+
+def config_fracture_regions(used_families):
     for model in ["hm_params", "th_params", "th_params_ref"]:
         model_dict = config_dict[model]
         model_dict["fracture_regions"] = list(used_families)
         model_dict["left_well_fracture_regions"] = [".{}_left_well".format(f) for f in used_families]
         model_dict["right_well_fracture_regions"] = [".{}_right_well".format(f) for f in used_families]
-    return fractures
 
 
 def create_fractures_rectangles(gmsh_geom, fractures, base_shape: 'ObjectSet'):
@@ -668,6 +671,7 @@ def test_fracture_neighbors(config_dict):
     mesh_repo = config_dict.get('mesh_repository', None)
     if mesh_repo:
         healed_mesh = sample_mesh_repository(mesh_repo)
+        config_fracture_regions(config_dict["fracture_regions"])
     else:
         fractures = generate_fractures(config_dict)
         # plot_fr_orientation(fractures)
@@ -703,6 +707,7 @@ def sample(config_dict):
 
     if mesh_repo:
         healed_mesh = sample_mesh_repository(mesh_repo)
+        config_fracture_regions(config_dict["fracture_regions"])
     else:
         # plot_fr_orientation(fractures)
         fractures = generate_fractures(config_dict)
