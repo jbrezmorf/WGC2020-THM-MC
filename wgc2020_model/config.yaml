@@ -2,7 +2,7 @@
 # false -> run locally, no pbs
 run_on_metacentrum: false
 # number of samples
-mc_samples: 10
+n_samples: 1
 
 # The flow executable and arguments to use.
 local:

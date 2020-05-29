@@ -1,4 +1,4 @@
-flow123d_version: 2.0.0
+flow123d_version: 3.0.9
 problem: !Coupling_Sequential
   description: Heat transfer in EGS after stimulation of fractures
   mesh:
@@ -23,8 +23,8 @@ problem: !Coupling_Sequential
         options: <flow_solver__options>
 
         #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
-#        options: -ksp_type preonly -pc_type lu
-    n_schurs: 2
+        #options: -ksp_type preonly -pc_type lu
+
     input_fields:
       - region: box   # we assume steady flow, hence storativity is not set
         conductivity: <bulk_conductivity>
@@ -116,7 +116,7 @@ problem: !Coupling_Sequential
         - region_id
       #observe_fields: temperature
       times:
-        - {step: 1, time_unit: 'y'}      # 31557600       # 1 yr
+        - step: [1, 'y'] #{time: 1,  unit: 'y'}      # 31557600       # 1 yr
     solver: !Petsc
       a_tol: <heat_solver__a_tol>
       r_tol: <heat_solver__r_tol>

@@ -1,4 +1,4 @@
-flow123d_version: 2.0.0
+flow123d_version: 3.0.9
 problem: !Coupling_Sequential
   description: Hydraulic stimulation of fractures connecting two open well ends
   mesh:
@@ -19,7 +19,7 @@ problem: !Coupling_Sequential
         biot_alpha: 0.6
         fluid_density: 1000
     time:
-      end_time: 86400 # 1 day
+      end_time: [1, 'd'] #86400 # 1 day
     iteration_parameter: 0.5 # affects convergence of HM coupling (defaults to 1, lower value sometimes helps)
     a_tol: 0
     r_tol: 1e-3
@@ -92,7 +92,6 @@ problem: !Coupling_Sequential
             # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
             # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.4  -ksp_monitor
             # options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_interp_type ext+i -pc_hypre_boomeramg_strong_threshold 0.6  -ksp_monitor
-        n_schurs: 2
         input_fields:
           - region: box
             conductivity: <bulk_conductivity>
@@ -143,9 +142,8 @@ problem: !Coupling_Sequential
             variant: ascii
     mechanics_equation:
         output_stream:
-          file: mechanics.pvd
+          file: mechanics.msh
           format: !gmsh
-            variant: ascii
         output:
           fields:
             - displacement

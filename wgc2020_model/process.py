@@ -42,7 +42,8 @@ class WGC2020_Process(base_process.Process):
         # Create sampler (mlmc.Sampler instance) - crucial class which actually schedule samples
         sampler = self.setup_config(n_levels=1, clean=True)
         # Schedule samples
-        self.generate_jobs(sampler, n_samples=[5], renew=renew)
+        n_samples = self.config_dict["n_samples"]
+        self.generate_jobs(sampler, n_samples=n_samples, renew=renew)
 
         self.all_collect([sampler])  # Check if all samples are finished
         self.calculate_moments(sampler)  # Simple moment check
