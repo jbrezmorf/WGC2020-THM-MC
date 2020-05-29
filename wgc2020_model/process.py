@@ -21,6 +21,8 @@ from mlmc.quantity_estimate import QuantityEstimate
 class WGC2020_Process(base_process.Process):
 
     def __init__(self):
+        #TODO: separate constructor and run call
+        #TODO: should there be different config for Process and Simulation ?
         with open(os.path.join(os.getcwd(), "config.yaml"), "r") as f:
             self.config_dict = yaml.safe_load(f)
         super(WGC2020_Process, self).__init__()
@@ -35,11 +37,12 @@ class WGC2020_Process(base_process.Process):
         # Create working directory if necessary
         os.makedirs(self.work_dir, mode=0o775, exist_ok=True)
         self.config_dict["work_dir"] = self.work_dir
+        self.config_dict["script_dir"] = os.getcwd()
 
         # Create sampler (mlmc.Sampler instance) - crucial class which actually schedule samples
         sampler = self.setup_config(n_levels=1, clean=True)
         # Schedule samples
-        self.generate_jobs(sampler, n_samples=[5, 5], renew=renew)
+        self.generate_jobs(sampler, n_samples=[5], renew=renew)
 
         self.all_collect([sampler])  # Check if all samples are finished
         self.calculate_moments(sampler)  # Simple moment check
@@ -47,6 +50,13 @@ class WGC2020_Process(base_process.Process):
 
     def setup_config(self, n_levels, clean):
         """
+        # TODO: specify, what should be done here.
+        - creation of Simulation
+        - creation of Sampler
+        - hdf file ?
+        - why step_range must be here ?
+
+
         Simulation dependent configuration
         :param step_range: Simulation's step range, length of them is number of levels
         :param clean: bool, If True remove existing files
@@ -70,7 +80,7 @@ class WGC2020_Process(base_process.Process):
             append=self.append)
 
         # Create sampler, it manages sample scheduling and so on
-        step_range = [1, 0.1]   # auxiliary variable, not used
+        step_range = [1]   # auxiliary variable, not used
         sampler = Sampler(sample_storage=sample_storage, sampling_pool=sampling_pool, sim_factory=simulation_factory,
                           step_range=step_range)
 
@@ -79,16 +89,21 @@ class WGC2020_Process(base_process.Process):
     def set_environment_variables(self):
         run_on_metacentrum = self.config_dict["run_on_metacentrum"]
 
+        #TODO: where these variables come from, why and how set them ?
         if run_on_metacentrum:
             # Charon
             self.sample_sleep = 30
             self.init_sample_timeout = 600
             self.sample_timeout = 0
+            self.config_dict["_aux_flow_path"] = self.config_dict["metacentrum"]["flow_executable"].copy()
+            self.config_dict["_aux_gmsh_path"] = self.config_dict["metacentrum"]["gmsh_executable"].copy()
         else:
             # Local
             self.sample_sleep = 1
             self.init_sample_timeout = 60
             self.sample_timeout = 60
+            self.config_dict["_aux_flow_path"] = self.config_dict["local"]["flow_executable"].copy()
+            self.config_dict["_aux_gmsh_path"] = self.config_dict["local"]["gmsh_executable"].copy()
 
     def create_sampling_pool(self):
 
