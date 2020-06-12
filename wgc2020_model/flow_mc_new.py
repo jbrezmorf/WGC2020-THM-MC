@@ -2,17 +2,15 @@ import os
 import os.path
 import subprocess
 import numpy as np
-import json
-import glob
+import itertools
+import collections
 import shutil
-import copy
 import yaml
 from typing import List
 from mlmc.level_simulation import LevelSimulation
-from mlmc.tool import gmsh_io
+from bgem.gmsh import gmsh_io
 from mlmc.sim.simulation import Simulation
 from mlmc.sim.simulation import QuantitySpec
-from mlmc.random import correlated_field as cf
 
 def force_mkdir(path, force=False):
     """
@@ -126,9 +124,9 @@ class Flow123d_WGC2020(Simulation):
         hm_succeed = Flow123d_WGC2020.call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
         th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
         th_succeed = False
-        # if hm_succeed:
-        #     prepare_th_input(config_dict)
-        #     th_succeed = call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
+        if hm_succeed:
+            Flow123d_WGC2020.prepare_th_input(config_dict)
+            th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
 
             # if th_succeed:
             #    series = extract_results(config_dict)
@@ -231,3 +229,217 @@ class Flow123d_WGC2020(Simulation):
             # model_dict["right_well_fracture_regions"] = [".{}_right_well".format(f) for f in used_families]
             model_dict["left_well_fracture_regions"] = [".left_fr_left_well"]
             model_dict["right_well_fracture_regions"] = [".right_fr_right_well"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @staticmethod
+    def common_elements(node_ids, mesh, node_els, subset=False, max=1000):
+        """
+        Finds elements common to the given nodes.
+        :param node_ids: Ids of the nodes for which we look for common elements.
+        :param mesh:
+        :param node_els: node -> element map
+        :param subset: if true, it returns all the elements that are adjacent to at least one of the nodes
+                       if false, it returns all the elements adjacent to all the nodes
+        :param max:
+        :return:
+        """
+        # Generates active elements common to given nodes.
+        node_sets = [node_els[n] for n in node_ids]
+        if subset:
+            elements = list(set(itertools.chain.from_iterable(node_sets)))  # remove duplicities
+        else:
+            elements = set.intersection(*node_sets)
+
+        if len(elements) > max:
+            print("Too many connected elements:", len(elements), " > ", max)
+            for eid in elements:
+                type, tags, node_ids = mesh.elements[eid]
+                print("  eid: ", eid, node_ids)
+
+        def active(mesh, element_iterable):
+            for eid in element_iterable:
+                if eid in mesh.elements:
+                    yield eid
+
+        # return elements
+        return active(mesh, elements)
+
+
+    @staticmethod
+    def find_fracture_neigh(mesh, fract_regions, n_levels=1):
+        """
+        Find neighboring elements in the bulk rock in the vicinity of the fractures.
+        Creates several levels of neighbors.
+        :param mesh: GmshIO mesh object
+        :param fract_regions: list of physical names of the fracture regions
+        :param n_levels: number of layers of elements from the fractures
+        :return:
+        """
+
+        # make node -> element map
+        node_els = collections.defaultdict(set)
+        max_ele_id = 0
+        for eid, e in mesh.elements.items():
+            max_ele_id = max(max_ele_id, eid)
+            type, tags, node_ids = e
+            for n in node_ids:
+                node_els[n].add(eid)
+
+        print("max_ele_id = %d" % max_ele_id)
+
+        # select ids of fracture regions
+        fr_regs = fract_regions
+        # fr_regs = []
+        # for fr in fract_regions:
+        #     rid, dim = mesh.physical['fr']
+        #     assert dim == 2
+        #     fr_regs.append(rid)
+
+        # for n in node_els:
+        #     if len(node_els[n]) > 1:
+        #         print(node_els[n])
+
+        visited_elements = np.zeros(shape=(max_ele_id + 1, 1), dtype=int)
+        fracture_neighbors = []
+
+        def find_neighbors(mesh, element, level, fracture_neighbors, visited_elements):
+            """
+            Auxiliary function which finds bulk neighbor elements to 'element' and
+            saves them to list 'fracture_neighbors'.
+            'visited_elements' keeps track of already investigated elements
+            'level' is number of layer from the fractures in which we search
+            """
+            type, tags, node_ids = element
+            ngh_elements = Flow123d_WGC2020.common_elements(node_ids, mesh, node_els, True)
+            for ngh_eid in ngh_elements:
+                if visited_elements[ngh_eid] > 0:
+                    continue
+                ngh_ele = mesh.elements[ngh_eid]
+                ngh_type, ngh_tags, ngh_node_ids = ngh_ele
+                if ngh_type == 4:  # if they are bulk elements and not already added
+                    visited_elements[ngh_eid] = 1
+                    fracture_neighbors.append((ngh_eid, level))  # add them
+
+        # ele type: 1 - line, 2-triangle, 4-tetrahedron, 15-node
+        # find the first layer of elements neighboring to fractures
+        for eid, e in mesh.elements.items():
+            type, tags, node_ids = e
+            if type == 2:  # fracture elements
+                visited_elements[eid] = 1
+                if tags[0] not in fr_regs:  # is element in fracture region ?
+                    continue
+                find_neighbors(mesh, element=e, level=0, fracture_neighbors=fracture_neighbors,
+                               visited_elements=visited_elements)
+
+        # find next layers of elements from the first layer
+        for i in range(1, n_levels):
+            for eid, lev in fracture_neighbors:
+                if lev < i:
+                    e = mesh.elements[eid]
+                    find_neighbors(mesh, element=e, level=i, fracture_neighbors=fracture_neighbors,
+                                   visited_elements=visited_elements)
+
+        return fracture_neighbors
+
+    @staticmethod
+    def prepare_th_input(config_dict):
+        """
+        Prepare FieldFE input file for the TH simulation.
+        :param config_dict: Parsed config.yaml. see key comments there.
+        """
+        # pass
+        # we have to read region names from the input mesh
+        # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
+        #
+        # is_bc_region = {}
+        # for name, (id, _) in input_mesh.physical.items():
+        #     unquoted_name = name.strip("\"'")
+        #     is_bc_region[id] = (unquoted_name[0] == '.')
+
+        # read mesh and mechanichal output data
+        mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
+        # mechanics_output = 'output_01_hm/mechanics.msh'
+
+        mesh = gmsh_io.GmshIO(mechanics_output)
+        # map eid to the element position in the array
+        # TODO: use extract_mesh
+        ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
+        ele_ids_map = dict()
+        for i in range(len(ele_ids)):
+            ele_ids_map[ele_ids[i]] = i
+
+        init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
+        init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
+        init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
+        min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
+        max_fr_cross_section = float(config_dict['th_params']['max_fr_cross_section'])
+
+        # read cross-section from HM model
+        time_idx = 1
+        time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
+        # cut small and large values of cross-section
+        cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
+        cs = np.minimum(cs, max_fr_cross_section)
+
+        # IMPORTANT - we suppose that the output mesh has the same ELEMENT NUMBERING as the input mesh
+        # get fracture regions ids
+        orig_mesh = gmsh_io.GmshIO(config_dict["th_params"]["mesh"])
+        fr_regs = orig_mesh.get_reg_ids_by_physical_names(config_dict["fracture_regions"], 2)
+        fr_indices = orig_mesh.get_elements_of_regions(fr_regs)
+        # find bulk elements neighboring to the fractures
+        fr_n_levels = config_dict["th_params"]["increased_bulk_cond_levels"]
+        fracture_neighbors = Flow123d_WGC2020.find_fracture_neigh(orig_mesh, fr_regs, n_levels=fr_n_levels)
+
+        # create and fill conductivity field
+        # set all values to initial bulk conductivity
+        K = init_bulk_K * np.ones(shape=(len(ele_ids_map),1))
+        # increase conductivity in fractures due to power law
+        for eid in fr_indices:
+            i = ele_ids_map[eid]
+            K[i] = init_fr_K * (cs[i] / init_fr_cs) ** 2
+        # increase the bulk conductivity in the vicinity of the fractures
+        level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
+        for eid, lev in fracture_neighbors:
+            assert lev < len(level_factor)
+            assert eid < len(ele_ids_map)
+            assert ele_ids_map[eid] < len(K)
+            K[ele_ids_map[eid]] = init_bulk_K * level_factor[lev]
+
+        # get cs and K on fracture elements only
+        cs_fr = np.array([cs[ele_ids_map[i]] for i in fr_indices])
+        k_fr = np.array([K[ele_ids_map[i]] for i in fr_indices])
+
+        # compute cs and K statistics and write it to a file
+        fr_param = {}
+        avg = float(np.average(cs_fr))
+        median = float(np.median(cs_fr))
+        interquantile = float(1.5 * (np.quantile(cs_fr, 0.75) - np.quantile(cs_fr, 0.25)))
+        fr_param["fr_cross_section"] = {"avg": avg, "median": median, "interquantile": interquantile}
+
+        avg = float(np.average(k_fr))
+        median = float(np.median(k_fr))
+        interquantile = float(1.5 * (np.quantile(k_fr, 0.75) - np.quantile(k_fr, 0.25)))
+        fr_param["fr_conductivity"] = {"avg": avg, "median": median, "interquantile": interquantile}
+
+        with open('fr_param_output.yaml', 'w') as outfile:
+            yaml.dump(fr_param, outfile, default_flow_style=False)
+
+        # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
+        th_input_file = 'th_input.msh'
+        with open(th_input_file, "w") as fout:
+            mesh.write_ascii(fout)
+            mesh.write_element_data(fout, ele_ids, 'conductivity', K)
+            mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs[:, None])
