@@ -1,5 +1,4 @@
 import os
-import os.path
 import subprocess
 import numpy as np
 import itertools
@@ -7,10 +6,18 @@ import collections
 import shutil
 import yaml
 from typing import List
-from mlmc.level_simulation import LevelSimulation
+
+from bgem.gmsh import gmsh
 from bgem.gmsh import gmsh_io
+from bgem.gmsh import options as gmsh_options
+from bgem.gmsh import field as gmsh_field
+from bgem.gmsh import heal_mesh
+
+from mlmc.level_simulation import LevelSimulation
 from mlmc.sim.simulation import Simulation
 from mlmc.sim.simulation import QuantitySpec
+
+import fracture
 
 def force_mkdir(path, force=False):
     """
@@ -113,8 +120,8 @@ class Flow123d_WGC2020(Simulation):
             Flow123d_WGC2020.config_fracture_regions(config_dict, config_dict["fracture_regions"])
         else:
             # plot_fr_orientation(fractures)
-            fractures = generate_fractures(config_dict)
-            healed_mesh = prepare_mesh(config_dict, fractures)
+            fractures = Flow123d_WGC2020.generate_fractures(config_dict)
+            healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
 
         healed_mesh_bn = os.path.basename(healed_mesh)
         config_dict["hm_params"]["mesh"] = healed_mesh_bn
@@ -206,6 +213,15 @@ class Flow123d_WGC2020(Simulation):
         print("converged: ", conv_check)
         return status  # and conv_check
 
+
+
+
+
+
+
+
+
+
     @staticmethod
     def sample_mesh_repository(mesh_repository):
         """
@@ -227,14 +243,193 @@ class Flow123d_WGC2020(Simulation):
             model_dict["fracture_regions"] = list(used_families)
             # model_dict["left_well_fracture_regions"] = [".{}_left_well".format(f) for f in used_families]
             # model_dict["right_well_fracture_regions"] = [".{}_right_well".format(f) for f in used_families]
-            model_dict["left_well_fracture_regions"] = [".left_fr_left_well"]
-            model_dict["right_well_fracture_regions"] = [".right_fr_right_well"]
+            model_dict["left_well_fracture_regions"] = [".fr_left_well"]
+            model_dict["right_well_fracture_regions"] = [".fr_right_well"]
 
+    @staticmethod
+    def create_fractures_rectangles(gmsh_geom, fractures, base_shape: 'ObjectSet'):
+        # From given fracture date list 'fractures'.
+        # transform the base_shape to fracture objects
+        # fragment fractures by their intersections
+        # return dict: fracture.region -> GMSHobject with corresponding fracture fragments
+        shapes = []
+        for i, fr in enumerate(fractures):
+            shape = base_shape.copy()
+            print("fr: ", i, "tag: ", shape.dim_tags)
+            shape = shape.scale([fr.rx, fr.ry, 1]) \
+                .rotate(axis=fr.rotation_axis, angle=fr.rotation_angle) \
+                .translate(fr.centre) \
+                .set_region(fr.region)
 
+            shapes.append(shape)
 
+        fracture_fragments = gmsh_geom.fragment(*shapes)
+        return fracture_fragments
 
+    @staticmethod
+    def generate_fractures(config_dict):
+        geom = config_dict["geometry"]
+        dimensions = geom["box_dimensions"]
+        well_z0, well_z1 = geom["well_openning"]
+        well_length = well_z1 - well_z0
+        well_r = geom["well_effective_radius"]
+        well_dist = geom["well_distance"]
 
+        # generate fracture set
+        fracture_box = [1.5 * well_dist, 1.5 * well_length, 1.5 * well_length]
+        volume = np.product(fracture_box)
+        pop = fracture.Population(volume)
+        pop.initialize(geom["fracture_stats"])
+        pop.set_sample_range([1, well_dist], max_sample_size=geom["n_frac_limit"])
+        print("total mean size: ", pop.mean_size())
+        connected_position = geom.get('connected_position_distr', False)
+        if connected_position:
+            eps = well_r / 2
+            left_well_box = [-well_dist / 2 - eps, -eps, well_z0, -well_dist / 2 + eps, +eps, well_z1]
+            right_well_box = [well_dist / 2 - eps, -eps, well_z0, well_dist / 2 + eps, +eps, well_z1]
+            pos_gen = fracture.ConnectedPosition(
+                confining_box=fracture_box,
+                init_boxes=[left_well_box, right_well_box])
+        else:
+            pos_gen = fracture.UniformBoxPosition(fracture_box)
+        fractures = pop.sample(pos_distr=pos_gen, keep_nonempty=True)
+        # fracture.fr_intersect(fractures)
 
+        for fr in fractures:
+            fr.region = "fr"
+        used_families = set((f.region for f in fractures))
+        Flow123d_WGC2020.config_fracture_regions(config_dict, used_families)
+        return fractures
+
+    @staticmethod
+    def prepare_mesh(config_dict, fractures):
+        mesh_name = config_dict["mesh_name"]
+        mesh_file = mesh_name + ".msh"
+        if not os.path.isfile(mesh_file):
+            Flow123d_WGC2020.make_mesh(config_dict, fractures, mesh_name, mesh_file)
+
+        mesh_healed = mesh_name + "_healed.msh"
+        if not os.path.isfile(mesh_healed):
+            hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
+            hm.heal_mesh(gamma_tol=0.01)
+            hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
+            hm.write()
+            assert hm.healed_mesh_name == mesh_healed
+        return mesh_healed
+
+    @staticmethod
+    def make_mesh(config_dict, fractures, mesh_name, mesh_file):
+        geom = config_dict["geometry"]
+        fracture_mesh_step = geom['fracture_mesh_step']
+        dimensions = geom["box_dimensions"]
+        well_z0, well_z1 = geom["well_openning"]
+        well_length = well_z1 - well_z0
+        well_r = geom["well_effective_radius"]
+        well_dist = geom["well_distance"]
+        print("load gmsh api")
+
+        factory = gmsh.GeometryOCC(mesh_name, verbose=True)
+        gopt = gmsh_options.Geometry()
+        gopt.Tolerance = 0.0001
+        gopt.ToleranceBoolean = 0.001
+        # gopt.MatchMeshTolerance = 1e-1
+
+        # Main box
+        box = factory.box(dimensions).set_region("box")
+        side_z = factory.rectangle([dimensions[0], dimensions[1]])
+        side_y = factory.rectangle([dimensions[0], dimensions[2]])
+        side_x = factory.rectangle([dimensions[2], dimensions[1]])
+        sides = dict(
+            side_z0=side_z.copy().translate([0, 0, -dimensions[2] / 2]),
+            side_z1=side_z.copy().translate([0, 0, +dimensions[2] / 2]),
+            side_y0=side_y.copy().translate([0, 0, -dimensions[1] / 2]).rotate([-1, 0, 0], np.pi / 2),
+            side_y1=side_y.copy().translate([0, 0, +dimensions[1] / 2]).rotate([-1, 0, 0], np.pi / 2),
+            side_x0=side_x.copy().translate([0, 0, -dimensions[0] / 2]).rotate([0, 1, 0], np.pi / 2),
+            side_x1=side_x.copy().translate([0, 0, +dimensions[0] / 2]).rotate([0, 1, 0], np.pi / 2)
+        )
+        for name, side in sides.items():
+            side.modify_regions(name)
+
+        b_box = box.get_boundary().copy()
+
+        # two vertical cut-off wells, just permeable part
+        left_center = [-well_dist / 2, 0, 0]
+        right_center = [+well_dist / 2, 0, 0]
+        left_well = factory.cylinder(well_r, axis=[0, 0, well_z1 - well_z0]) \
+            .translate([0, 0, well_z0]).translate(left_center)
+        right_well = factory.cylinder(well_r, axis=[0, 0, well_z1 - well_z0]) \
+            .translate([0, 0, well_z0]).translate(right_center)
+        b_right_well = right_well.get_boundary()
+        b_left_well = left_well.get_boundary()
+
+        print("n fractures:", len(fractures))
+        fractures = Flow123d_WGC2020.create_fractures_rectangles(factory, fractures, factory.rectangle())
+        # fractures = create_fractures_polygons(factory, fractures)
+        fractures_group = factory.group(*fractures)
+        # fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
+
+        # drilled box and its boundary
+        box_drilled = box.cut(left_well, right_well)
+
+        # fractures, fragmented, fractures boundary
+        print("cut fractures by box without wells")
+        fractures_group = fractures_group.intersect(box_drilled.copy())
+        print("fragment fractures")
+        box_fr, fractures_fr = factory.fragment(box_drilled, fractures_group)
+        print("finish geometry")
+        b_box_fr = box_fr.get_boundary()
+        b_left_r = b_box_fr.select_by_intersect(b_left_well).set_region(".left_well")
+        b_right_r = b_box_fr.select_by_intersect(b_right_well).set_region(".right_well")
+
+        box_all = []
+        for name, side_tool in sides.items():
+            isec = b_box_fr.select_by_intersect(side_tool)
+            box_all.append(isec.modify_regions("." + name))
+        box_all.extend([box_fr, b_left_r, b_right_r])
+
+        b_fractures = factory.group(*fractures_fr.get_boundary_per_region())
+        b_fractures_box = b_fractures.select_by_intersect(b_box).modify_regions("{}_box")
+        b_fr_left_well = b_fractures.select_by_intersect(b_left_well).modify_regions("{}_left_well")
+        b_fr_right_well = b_fractures.select_by_intersect(b_right_well).modify_regions("{}_right_well")
+        b_fractures = factory.group(b_fr_left_well, b_fr_right_well, b_fractures_box)
+        mesh_groups = [*box_all, fractures_fr, b_fractures]
+
+        print(fracture_mesh_step)
+        # fractures_fr.set_mesh_step(fracture_mesh_step)
+
+        factory.keep_only(*mesh_groups)
+        factory.remove_duplicate_entities()
+        factory.write_brep()
+
+        min_el_size = fracture_mesh_step / 10
+        fracture_el_size = np.max(dimensions) / 20
+        max_el_size = np.max(dimensions) / 8
+
+        fracture_el_size = gmsh_field.constant(fracture_mesh_step, 10000)
+        frac_el_size_only = gmsh_field.restrict(fracture_el_size, fractures_fr, add_boundary=True)
+        gmsh_field.set_mesh_step_field(frac_el_size_only)
+
+        mesh = gmsh_options.Mesh()
+        # mesh.Algorithm = options.Algorithm2d.MeshAdapt # produce some degenerated 2d elements on fracture boundaries ??
+        # mesh.Algorithm = options.Algorithm2d.Delaunay
+        # mesh.Algorithm = options.Algorithm2d.FrontalDelaunay
+        # mesh.Algorithm3D = options.Algorithm3d.Frontal
+        # mesh.Algorithm3D = options.Algorithm3d.Delaunay
+        mesh.ToleranceInitialDelaunay = 0.01
+        # mesh.ToleranceEdgeLength = fracture_mesh_step / 5
+        mesh.CharacteristicLengthFromPoints = True
+        mesh.CharacteristicLengthFromCurvature = True
+        mesh.CharacteristicLengthExtendFromBoundary = 2
+        mesh.CharacteristicLengthMin = min_el_size
+        mesh.CharacteristicLengthMax = max_el_size
+        mesh.MinimumCirclePoints = 6
+        mesh.MinimumCurvePoints = 2
+
+        # factory.make_mesh(mesh_groups, dim=2)
+        factory.make_mesh(mesh_groups)
+        factory.write_mesh(format=gmsh.MeshFormat.msh2)
+        os.rename(mesh_name + ".msh2", mesh_file)
+        # factory.show()
 
 
 

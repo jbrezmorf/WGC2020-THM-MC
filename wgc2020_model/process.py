@@ -1,19 +1,19 @@
+import gmsh
 import os
 import sys
 import shutil
 import ruamel.yaml as yaml
-import numpy as np
 
-from mlmc.random import correlated_field as cf
-from mlmc.tool import flow_mc
-from mlmc.moments import Legendre
+
+from flow_mc_new import Flow123d_WGC2020
+
+# from mlmc.random import correlated_field as cf
+# from mlmc.tool import flow_mc
 from mlmc.sampler import Sampler
 from mlmc.sample_storage_hdf import SampleStorageHDF
 from mlmc.sampling_pool import OneProcessPool, ProcessPool, ThreadPool
 from mlmc.sampling_pool_pbs import SamplingPoolPBS
 from mlmc.tool import base_process
-# from mlmc.tool.flow_mc import FlowSim
-from flow_mc_new import Flow123d_WGC2020
 from mlmc.moments import Legendre
 from mlmc.quantity_estimate import QuantityEstimate
 
@@ -46,7 +46,8 @@ class WGC2020_Process(base_process.Process):
         self.generate_jobs(sampler, n_samples=n_samples, renew=renew)
 
         self.all_collect([sampler])  # Check if all samples are finished
-        self.calculate_moments(sampler)  # Simple moment check
+        if n_samples > 1:
+            self.calculate_moments(sampler)  # Simple moment check
 
 
     def setup_config(self, n_levels, clean):
