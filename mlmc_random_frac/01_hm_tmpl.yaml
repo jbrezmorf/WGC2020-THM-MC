@@ -1,4 +1,4 @@
-flow123d_version: 2.0.0
+flow123d_version: 3.0.9
 problem: !Coupling_Sequential
   description: Hydraulic stimulation of fractures connecting two open well ends
   mesh:
@@ -19,7 +19,7 @@ problem: !Coupling_Sequential
         biot_alpha: 0.6
         fluid_density: 1000
     time:
-      end_time: 86400 # 1 day
+      end_time: [1, 'd'] #86400 # 1 day
     iteration_parameter: 0.5 # affects convergence of HM coupling (defaults to 1, lower value sometimes helps)
     a_tol: 0
     r_tol: 1e-3
@@ -145,7 +145,7 @@ problem: !Coupling_Sequential
         output_stream:
           file: mechanics.pvd
           format: !gmsh
-            variant: ascii
+            #variant: ascii
         output:
           fields:
             - displacement

@@ -1,4 +1,4 @@
-flow123d_version: 2.0.0
+flow123d_version: 3.0.9
 problem: !Coupling_Sequential
   description: Heat transfer in EGS after stimulation of fractures
   mesh:
@@ -130,7 +130,7 @@ problem: !Coupling_Sequential
         - region_id
       #observe_fields: temperature
       times:
-        - {step: 1, time_unit: 'y'}      # 31557600       # 1 yr
+        - step: [1, 'y'] #{time: 1,  unit: 'y'}      # 31557600       # 1 yr
     solver: !Petsc
       a_tol: <heat_solver__a_tol>
       r_tol: <heat_solver__r_tol>
