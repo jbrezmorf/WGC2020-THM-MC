@@ -11,7 +11,7 @@ which pip
 pip install --upgrade pip
 pip -V
 
-pip install pyyaml attrs numpy
+pip install pyyaml attrs numpy ruamel.yaml
 pip install -e ../bgem
 pip install -e ../MLMC
 
