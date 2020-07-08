@@ -4,6 +4,13 @@ run_on_metacentrum: false
 # number of samples
 n_samples: 1
 
+mesh_only: True
+# Set to None to generate new meshes. ABSOLUTE PATH
+mesh_repository:
+#mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository
+#mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository_fixed_frac
+#mesh_repository: /storage/liberec3-tul/home/jan_brezina/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository/
+
 # The flow executable and arguments to use.
 local:
   flow_executable:
@@ -36,12 +43,6 @@ metacentrum:
 
 
 copy_files: [config.yaml, flow_mc_new.py, 01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
-
-# Set to None to generate new meshes. ABSOLUTE PATH
-#mesh_repository:
-#mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository
-mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository_fixed_frac
-#mesh_repository: /storage/liberec3-tul/home/jan_brezina/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository/
 
 geometry:
   # depth of the center of the box and of the coordinate system
@@ -254,7 +255,7 @@ th_params:
     well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
     
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-9
+    bulk_conductivity: *bulk_cond_init
     increased_bulk_cond_levels: 2
     sigma_bulk_conductivity: 1e-7
     min_fr_cross_section: 5e-5
@@ -291,8 +292,8 @@ th_params_ref:
     
     fr_cross_section: *fr_cs_init
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-8
-    sigma_bulk_conductivity: 1e-7
+    bulk_conductivity: *bulk_cond_init
+    sigma_bulk_conductivity: *bulk_cond_init
     min_fr_cross_section: 1e-4
 
     flow_solver__a_tol: *fatol

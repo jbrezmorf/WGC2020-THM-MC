@@ -128,6 +128,9 @@ class Flow123d_WGC2020(Simulation):
         config_dict["th_params"]["mesh"] = healed_mesh_bn
         config_dict["th_params_ref"]["mesh"] = healed_mesh_bn
 
+        if config_dict["mesh_only"]:
+            return [0,0]
+
         hm_succeed = Flow123d_WGC2020.call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
         th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
         th_succeed = False
