@@ -258,7 +258,9 @@ class Flow123d_WGC2020(Simulation):
         shapes = []
         for i, fr in enumerate(fractures):
             shape = base_shape.copy()
-            print("fr: ", i, "tag: ", shape.dim_tags)
+            # print("fr: ", i, "tag: ", shape.dim_tags)
+            if i % 50 == 0:
+                print(i, " fracture shapes generated... ")
             shape = shape.scale([fr.rx, fr.ry, 1]) \
                 .rotate(axis=fr.rotation_axis, angle=fr.rotation_angle) \
                 .translate(fr.centre) \
@@ -370,6 +372,7 @@ class Flow123d_WGC2020(Simulation):
         # fractures = create_fractures_polygons(factory, fractures)
         fractures_group = factory.group(*fractures)
         # fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
+        print("fracture shapes generated")
 
         # drilled box and its boundary
         box_drilled = box.cut(left_well, right_well)
