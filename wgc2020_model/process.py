@@ -13,12 +13,12 @@ from mlmc.sampler import Sampler
 from mlmc.sample_storage_hdf import SampleStorageHDF
 from mlmc.sampling_pool import OneProcessPool, ProcessPool, ThreadPool
 from mlmc.sampling_pool_pbs import SamplingPoolPBS
-from mlmc.tool import base_process
+from mlmc.tool import process_base
 from mlmc.moments import Legendre
 from mlmc.quantity_estimate import QuantityEstimate
 
 
-class WGC2020_Process(base_process.Process):
+class WGC2020_Process(process_base.ProcessBase):
 
     def __init__(self):
         #TODO: separate constructor and run call
@@ -82,9 +82,9 @@ class WGC2020_Process(base_process.Process):
             append=self.append)
 
         # Create sampler, it manages sample scheduling and so on
-        step_range = [1]   # auxiliary variable, not used
+        # the length of level_parameters must correspond to number of MLMC levels, at least 1 !!!
         sampler = Sampler(sample_storage=sample_storage, sampling_pool=sampling_pool, sim_factory=simulation_factory,
-                          step_range=step_range)
+                          level_parameters=[1])
 
         return sampler
 
