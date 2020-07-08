@@ -126,22 +126,20 @@ class WGC2020_Process(base_process.Process):
         sampling_pool = SamplingPoolPBS(job_weight=20000000, work_dir=self.work_dir, clean=self.clean)
 
         pbs_config = dict(
-            n_cores=1,
+            n_cores=4,
             n_nodes=1,
             select_flags=['cgroups=cpuacct'],
-            mem='128mb',
+            mem='2gb',
             queue='charon_2h',
-            home_dir='/storage/liberec3-tul/home/martin_spetlik/',
+            home_dir='/storage/liberec3-tul/home/pavel_exner/',
             # pbs_process_file_dir='/auto/liberec3-tul/home/martin_spetlik/MLMC_new_design/src/mlmc',
-            python='python3',
-            env_setting=['cd {work_dir}',
-                         'module load python36-modules-gcc',
+            python='python',
+            env_setting=['cd /auto/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model',
+                         'source load_modules.sh',
                          'source env/bin/activate',
-                         'pip3 install /storage/liberec3-tul/home/martin_spetlik/MLMC_new_design',
-                         'module use /storage/praha1/home/jan-hybs/modules',
-                         'module load python36-modules-gcc',
-                         'module load flow123d',
-                         'module list']
+                         'module list'
+                         #'cd {work_dir}'
+                         ]
         )
 
         sampling_pool.pbs_common_setting(flow_3=True, **pbs_config)
