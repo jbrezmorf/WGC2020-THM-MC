@@ -113,7 +113,11 @@ class Flow123d_WGC2020(Simulation):
         # running simulation
         # extracting results
 
+        print("=========================== RUNNING CALCULATION ===========================")
+
         mesh_repo = config_dict.get('mesh_repository', None)
+        # p = [1,2,3]
+        # a = p[5]
 
         if mesh_repo:
             healed_mesh = Flow123d_WGC2020.sample_mesh_repository(mesh_repo)
@@ -129,7 +133,7 @@ class Flow123d_WGC2020(Simulation):
         config_dict["th_params_ref"]["mesh"] = healed_mesh_bn
 
         if config_dict["mesh_only"]:
-            return [0,0]
+            return Flow123d_WGC2020.empty_result()
 
         hm_succeed = Flow123d_WGC2020.call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
         th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
@@ -144,8 +148,8 @@ class Flow123d_WGC2020(Simulation):
         print("Finished")
 
         # TODO: extract results, pass as tuple (fine, coarse) -> (fine, fine)
-        result = (np.array([np.random.normal()]), np.array([np.random.normal()]))
-        return result
+        # result = (np.array([np.random.normal()]), np.array([np.random.normal()]))
+        return Flow123d_WGC2020.empty_result()
 
     @staticmethod
     def result_format()-> List[QuantitySpec]:
@@ -163,8 +167,9 @@ class Flow123d_WGC2020(Simulation):
         spec2 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
         return [spec1, spec2]
 
-
-
+    @staticmethod
+    def empty_result():
+        return [0,0]
 
 
 
