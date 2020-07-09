@@ -99,7 +99,7 @@ class Flow123d_WGC2020(Simulation):
                                )
 
     @staticmethod
-    def calculate(config_dict, sample_workspace=None):
+    def calculate(config_dict, seed):
         """
         TODO: what is sample_workspace? where is calculate called? Where is the seed in orig flow_mc.py ?
         Overrides Simulation.calculate. The program is currently in <work_dir>/<sample_id_dir> directory.
@@ -114,6 +114,9 @@ class Flow123d_WGC2020(Simulation):
         # extracting results
 
         print("=========================== RUNNING CALCULATION ===========================")
+
+        # Set random seed, seed is calculated from sample id, so it is not user defined
+        np.random.seed(seed)
 
         mesh_repo = config_dict.get('mesh_repository', None)
         # p = [1,2,3]
@@ -169,7 +172,7 @@ class Flow123d_WGC2020(Simulation):
 
     @staticmethod
     def empty_result():
-        return [0,0]
+        return [[np.random.normal()], [np.random.normal()]]
 
 
 
