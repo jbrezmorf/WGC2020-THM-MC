@@ -18,6 +18,7 @@ from mlmc.sim.simulation import Simulation
 from mlmc.sim.simulation import QuantitySpec
 
 import fracture
+import matplotlib.pyplot as plt
 
 def force_mkdir(path, force=False):
     """
@@ -126,8 +127,8 @@ class Flow123d_WGC2020(Simulation):
             healed_mesh = Flow123d_WGC2020.sample_mesh_repository(mesh_repo)
             Flow123d_WGC2020.config_fracture_regions(config_dict, config_dict["fracture_regions"])
         else:
-            # plot_fr_orientation(fractures)
             fractures = Flow123d_WGC2020.generate_fractures(config_dict)
+            Flow123d_WGC2020.plot_fr_orientation(fractures)
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
 
         healed_mesh_bn = os.path.basename(healed_mesh)
@@ -313,6 +314,56 @@ class Flow123d_WGC2020(Simulation):
         used_families = set((f.region for f in fractures))
         Flow123d_WGC2020.config_fracture_regions(config_dict, used_families)
         return fractures
+
+    @staticmethod
+    def to_polar(x, y, z):
+        rho = np.sqrt(x ** 2 + y ** 2)
+        phi = np.arctan2(y, x)
+        if z > 0:
+            phi += np.pi
+        return phi, rho
+
+    @staticmethod
+    def plot_fr_orientation(fractures):
+        family_dict = collections.defaultdict(list)
+        for fr in fractures:
+            x, y, z = \
+                fracture.FisherOrientation.rotate(np.array([0, 0, 1]), axis=fr.rotation_axis, angle=fr.rotation_angle)[0]
+            family_dict[fr.region].append([
+                Flow123d_WGC2020.to_polar(z, y, x),
+                Flow123d_WGC2020.to_polar(z, x, -y),
+                Flow123d_WGC2020.to_polar(y, x, z)
+            ])
+
+        fig, axes = plt.subplots(1, 3, subplot_kw=dict(projection='polar'))
+        rmax = 0
+        for name, data in family_dict.items():
+            # data shape = (N, 3, 2)
+            data = np.array(data)
+            for i, ax in enumerate(axes):
+                phi = data[:, i, 0]
+                r = data[:, i, 1]
+                rmax = r.max()
+                c = ax.scatter(phi, r, cmap='hsv', alpha=0.75, label=name)
+        subtitle_pad = 1.3
+        axes[0].set_title("X-view, Z-north", y=subtitle_pad)
+        axes[1].set_title("Y-view, Z-north", y=subtitle_pad)
+        axes[2].set_title("Z-view, Y-north", y=subtitle_pad)
+        rticks = np.arange(rmax/4, rmax, rmax/4)
+        rtickslables = [round(num, 2) for num in rticks]
+        for ax in axes:
+            ax.set_theta_zero_location("N")
+            ax.set_theta_direction(-1)
+            ax.set_ylim(0, 1)
+            ax.set_rlabel_position(5)
+            ax.set_rticks(rticks)
+            ax.set_yticklabels(rtickslables, fontsize=6)
+
+        # fig.legend(loc=1)
+        plt.tight_layout()
+        fig.savefig("fracture_orientation.pdf")
+        plt.close(fig)
+        # plt.show()
 
     @staticmethod
     def prepare_mesh(config_dict, fractures):
