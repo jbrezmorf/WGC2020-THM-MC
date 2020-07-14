@@ -624,6 +624,10 @@ class Flow123d_WGC2020(Simulation):
         """
         # pass
         # we have to read region names from the input mesh
+        # get fracture regions ids
+        orig_mesh = gmsh_io.GmshIO(config_dict["th_params"]["mesh"])
+        fr_regs = orig_mesh.get_reg_ids_by_physical_names(config_dict["fracture_regions"], 2)
+
         # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
         #
         # is_bc_region = {}
@@ -638,10 +642,9 @@ class Flow123d_WGC2020(Simulation):
         mesh = gmsh_io.GmshIO(mechanics_output)
         # map eid to the element position in the array
         # TODO: use extract_mesh
-        ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
         ele_ids_map = dict()
-        for i in range(len(ele_ids)):
-            ele_ids_map[ele_ids[i]] = i
+        for i, eid in enumerate(mesh.elements.keys()):
+            ele_ids_map[eid] = i
 
         init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
         init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
@@ -656,14 +659,11 @@ class Flow123d_WGC2020(Simulation):
         cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
         cs = np.minimum(cs, max_fr_cross_section)
 
-        # IMPORTANT - we suppose that the output mesh has the same ELEMENT NUMBERING as the input mesh
-        # get fracture regions ids
-        orig_mesh = gmsh_io.GmshIO(config_dict["th_params"]["mesh"])
-        fr_regs = orig_mesh.get_reg_ids_by_physical_names(config_dict["fracture_regions"], 2)
-        fr_indices = orig_mesh.get_elements_of_regions(fr_regs)
+        # IMPORTANT - we suppose mesh nodes continuous, so we can find neighboring elements
+        fr_indices = mesh.get_elements_of_regions(fr_regs)
         # find bulk elements neighboring to the fractures
         fr_n_levels = config_dict["th_params"]["increased_bulk_cond_levels"]
-        fracture_neighbors = Flow123d_WGC2020.find_fracture_neigh(orig_mesh, fr_regs, n_levels=fr_n_levels)
+        fracture_neighbors = Flow123d_WGC2020.find_fracture_neigh(mesh, fr_regs, n_levels=fr_n_levels)
 
         # create and fill conductivity field
         # set all values to initial bulk conductivity
@@ -676,6 +676,8 @@ class Flow123d_WGC2020(Simulation):
         level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
         for eid, lev in fracture_neighbors:
             assert lev < len(level_factor)
+            if eid >= len(ele_ids_map):
+                print("eid {}, n {}", eid, len(ele_ids_map))
             assert eid < len(ele_ids_map)
             assert ele_ids_map[eid] < len(K)
             K[ele_ids_map[eid]] = init_bulk_K * level_factor[lev]
@@ -701,6 +703,7 @@ class Flow123d_WGC2020(Simulation):
 
         # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
         th_input_file = 'th_input.msh'
+        ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
         with open(th_input_file, "w") as fout:
             mesh.write_ascii(fout)
             mesh.write_element_data(fout, ele_ids, 'conductivity', K)
