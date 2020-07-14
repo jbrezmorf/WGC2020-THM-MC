@@ -147,7 +147,7 @@ problem: !Coupling_Sequential
         output:
           fields:
             - displacement
-            - stress
+            - { field: stress, interpolation: P1_average }
             - cross_section_updated
             - displacement_divergence
             - region_id
