@@ -252,6 +252,9 @@ th_params:
     mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
     in_file: 02_th
 
+    step: &step [10, 'y']
+    end_time: &end_time [30, 'y']
+
     well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
     well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
     
@@ -280,6 +283,7 @@ th_params:
     # out of memory 12GB
     heat_solver__options: -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
 
+
     
 # parameters substituted into the TH model template
 th_params_ref: 
@@ -287,6 +291,9 @@ th_params_ref:
     #mesh: three_frac_symmetric.msh
     mesh: random_fractures.msh  # healed mesh is used at the end (programmatically replaced)
     in_file: 03_th
+
+    step: *step
+    end_time: *end_time
 
     well_piezohead_inject: *w_p_inject
     well_piezohead_pump: *w_p_pump

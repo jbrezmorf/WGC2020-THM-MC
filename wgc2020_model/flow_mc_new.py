@@ -166,7 +166,9 @@ class Flow123d_WGC2020(Simulation):
 
         # TODO: define times according to output times of Flow123d
         # TODO: how should be units defined (and other members)?
-        times = [1]
+        step = 10
+        end_time = 30
+        times = range(0, end_time, step)
         spec1 = QuantitySpec(name="avg_temp_flux", unit="t/m/m/s", shape=(1, 1), times=times, locations=['.well'])
         spec2 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
         return [spec1, spec2]

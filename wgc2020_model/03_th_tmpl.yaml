@@ -116,11 +116,11 @@ problem: !Coupling_Sequential
         - region_id
       #observe_fields: temperature
       times:
-        - step: [1, 'y'] #{time: 1,  unit: 'y'}      # 31557600       # 1 yr
+        - step: <step>
     solver: !Petsc
       a_tol: <heat_solver__a_tol>
       r_tol: <heat_solver__r_tol>
       options: <heat_solver__options>
 
     time:
-      end_time: [30, 'y'] #946728000       # 30 yr
+      end_time: <end_time>
