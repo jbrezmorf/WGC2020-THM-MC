@@ -154,9 +154,10 @@ geometry:
 
 # base of the mesh file name
 mesh_name: random_fractures
-#fracture_regions: ['fr']
+
+fracture_regions: ['fr']
 # for testing fixed fracture mesh
-fracture_regions: ['left_fr', 'right_fr', 'center_fr']
+#fracture_regions: ['left_fr', 'right_fr', 'center_fr']
 
 # parameters substituted into the HM model template
 hm_params:
