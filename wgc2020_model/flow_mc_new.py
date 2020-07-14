@@ -123,6 +123,7 @@ class Flow123d_WGC2020(Simulation):
         # p = [1,2,3]
         # a = p[5]
 
+        print("Creating mesh...")
         if mesh_repo:
             healed_mesh = Flow123d_WGC2020.sample_mesh_repository(mesh_repo)
             Flow123d_WGC2020.config_fracture_regions(config_dict, config_dict["fracture_regions"])
@@ -130,6 +131,7 @@ class Flow123d_WGC2020(Simulation):
             fractures = Flow123d_WGC2020.generate_fractures(config_dict)
             Flow123d_WGC2020.plot_fr_orientation(fractures)
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
+        print("Creating mesh...finished")
 
         healed_mesh_bn = os.path.basename(healed_mesh)
         config_dict["hm_params"]["mesh"] = healed_mesh_bn
@@ -139,19 +141,29 @@ class Flow123d_WGC2020(Simulation):
         if config_dict["mesh_only"]:
             return Flow123d_WGC2020.empty_result()
 
+        print("Running Flow123d - HM...")
         hm_succeed = Flow123d_WGC2020.call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
+        print("Running Flow123d - HM...finished")
+        print("Running Flow123d - TH_ref...")
         th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
+        print("Running Flow123d - TH_ref...finished")
+
         th_succeed = False
         if hm_succeed:
+            print("Preparing TH input...")
             Flow123d_WGC2020.prepare_th_input(config_dict)
+            print("Preparing TH input...finished")
+            print("Running Flow123d - TM...")
             th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
+            print("Running Flow123d - TH...finished")
+        print("Finished computation")
 
             # if th_succeed:
             #    series = extract_results(config_dict)
             #    plot_exchanger_evolution(*series)
         print("Finished")
 
-        # TODO: extract results, pass as tuple (fine, coarse) -> (fine, fine)
+        # TODO: extract results, pass as [fine, coarse] -> [fine, fine]
         # result = (np.array([np.random.normal()]), np.array([np.random.normal()]))
         return Flow123d_WGC2020.empty_result()
 
