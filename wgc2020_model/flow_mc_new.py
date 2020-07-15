@@ -693,9 +693,9 @@ class Flow123d_WGC2020(Simulation):
         level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
         for eid, lev in fracture_neighbors:
             assert lev < len(level_factor)
-            if eid >= len(ele_ids_map):
-                print("eid {}, n {}", eid, len(ele_ids_map))
-            assert eid < len(ele_ids_map)
+            # if eid >= len(ele_ids_map):
+            #     print("eid {}, n {}", eid, len(ele_ids_map))
+            # assert eid < len(ele_ids_map)
             assert ele_ids_map[eid] < len(K)
             K[ele_ids_map[eid]] = init_bulk_K * level_factor[lev]
 

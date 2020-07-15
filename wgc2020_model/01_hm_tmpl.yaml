@@ -146,8 +146,8 @@ problem: !Coupling_Sequential
           format: !gmsh
         output:
           fields:
-            - displacement
-            - { field: stress, interpolation: P1_average }
+            - { field: displacement, interpolation: P1_average }
+            - stress
             - cross_section_updated
             - displacement_divergence
             - region_id
