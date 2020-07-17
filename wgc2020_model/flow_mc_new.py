@@ -161,12 +161,12 @@ class Flow123d_WGC2020(Simulation):
         if th_succeed:
             print("Extracting results...")
             series = Flow123d_WGC2020.extract_results(config_dict)
-            Flow123d_WGC2020.plot_exchanger_evolution(*series)
+            # Flow123d_WGC2020.plot_exchanger_evolution(*series)
             print("Extracting results...finished")
             temp_times, avg_temp, power_times, power_series = series
             # [fine, coarse] -> [fine_vector, fine_vector]
-            # return [[*avg_temp, *power_series], [*avg_temp, *power_series]]
-            return [[*avg_temp], [*avg_temp]]
+            return [[*avg_temp, *power_series], [*avg_temp, *power_series]]
+            # return [[*avg_temp], [*avg_temp]]
 
         # TODO: extract results, pass as [fine, coarse] -> [fine, fine]
         # result = (np.array([np.random.normal()]), np.array([np.random.normal()]))
@@ -184,7 +184,7 @@ class Flow123d_WGC2020(Simulation):
         # TODO: define times according to output times of Flow123d
         # TODO: how should be units defined (and other members)?
         step = 10
-        end_time = 30
+        end_time = 40
         times = range(0, end_time, step)
         spec1 = QuantitySpec(name="avg_temp_flux", unit="t/m/m/s", shape=(1, 1), times=times, locations=['.well'])
         spec2 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
@@ -639,6 +639,10 @@ class Flow123d_WGC2020(Simulation):
         Prepare FieldFE input file for the TH simulation.
         :param config_dict: Parsed config.yaml. see key comments there.
         """
+        th_input_file = 'th_input.msh'
+        if os.path.exists(th_input_file):
+            return
+
         # pass
         # we have to read region names from the input mesh
         # get fracture regions ids
@@ -794,7 +798,7 @@ class Flow123d_WGC2020(Simulation):
             flux_times, reg_fluxes = Flow123d_WGC2020.extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
         sum_flux = sum(reg_fluxes)
         avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
-        print("temp: ", avg_temp)
+
         return temp_times, avg_temp, power_times, power_series
 
     @staticmethod
