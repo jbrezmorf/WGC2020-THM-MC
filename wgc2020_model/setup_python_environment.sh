@@ -11,6 +11,7 @@ which pip
 pip install --upgrade pip
 pip -V
 
+# pip install wheel # error then installing bih 
 pip install pyyaml attrs numpy ruamel.yaml
 pip install -e ../bgem
 pip install -e ../MLMC
