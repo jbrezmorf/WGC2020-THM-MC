@@ -233,7 +233,7 @@ class Flow123d_WGC2020(Simulation):
         if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
             status = True
         else:
-            arguments.extend(['--output_dir', output_dir, fname + ".yaml"])
+            arguments.extend(['--no_profiler', '--output_dir', output_dir, fname + ".yaml"])
             print("Running: ", " ".join(arguments))
             with open(fname + "_stdout", "w") as stdout:
                 with open(fname + "_stderr", "w") as stderr:
@@ -242,7 +242,7 @@ class Flow123d_WGC2020(Simulation):
             status = completed.returncode == 0
         conv_check = Flow123d_WGC2020.check_conv_reasons(os.path.join(output_dir, "flow123.0.log"))
         print("converged: ", conv_check)
-        return status  # and conv_check
+        return status and conv_check
 
 
 
