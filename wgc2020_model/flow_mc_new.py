@@ -163,10 +163,10 @@ class Flow123d_WGC2020(Simulation):
             series = Flow123d_WGC2020.extract_results(config_dict)
             # Flow123d_WGC2020.plot_exchanger_evolution(*series)
             print("Extracting results...finished")
-            temp_times, avg_temp, power_times, power_series = series
+            (avg_temp, power), (avg_temp_ref, power_ref) = series
             # [fine, coarse] -> [fine_vector, fine_vector]
-            return [[*avg_temp, *power_series], [*avg_temp, *power_series]]
-            # return [[*avg_temp], [*avg_temp]]
+            return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
+                    [*avg_temp, *power, *avg_temp_ref, *power_ref]]
 
         # TODO: extract results, pass as [fine, coarse] -> [fine, fine]
         # result = (np.array([np.random.normal()]), np.array([np.random.normal()]))
@@ -185,10 +185,12 @@ class Flow123d_WGC2020(Simulation):
         # TODO: how should be units defined (and other members)?
         step = 10
         end_time = 40
-        times = range(0, end_time, step)
-        spec1 = QuantitySpec(name="avg_temp_flux", unit="t/m/m/s", shape=(1, 1), times=times, locations=['.well'])
+        times = list(range(0, end_time, step))
+        spec1 = QuantitySpec(name="avg_temp", unit="C", shape=(1, 1), times=times, locations=['.well'])
         spec2 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        return [spec1, spec2]
+        spec3 = QuantitySpec(name="avg_temp_ref", unit="C", shape=(1, 1), times=times, locations=['.well'])
+        spec4 = QuantitySpec(name="power_ref", unit="J", shape=(1, 1), times=times, locations=['.well'])
+        return [spec1, spec2, spec3, spec4]
 
     @staticmethod
     def empty_result():
@@ -787,7 +789,14 @@ class Flow123d_WGC2020(Simulation):
         """
         bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
         out_regions = bc_regions[2:]
-        output_dir = config_dict["th_params"]["output_dir"]
+
+        th_res = Flow123d_WGC2020.extract_th_restuls(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
+        th_res_ref = Flow123d_WGC2020.extract_th_restuls(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
+
+        return th_res, th_res_ref
+
+    @staticmethod
+    def extract_th_restuls(output_dir, out_regions, bc_regions):
         with open(os.path.join(output_dir, "energy_balance.yaml"), "r") as f:
             power_times, reg_powers = Flow123d_WGC2020.extract_time_series(f, bc_regions, extract=lambda frame: frame['data'][0])
             power_series = -sum(reg_powers)
@@ -797,9 +806,8 @@ class Flow123d_WGC2020(Simulation):
         with open(os.path.join(output_dir, "water_balance.yaml"), "r") as f:
             flux_times, reg_fluxes = Flow123d_WGC2020.extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
         sum_flux = sum(reg_fluxes)
-        avg_temp = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
-
-        return temp_times, avg_temp, power_times, power_series
+        avg_temp_flux = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+        return avg_temp_flux, power_series
 
     @staticmethod
     def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
