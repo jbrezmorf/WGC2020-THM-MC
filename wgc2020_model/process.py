@@ -51,7 +51,7 @@ class WGC2020_Process(process_base.ProcessBase):
         # if n_samples > 1:
         #     self.calculate_moments(sampler)  # Simple moment check
 
-        self.get_some_results(sampler)
+        self.get_some_results(sampler.sample_storage)
 
 
     def setup_config(self, n_levels, clean):
@@ -169,56 +169,64 @@ class WGC2020_Process(process_base.ProcessBase):
             sampler.schedule_samples()
             sampler.ask_sampling_pool_for_samples(sleep=self.sample_sleep, timeout=self.sample_timeout)
 
-    def calculate_moments(self, sampler):
+    def calculate_moments(self, storage: SampleStorageHDF, qspec: QuantitySpec):
         """
-        Calculate moments through the mlmc.QuantityEstimate
-        :param sampler: sampler (mlmc.Sampler)
-        :return: None
+        Calculate moments of given quantity for all times.
+        :param storage: Sample HDF storage
+        :param qspec: quantity given by QuantitySpec
+        :return: moments means estimates, their variances; tuple of 2 np.arrays of length 3
         """
-        # Simple moment evaluation
-        moments_fn = self.set_moments(sampler.sample_storage)
-
-        q_estimator = QuantityEstimate(sample_storage=sampler.sample_storage, moments_fn=moments_fn,
-                                       sim_steps=self.step_range)
-
-        print("collected samples ", sampler._n_scheduled_samples)
-        means, vars = q_estimator.estimate_moments(moments_fn)
-        print("means (mapped to [0,1])", means)
-        print("vars (mapped to [0,1])", vars)
-
-        # The first moment is in any case 1 and its variance is 0
-        assert means[0] == 1
-        # assert np.isclose(means[1], 0, atol=1e-2)
-        assert vars[0] == 0
-
-        # means = moments_fn.inv_linear(means)
-        # vars = moments_fn.inv_linear(vars)
-        # print("real means ", means)
-        # print("real vars ", vars)
-
-        return means, vars
-
-    def set_moments(self, sample_storage):
         n_moments = 3
-        true_domain = QuantityEstimate.estimate_domain(sample_storage, quantile=0.01)
-        # return moments.Legendre(n_moments, true_domain)
-        return moments.Monomial(n_moments, true_domain)
+        means = []
+        vars = []
+        for time_id in range(len(qspec.times)):
+            true_domain = QuantityEstimate.estimate_domain(storage, qspec, time_id, quantile=0.01)
+            # moments_fn = moments.Legendre(n_moments, true_domain)
+            moments_fn = moments.Monomial(n_moments, true_domain)
 
-    def get_some_results(self, sampler):
+            q_estimator = QuantityEstimate(sample_storage=storage, sim_steps=self.step_range,
+                                           qspec=qspec, time_id=time_id)
+
+            m, v = q_estimator.estimate_moments(moments_fn)
+            # The first moment is in any case 1 and its variance is 0
+            assert m[0] == 1
+            # assert np.isclose(means[1], 0, atol=1e-2)
+            assert v[0] == 0
+
+            means.append(m)
+            vars.append(v)
+            print("t = ", qspec.times[time_id], " means (mapped to [0,1])", m)
+            print("t = ", qspec.times[time_id], " vars (mapped to [0,1])", v)
+
+        return np.array(means), np.array(vars)
+
+    def get_some_results(self, sample_storage):
         # Open HDF sample storage
-        hdf_file = os.path.join(self.work_dir, "wgc2020_mlmc.hdf5")
+        # hdf_file = os.path.join(self.work_dir, "wgc2020_mlmc.hdf5")
+        # sample_storage = SampleStorageHDF(file_path=hdf_file, append=True)
 
-        sample_storage = SampleStorageHDF(file_path=hdf_file, append=True)
-
-        avg_temp_flux_vals, avg_temp_flux\
-            = sample_storage.load_collected_values("0", "avg_temp_flux", fine_res=True)
+        print("N levels: ", sample_storage.n_levels())
+        avg_temp_vals, avg_temp\
+            = sample_storage.load_collected_values("0", "avg_temp", fine_res=True)
         power_vals, power\
             = sample_storage.load_collected_values("0", "power", fine_res=True)
 
-        self.plot_histogram(avg_temp_flux, avg_temp_flux_vals, 30)
+        self.plot_histogram(avg_temp, avg_temp_vals, 30)
         self.plot_histogram(power, power_vals, 30)
 
+        plot_dict = dict()
+        plot_dict["ylabel"] = "Temperature [$^\circ$C]"
+        plot_dict["file_name"] = "temp_comparison"
+        plot_dict["color"] = "red"
+        plot_dict["color_ref"] = "orange"
+        self.plot_comparison(sample_storage, "avg_temp", "avg_temp_ref", plot_dict)
 
+        plot_dict = dict()
+        plot_dict["ylabel"] = "Power [MW]"
+        plot_dict["file_name"] = "power_comparison"
+        plot_dict["color"] = "blue"
+        plot_dict["color_ref"] = "forestgreen"
+        self.plot_comparison(sample_storage, "avg_temp", "avg_temp_ref", plot_dict)
         # TODO: problems:
         # quantity_estimate.get_level_results does not support array quantities
         # it only gets the first (i.e. temp at time 0)
@@ -229,11 +237,6 @@ class WGC2020_Process(process_base.ProcessBase):
         #
         # SampleStorageHDF.sample_pairs get the data
         # I implemented load_collected_values() which selects the quantities by name at all times
-
-        moments = self.calculate_moments(sampler)  # Simple moment check
-
-        self.plot_temp_ref_comparison(avg_temp_flux, avg_temp_flux_vals, moments)
-        # self.plot_power_ref_comparison(mlmc_est)
 
         return
 
@@ -260,55 +263,58 @@ class WGC2020_Process(process_base.ProcessBase):
         ax1.legend()
         fig.savefig(os.path.join(self.work_dir, quantity.name + ".pdf"))
         fig.savefig(os.path.join(self.work_dir, quantity.name + ".png"))
-        plt.show()
+        # plt.show()
 
-    def plot_temp_ref_comparison(self, quantity: QuantitySpec, data, moments):
+    def plot_comparison(self, sample_storage, quantity_name, quantity_ref_name, plot_dict):
         """
-        Plot temperature and power
-        :param mlmc_est: mlmc.Estimate instance
-        :param result_params : Dictionary of names of parameters {power :, temp: , temp_min: , temp_max: }
-        :return: None
+        Plots comparison of quantity values and some reference values in time.
+        Computes first two moment means and its variances.
+        :param sample_storage: Sample HDF storage
+        :param quantity_name: string, name corresponds to its QuantitySpec
+        :param quantity_ref_name: string, name corresponds to its QuantitySpec
+        :param plot_dict: dictionary with several plot parameters (labels, colors...)
+        :return:
         """
-        times = quantity.times
+        quant_vals, quant_spec \
+            = sample_storage.load_collected_values("0", quantity_name, fine_res=True)
+        quant_ref_vals, quant_ref_spec \
+            = sample_storage.load_collected_values("0", quantity_ref_name, fine_res=True)
+
+        moments = self.calculate_moments(sample_storage, quant_spec)
+        moments_ref = self.calculate_moments(sample_storage, quant_ref_spec)
+
+        assert len(quant_spec.times) == len(quant_ref_spec.times)
+        times = quant_spec.times
 
         # Plot temperature
         fig, ax1 = plt.subplots()
         ax1.set_xlabel('time [y]')
-        ax1.set_ylabel(quantity.name + " [" + quantity.unit + "]", color='black')
+        ax1.set_ylabel(plot_dict["ylabel"], color='black')
         ax1.tick_params(axis='y', labelcolor='black')
-        self.plot_param(mlmc_est, ax1, times, 'red', 'temp', 'stimulated')
-        self.plot_param(mlmc_est, ax1, times, 'orange', 'temp_ref', 'unmodified')
+        self.plot_param(moments, ax1, times, plot_dict["color"], 'stimulated')
+        self.plot_param(moments_ref, ax1, times, plot_dict["color_ref"], 'unmodified')
 
-        #ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
+        # ax1.legend(["stimulated - mean", "stimulated - std", "reference - mean", "reference - std"])
         ax1.legend()
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
-        fig.savefig(os.path.join(self.work_dir, "temp_comparison.pdf"))
-        fig.savefig(os.path.join(self.work_dir, "temp_comparison.png"))
-        plt.show()
+        fig.savefig(os.path.join(self.work_dir, plot_dict["file_name"] + ".pdf"))
+        fig.savefig(os.path.join(self.work_dir, plot_dict["file_name"] + ".png"))
+        # plt.show()
 
-    def plot_param(self, mlmc_est, ax, X, col, param_name, legend):
+    def plot_param(self, moments, ax, X, col, legend):
         """
         Get all result values by given param name, e.g. param_name = "temp" - return all temperatures...
-        :param mlmc_est: Estimate instance
-        :param param_name: Sample result param name
-        :return: moments means, moments vars -> two numpy arrays
+        :param moments: moments means estimates, their variances; tuple of 2 np.arrays of length at least 3
+        :param ax: plot axis
+        :param X: x-axis data (time)
+        :param col: color
+        :param legend: legend label
+        :return: void
         """
+        mom_means, mom_vars = moments
+        N = len(mom_means)
 
-        n_moments = 3
-        mlmc_est.mlmc.clean_select()
-        mlmc_est.mlmc.select_values(None, selected_param=param_name)
-        print("plot param:", param_name)
-        samples = mlmc_est.mlmc.levels[0].sample_values[:,0,:]
-        print("    shape: ", samples.shape)
-        #print(np.any(np.isnan(samples), axis=1))
-        domain = Estimate.estimate_domain(mlmc_est.mlmc)
-        domain_diff = domain[1] - domain[0]
-        print("    domain: ", domain)
-        moments_fn = Monomial(n_moments, domain, False, ref_domain=domain)
-        N = mlmc_est.mlmc.n_samples[0]
-        mom_means, mom_vars = mlmc_est.estimate_moments(moments_fn)
-
-        mom_means, mom_vars = mom_means[1:, :], mom_vars[1:, :] # omit time=0
+        # mom_means, mom_vars = mom_means[1:, :], mom_vars[1:, :] # omit time=0
         q_mean = mom_means[:, 1]
         q_mean_err = np.sqrt(mom_vars[:, 1])
         q_var = (mom_means[:, 2] - q_mean ** 2) * N / (N-1)
