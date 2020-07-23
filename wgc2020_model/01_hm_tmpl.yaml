@@ -130,13 +130,13 @@ problem: !Coupling_Sequential
             bc_type: dirichlet
             bc_piezo_head: 0
         output:
-          fields:
-            - piezo_head_p0
-            - pressure_p0
-            - velocity_p0
-            - region_id
-        balance:
-          cumulative: true
+          fields: []
+            #- piezo_head_p0
+            #- pressure_p0
+            #- velocity_p0
+            #- region_id
+        #balance:
+          #cumulative: true
         output_stream: 
           format: !vtk
             variant: ascii

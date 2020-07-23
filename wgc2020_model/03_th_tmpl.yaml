@@ -59,15 +59,14 @@ problem: !Coupling_Sequential
 
 
     output:
-      fields:
-        - piezo_head_p0
-        - pressure_p0
-        - velocity_p0
-        - region_id
-        - cross_section
-    balance:
-      cumulative: true
-    output_stream: 
+      fields: []
+        #- piezo_head_p0
+        #- pressure_p0
+        #- velocity_p0
+        #- region_id
+        #- cross_section
+    output_stream:
+      times: [0]
       format: !vtk
         variant: ascii
 
@@ -111,9 +110,9 @@ problem: !Coupling_Sequential
         #- point: [ 90.875, -4.091, -17.826 ]   # observe temperature at intersection of right fracture and right "well"
           #snap_region: right_fr
     output:
-      fields:
-        - temperature
-        - region_id
+      fields: []
+        #- temperature
+        #- region_id
       #observe_fields: temperature
       times:
         - step: <step>
