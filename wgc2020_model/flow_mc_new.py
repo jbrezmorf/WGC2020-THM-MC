@@ -93,7 +93,7 @@ class Flow123d_WGC2020(Simulation):
         # in one-level method it does not matter [by JB]
         return LevelSimulation(config_dict=config,
                                # task_size=len(fine_mesh_data['points']),
-                               task_size=1,
+                               task_size=2,
                                calculate=Flow123d_WGC2020.calculate,
                                # method which carries out the calculation, will be called from PBS processs
                                need_sample_workspace=True  # If True, a sample directory is created
@@ -226,15 +226,15 @@ class Flow123d_WGC2020(Simulation):
 
         params = config_dict[param_key]
         fname = params["in_file"]
-        substitute_placeholders(os.path.join(config_dict["common_files_dir"], fname + '_tmpl.yaml'),
-                                fname + '.yaml',
-                                params)
         arguments = config_dict["_aux_flow_path"].copy()
         output_dir = "output_" + fname
         config_dict[param_key]["output_dir"] = output_dir
         if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
             status = True
         else:
+            substitute_placeholders(os.path.join(config_dict["common_files_dir"], fname + '_tmpl.yaml'),
+                                    fname + '.yaml',
+                                    params)
             arguments.extend(['--no_profiler', '--output_dir', output_dir, fname + ".yaml"])
             print("Running: ", " ".join(arguments))
             with open(fname + "_stdout", "w") as stdout:

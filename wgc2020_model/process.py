@@ -127,10 +127,10 @@ class WGC2020_Process(process_base.ProcessBase):
         :return: None
         """
         # Create PBS sampling pool
-        sampling_pool = SamplingPoolPBS(job_weight=20000000, work_dir=self.work_dir, clean=self.clean)
+        sampling_pool = SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean)
 
         pbs_config = dict(
-            n_cores=4,
+            n_cores=1,
             n_nodes=1,
             select_flags=['cgroups=cpuacct'],
             mem='2gb',
