@@ -182,21 +182,36 @@ class WGC2020_Process(process_base.ProcessBase):
         for time_id in range(len(qspec.times)):
             true_domain = QuantityEstimate.estimate_domain(storage, qspec, time_id, quantile=0.01)
             # moments_fn = moments.Legendre(n_moments, true_domain)
-            moments_fn = moments.Monomial(n_moments, true_domain)
+            # moments_fn = moments.Monomial(n_moments, true_domain)
 
+            # compute mean in real values (without transform to ref domain)
+            # mean_moment_fn = moments.Monomial.factory(2, domain=true_domain, ref_domain=true_domain, safe_eval=False)
+            # q_estimator = QuantityEstimate(sample_storage=storage, sim_steps=self.step_range,
+            #                                qspec=qspec, time_id=time_id)
+            # m, v = q_estimator.estimate_moments(mean_moment_fn)
+            #
+            # # The first moment is in any case 1 and its variance is 0
+            # assert m[0] == 1
+            # assert v[0] == 0
+
+            # compute variance in real values (center by computed mean)
+            # mean_moment_fn = moments.Monomial.factory(3, center=m[1])
+            mean_moment_fn = moments.Monomial.factory(3, domain=true_domain, ref_domain=true_domain, safe_eval=False)
             q_estimator = QuantityEstimate(sample_storage=storage, sim_steps=self.step_range,
                                            qspec=qspec, time_id=time_id)
+            mm, vv = q_estimator.estimate_moments(mean_moment_fn)
 
-            m, v = q_estimator.estimate_moments(moments_fn)
             # The first moment is in any case 1 and its variance is 0
-            assert m[0] == 1
-            # assert np.isclose(means[1], 0, atol=1e-2)
-            assert v[0] == 0
+            assert np.isclose(mm[0], 1, atol=1e-10)
+            assert vv[0] == 0
+            # assert np.isclose(mm[1], 0, atol=1e-10)
 
-            means.append(m)
-            vars.append(v)
-            print("t = ", qspec.times[time_id], " means (mapped to [0,1])", m)
-            print("t = ", qspec.times[time_id], " vars (mapped to [0,1])", v)
+            # means.append([1, m[1], mm[2]])
+            # vars.append([0, v[1], vv[2]])
+            means.append(mm)
+            vars.append(vv)
+            print("t = ", qspec.times[time_id], " means ", mm[1], mm[2])
+            print("t = ", qspec.times[time_id], " vars ", vv[1], vv[2])
 
         return np.array(means), np.array(vars)
 
@@ -226,7 +241,7 @@ class WGC2020_Process(process_base.ProcessBase):
         plot_dict["file_name"] = "power_comparison"
         plot_dict["color"] = "blue"
         plot_dict["color_ref"] = "forestgreen"
-        self.plot_comparison(sample_storage, "avg_temp", "avg_temp_ref", plot_dict)
+        self.plot_comparison(sample_storage, "power", "power_ref", plot_dict)
         # TODO: problems:
         # quantity_estimate.get_level_results does not support array quantities
         # it only gets the first (i.e. temp at time 0)
