@@ -132,23 +132,8 @@ class WGC2020_Process(process_base.ProcessBase):
         # Create PBS sampling pool
         sampling_pool = SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean)
 
-        pbs_config = dict(
-            n_cores=1,
-            n_nodes=1,
-            select_flags=['cgroups=cpuacct'],
-            mem='2gb',
-            wall_time='02:00:00',
-            queue='charon_2h',
-            home_dir='/storage/liberec3-tul/home/pavel_exner/',
-            python='python',
-            pbs_name='WGC2020_mlmc',
-            env_setting=['cd /auto/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model',
-                         'source load_modules.sh',
-                         'source env/bin/activate',
-                         'module list'
-                         #'cd {work_dir}'
-                         ]
-        )
+        with open(os.path.join(os.getcwd(), "config_PBS.yaml"), "r") as f:
+            pbs_config = yaml.safe_load(f)
 
         sampling_pool.pbs_common_setting(flow_3=True, **pbs_config)
 
