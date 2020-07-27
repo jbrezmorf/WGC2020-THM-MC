@@ -790,13 +790,13 @@ class Flow123d_WGC2020(Simulation):
         bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
         out_regions = bc_regions[2:]
 
-        th_res = Flow123d_WGC2020.extract_th_restuls(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
-        th_res_ref = Flow123d_WGC2020.extract_th_restuls(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
+        th_res = Flow123d_WGC2020.extract_th_results(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
+        th_res_ref = Flow123d_WGC2020.extract_th_results(config_dict["th_params_ref"]["output_dir"], out_regions, bc_regions)
 
         return th_res, th_res_ref
 
     @staticmethod
-    def extract_th_restuls(output_dir, out_regions, bc_regions):
+    def extract_th_results(output_dir, out_regions, bc_regions):
         with open(os.path.join(output_dir, "energy_balance.yaml"), "r") as f:
             power_times, reg_powers = Flow123d_WGC2020.extract_time_series(f, bc_regions, extract=lambda frame: frame['data'][0])
             power_series = -sum(reg_powers)
