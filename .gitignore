@@ -11,10 +11,22 @@ venv/*
 */env/*
 
 #
+bin/*
+lib/*
 */output_1/*
 
+mlmc_random_frac/__pycache__/*
 mlmc_random_frac/_save/*
 mlmc_random_frac/output*
 mlmc_random_frac/tst_cfg
-fixed-3-frac/output_th
+fixed-3-frac/output_th*
+fixed-3-frac/output_hm*
+fixed-3-frac/Biot-*
 
+#
+random-frac/samples/*
+
+#
+wgc2020_model/__pycache__/*
+wgc2020_model/mesh_repository*
+wgc2020_model/samples*
