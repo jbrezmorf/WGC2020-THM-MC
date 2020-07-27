@@ -114,7 +114,10 @@ class WGC2020_Process(process_base.ProcessBase):
     def create_sampling_pool(self):
 
         if self.config_dict["run_on_metacentrum"]:
-            return self.create_pbs_sampling_pool()
+            if self.config_dict["collect_only"]:
+                return OneProcessPool(work_dir=self.work_dir)
+            else:
+                return self.create_pbs_sampling_pool()
         elif self.config_dict["local"]["np"] > 1:
             # Simulations run in different processes
             ProcessPool(n_processes=self.config_dict["local"]["np"], work_dir=self.work_dir)
@@ -134,10 +137,11 @@ class WGC2020_Process(process_base.ProcessBase):
             n_nodes=1,
             select_flags=['cgroups=cpuacct'],
             mem='2gb',
+            wall_time='02:00:00',
             queue='charon_2h',
             home_dir='/storage/liberec3-tul/home/pavel_exner/',
-            # pbs_process_file_dir='/auto/liberec3-tul/home/martin_spetlik/MLMC_new_design/src/mlmc',
             python='python',
+            pbs_name='WGC2020_mlmc',
             env_setting=['cd /auto/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model',
                          'source load_modules.sh',
                          'source env/bin/activate',

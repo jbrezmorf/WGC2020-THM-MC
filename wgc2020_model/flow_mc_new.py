@@ -119,6 +119,29 @@ class Flow123d_WGC2020(Simulation):
         # Set random seed, seed is calculated from sample id, so it is not user defined
         np.random.seed(seed)
 
+        # collect only
+        if config_dict["collect_only"]:
+            config_dict["th_params"]["output_dir"] = "output_" + config_dict["th_params"]["in_file"]
+            config_dict["th_params_ref"]["output_dir"] = "output_" + config_dict["th_params_ref"]["in_file"]
+            filenames = ["energy_balance.yaml",
+                         "water_balance.yaml",
+                         "Heat_AdvectionDiffusion_region_stat.yaml"]
+            result_files = list()
+            result_files.extend([os.path.join(config_dict["th_params"]["output_dir"], f) for f in filenames])
+            result_files.extend([os.path.join(config_dict["th_params_ref"]["output_dir"], f) for f in filenames])
+
+            if all([os.path.isfile(f) for f in result_files]):
+                print("Extracting results...")
+                series = Flow123d_WGC2020.extract_results(config_dict)
+                # Flow123d_WGC2020.plot_exchanger_evolution(*series)
+                print("Extracting results...finished")
+                (avg_temp, power), (avg_temp_ref, power_ref) = series
+                # [fine, coarse] -> [fine_vector, fine_vector]
+                return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
+                        [*avg_temp, *power, *avg_temp_ref, *power_ref]]
+            else:
+                raise Exception("Not all result files present.")
+
         mesh_repo = config_dict.get('mesh_repository', None)
         # p = [1,2,3]
         # a = p[5]
