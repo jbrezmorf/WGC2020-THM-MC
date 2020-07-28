@@ -136,6 +136,12 @@ class Flow123d_WGC2020(Simulation):
                 # Flow123d_WGC2020.plot_exchanger_evolution(*series)
                 print("Extracting results...finished")
                 (avg_temp, power), (avg_temp_ref, power_ref) = series
+
+                Flow123d_WGC2020.check_data_length(avg_temp)
+                Flow123d_WGC2020.check_data_length(power)
+                Flow123d_WGC2020.check_data_length(avg_temp_ref)
+                Flow123d_WGC2020.check_data_length(power_ref)
+
                 # [fine, coarse] -> [fine_vector, fine_vector]
                 return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
                         [*avg_temp, *power, *avg_temp_ref, *power_ref]]
@@ -196,6 +202,12 @@ class Flow123d_WGC2020(Simulation):
         return Flow123d_WGC2020.empty_result()
 
     @staticmethod
+    def check_data_length(data):
+        n_times = len(Flow123d_WGC2020.result_format()[0].times)
+        if len(data) != n_times:
+            raise Exception("Data not corresponding with time axis.")
+
+    @staticmethod
     def result_format()-> List[QuantitySpec]:
         """
         Overrides Simulation.result_format
@@ -206,8 +218,8 @@ class Flow123d_WGC2020(Simulation):
 
         # TODO: define times according to output times of Flow123d
         # TODO: how should be units defined (and other members)?
-        step = 10
-        end_time = 40
+        step = 1
+        end_time = 31
         times = list(range(0, end_time, step))
         spec1 = QuantitySpec(name="avg_temp", unit="C", shape=(1, 1), times=times, locations=['.well'])
         spec2 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
