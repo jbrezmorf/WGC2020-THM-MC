@@ -27,6 +27,7 @@ class WGC2020_Process(process_base.ProcessBase):
         #TODO: should there be different config for Process and Simulation ?
         with open(os.path.join(os.getcwd(), "config.yaml"), "r") as f:
             self.config_dict = yaml.safe_load(f)
+        self.config_dict["config_pbs"] = os.path.join(os.getcwd(), "config_PBS.yaml")
         super(WGC2020_Process, self).__init__()
 
     def run(self, renew=False):
@@ -114,10 +115,10 @@ class WGC2020_Process(process_base.ProcessBase):
     def create_sampling_pool(self):
 
         if self.config_dict["run_on_metacentrum"]:
-            if self.config_dict["collect_only"]:
-                return OneProcessPool(work_dir=self.work_dir)
-            else:
-                return self.create_pbs_sampling_pool()
+            #if self.config_dict["collect_only"]:
+                #return OneProcessPool(work_dir=self.work_dir)
+            #else:
+            return self.create_pbs_sampling_pool()
         elif self.config_dict["local"]["np"] > 1:
             # Simulations run in different processes
             ProcessPool(n_processes=self.config_dict["local"]["np"], work_dir=self.work_dir)
@@ -132,7 +133,7 @@ class WGC2020_Process(process_base.ProcessBase):
         # Create PBS sampling pool
         sampling_pool = SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean)
 
-        with open(os.path.join(os.getcwd(), "config_PBS.yaml"), "r") as f:
+        with open(self.config_dict["config_pbs"], "r") as f:
             pbs_config = yaml.safe_load(f)
 
         sampling_pool.pbs_common_setting(flow_3=True, **pbs_config)

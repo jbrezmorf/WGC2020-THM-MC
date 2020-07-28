@@ -8,8 +8,8 @@ home_dir: '/storage/liberec3-tul/home/pavel_exner/'
 python: 'python'
 pbs_name: 'WGC2020_mlmc'
 env_setting:
-  - 'cd /auto/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model',
-  - 'source load_modules.sh',
-  - 'source env/bin/activate',
+  - 'cd /auto/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model'
+  - 'source load_modules.sh'
+  - 'source env/bin/activate'
   - 'module list'
-  - #'cd {work_dir}'
+  #- 'cd {work_dir}'
