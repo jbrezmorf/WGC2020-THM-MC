@@ -207,6 +207,9 @@ class Flow123d_WGC2020(Simulation):
         if len(data) != n_times:
             raise Exception("Data not corresponding with time axis.")
 
+        if np.isnan(np.sum(data)):
+            raise Exception("NaN present in extracted data.")
+
     @staticmethod
     def result_format()-> List[QuantitySpec]:
         """
