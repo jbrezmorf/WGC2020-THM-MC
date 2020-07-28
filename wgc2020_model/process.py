@@ -199,8 +199,8 @@ class WGC2020_Process(process_base.ProcessBase):
             # vars.append([0, v[1], vv[2]])
             means.append(mm)
             vars.append(vv)
-            print("t = ", qspec.times[time_id], " means ", mm[1], mm[2])
-            print("t = ", qspec.times[time_id], " vars ", vv[1], vv[2])
+            # print("t = ", qspec.times[time_id], " means ", mm[1], mm[2])
+            # print("t = ", qspec.times[time_id], " vars ", vv[1], vv[2])
 
         return np.array(means), np.array(vars)
 
