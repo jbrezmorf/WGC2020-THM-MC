@@ -40,9 +40,13 @@ metacentrum:
 # True - reuse existing results
 # reuse_samples: true
 
-
-
 copy_files: [config.yaml, flow_mc_new.py, 01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
+
+extract:
+  temp_min: 0
+  temp_max: 500
+  power_min: 0
+  power_max: 1e8
 
 geometry:
   # depth of the center of the box and of the coordinate system
