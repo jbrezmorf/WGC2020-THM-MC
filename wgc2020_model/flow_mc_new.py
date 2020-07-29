@@ -121,32 +121,7 @@ class Flow123d_WGC2020(Simulation):
 
         # collect only
         if config_dict["collect_only"]:
-            config_dict["th_params"]["output_dir"] = "output_" + config_dict["th_params"]["in_file"]
-            config_dict["th_params_ref"]["output_dir"] = "output_" + config_dict["th_params_ref"]["in_file"]
-            filenames = ["energy_balance.yaml",
-                         "water_balance.yaml",
-                         "Heat_AdvectionDiffusion_region_stat.yaml"]
-            result_files = list()
-            result_files.extend([os.path.join(config_dict["th_params"]["output_dir"], f) for f in filenames])
-            result_files.extend([os.path.join(config_dict["th_params_ref"]["output_dir"], f) for f in filenames])
-
-            if all([os.path.isfile(f) for f in result_files]):
-                print("Extracting results...")
-                series = Flow123d_WGC2020.extract_results(config_dict)
-                # Flow123d_WGC2020.plot_exchanger_evolution(*series)
-                print("Extracting results...finished")
-                (avg_temp, power), (avg_temp_ref, power_ref) = series
-
-                Flow123d_WGC2020.check_data_length(avg_temp)
-                Flow123d_WGC2020.check_data_length(power)
-                Flow123d_WGC2020.check_data_length(avg_temp_ref)
-                Flow123d_WGC2020.check_data_length(power_ref)
-
-                # [fine, coarse] -> [fine_vector, fine_vector]
-                return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
-                        [*avg_temp, *power, *avg_temp_ref, *power_ref]]
-            else:
-                raise Exception("Not all result files present.")
+            return Flow123d_WGC2020.collect_results(config_dict)
 
         mesh_repo = config_dict.get('mesh_repository', None)
         # p = [1,2,3]
@@ -172,43 +147,73 @@ class Flow123d_WGC2020(Simulation):
 
         print("Running Flow123d - HM...")
         hm_succeed = Flow123d_WGC2020.call_flow(config_dict, 'hm_params', result_files=["mechanics.msh"])
+        if not hm_succeed:
+            raise Exception("HM model failed.")
         print("Running Flow123d - HM...finished")
+
         print("Running Flow123d - TH_ref...")
         th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
+        if not th_succeed:
+            raise Exception("TH reference model failed.")
         print("Running Flow123d - TH_ref...finished")
 
-        th_succeed = False
-        if hm_succeed:
-            print("Preparing TH input...")
-            Flow123d_WGC2020.prepare_th_input(config_dict)
-            print("Preparing TH input...finished")
-            print("Running Flow123d - TM...")
-            th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
-            print("Running Flow123d - TH...finished")
+        print("Preparing TH input...")
+        Flow123d_WGC2020.prepare_th_input(config_dict)
+        print("Preparing TH input...finished")
+        print("Running Flow123d - TM...")
+        th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
+        if not th_succeed:
+            raise Exception("TH model failed.")
+        print("Running Flow123d - TH...finished")
+
         print("Finished computation")
 
-        if th_succeed:
-            print("Extracting results...")
-            series = Flow123d_WGC2020.extract_results(config_dict)
-            # Flow123d_WGC2020.plot_exchanger_evolution(*series)
-            print("Extracting results...finished")
-            (avg_temp, power), (avg_temp_ref, power_ref) = series
-            # [fine, coarse] -> [fine_vector, fine_vector]
-            return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
-                    [*avg_temp, *power, *avg_temp_ref, *power_ref]]
-
-        # TODO: extract results, pass as [fine, coarse] -> [fine, fine]
-        # result = (np.array([np.random.normal()]), np.array([np.random.normal()]))
-        return Flow123d_WGC2020.empty_result()
+        return Flow123d_WGC2020.collect_results(config_dict)
 
     @staticmethod
-    def check_data_length(data):
+    def check_data(data, minimum, maximum):
         n_times = len(Flow123d_WGC2020.result_format()[0].times)
         if len(data) != n_times:
             raise Exception("Data not corresponding with time axis.")
 
         if np.isnan(np.sum(data)):
             raise Exception("NaN present in extracted data.")
+
+        min = np.amin(data)
+        if min < minimum:
+            raise Exception("Data out of given range [min].")
+        max = np.amax(data)
+        if max > maximum:
+            raise Exception("Data out of given range [max].")
+
+    @staticmethod
+    def collect_results(config_dict):
+        config_dict["th_params"]["output_dir"] = "output_" + config_dict["th_params"]["in_file"]
+        config_dict["th_params_ref"]["output_dir"] = "output_" + config_dict["th_params_ref"]["in_file"]
+        filenames = ["energy_balance.yaml",
+                     "water_balance.yaml",
+                     "Heat_AdvectionDiffusion_region_stat.yaml"]
+        result_files = list()
+        result_files.extend([os.path.join(config_dict["th_params"]["output_dir"], f) for f in filenames])
+        result_files.extend([os.path.join(config_dict["th_params_ref"]["output_dir"], f) for f in filenames])
+
+        if all([os.path.isfile(f) for f in result_files]):
+            print("Extracting results...")
+            series = Flow123d_WGC2020.extract_results(config_dict)
+            # Flow123d_WGC2020.plot_exchanger_evolution(*series)
+            print("Extracting results...finished")
+            (avg_temp, power), (avg_temp_ref, power_ref) = series
+
+            Flow123d_WGC2020.check_data(avg_temp, config_dict["extract"]["temp_min"], config_dict["extract"]["temp_max"])
+            Flow123d_WGC2020.check_data(power, config_dict["extract"]["power_min"], config_dict["extract"]["power_max"])
+            Flow123d_WGC2020.check_data(avg_temp_ref, config_dict["extract"]["temp_min"], config_dict["extract"]["temp_max"])
+            Flow123d_WGC2020.check_data(power_ref, config_dict["extract"]["power_min"], config_dict["extract"]["power_max"])
+
+            # [fine, coarse] -> [fine_vector, fine_vector]
+            return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
+                    [*avg_temp, *power, *avg_temp_ref, *power_ref]]
+        else:
+            raise Exception("Not all result files present.")
 
     @staticmethod
     def result_format()-> List[QuantitySpec]:
