@@ -93,7 +93,7 @@ class Flow123d_WGC2020(Simulation):
         # in one-level method it does not matter [by JB]
         return LevelSimulation(config_dict=config,
                                # task_size=len(fine_mesh_data['points']),
-                               task_size=2,
+                               task_size=config["task_size"],
                                calculate=Flow123d_WGC2020.calculate,
                                # method which carries out the calculation, will be called from PBS processs
                                need_sample_workspace=True  # If True, a sample directory is created
