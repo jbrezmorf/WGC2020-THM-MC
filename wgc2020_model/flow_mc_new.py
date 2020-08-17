@@ -324,7 +324,7 @@ class Flow123d_WGC2020(Simulation):
             model_dict["right_well_fracture_regions"] = [".fr_right_well"]
 
     @staticmethod
-    def create_fractures_rectangles(gmsh_geom, fractures, base_shape: 'ObjectSet'):
+    def create_fractures_shapes(gmsh_geom, fractures, base_shape: 'ObjectSet'):
         # From given fracture date list 'fractures'.
         # transform the base_shape to fracture objects
         # fragment fractures by their intersections
@@ -492,8 +492,8 @@ class Flow123d_WGC2020(Simulation):
         b_left_well = left_well.get_boundary()
 
         print("n fractures:", len(fractures))
-        fractures = Flow123d_WGC2020.create_fractures_rectangles(factory, fractures, factory.rectangle())
-        # fractures = create_fractures_polygons(factory, fractures)
+        # fractures = Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.rectangle())
+        fractures = Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.disc())
         fractures_group = factory.group(*fractures)
         # fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
         print("fracture shapes generated")
