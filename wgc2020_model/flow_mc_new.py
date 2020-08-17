@@ -55,6 +55,8 @@ def substitute_placeholders(file_in, file_out, params):
 
 class Flow123d_WGC2020(Simulation):
 
+    zero_temperature_offset = 273.15
+
     def __init__(self, config, clean):
         super(Flow123d_WGC2020, self).__init__(config)
 
@@ -62,7 +64,6 @@ class Flow123d_WGC2020(Simulation):
         self.need_workspace = True
         self.work_dir = config["work_dir"]
         self.clean = clean
-
 
     def level_instance(self, fine_level_params: List[float], coarse_level_params: List[float])-> LevelSimulation:
         """
@@ -849,12 +850,14 @@ class Flow123d_WGC2020(Simulation):
         with open(os.path.join(output_dir, "water_balance.yaml"), "r") as f:
             flux_times, reg_fluxes = Flow123d_WGC2020.extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
         sum_flux = sum(reg_fluxes)
+
+        reg_temps = reg_temps - Flow123d_WGC2020.zero_temperature_offset
+
         avg_temp_flux = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
         return avg_temp_flux, power_series
 
     @staticmethod
     def plot_exchanger_evolution(temp_times, avg_temp, power_times, power_series):
-        abs_zero_temp = 273.15
         year_sec = 60 * 60 * 24 * 365
 
         import matplotlib.pyplot as plt
@@ -862,7 +865,7 @@ class Flow123d_WGC2020(Simulation):
         temp_color = 'red'
         ax1.set_xlabel('time [y]')
         ax1.set_ylabel('Temperature [C deg]', color=temp_color)
-        ax1.plot(temp_times[1:] / year_sec, avg_temp[1:] - abs_zero_temp, color=temp_color)
+        ax1.plot(temp_times[1:] / year_sec, avg_temp[1:], color=temp_color)
         ax1.tick_params(axis='y', labelcolor=temp_color)
 
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
