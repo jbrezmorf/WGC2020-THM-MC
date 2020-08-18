@@ -52,6 +52,9 @@ class WGC2020_Process(process_base.ProcessBase):
         # if n_samples > 1:
         #     self.calculate_moments(sampler)  # Simple moment check
 
+        if self.config_dict["mesh_only"]:
+            return
+
         self.get_some_results(sampler.sample_storage)
 
 
