@@ -738,8 +738,10 @@ class Flow123d_WGC2020(Simulation):
         # pass
         # we have to read region names from the input mesh
         # get fracture regions ids
-        orig_mesh = gmsh_io.GmshIO(config_dict["th_params"]["mesh"])
-        fr_regs = orig_mesh.get_reg_ids_by_physical_names(config_dict["fracture_regions"], 2)
+        orig_mesh_reader = gmsh_io.GmshIO()
+        orig_mesh_reader.filename = config_dict["th_params"]["mesh"]
+        orig_mesh_reader.read_physical_names()
+        fr_regs = orig_mesh_reader.get_reg_ids_by_physical_names(config_dict["th_params"]["fracture_regions"], 2)
 
         # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
         #
