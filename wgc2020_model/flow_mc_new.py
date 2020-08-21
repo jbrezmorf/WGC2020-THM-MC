@@ -344,7 +344,7 @@ class Flow123d_WGC2020(Simulation):
         shapes = []
         for i, fr in enumerate(fractures):
             shape = base_shape.copy()
-            fr_mesh_step = np.min([fr.rx, fr.ry]) / 2
+            fr_mesh_step = np.min([fr.rx, fr.ry]) / 1.25
             if max_mesh_step != 0:
                 fr_mesh_step = np.min([fr_mesh_step, max_mesh_step])
             # print("fr: ", i, "tag: ", shape.dim_tags)
@@ -477,6 +477,8 @@ class Flow123d_WGC2020(Simulation):
         gopt.Tolerance = 0.0001
         gopt.ToleranceBoolean = 0.001
         # gopt.MatchMeshTolerance = 1e-1
+        gopt.OCCFixSmallEdges = True
+        gopt.OCCFixSmallFaces = True
 
         # Main box
         box = factory.box(dimensions).set_region("box")
@@ -591,6 +593,10 @@ class Flow123d_WGC2020(Simulation):
         # mesh.Algorithm = options.Algorithm2d.FrontalDelaunay
         # mesh.Algorithm3D = options.Algorithm3d.Frontal
         # mesh.Algorithm3D = options.Algorithm3d.Delaunay
+
+        # mesh.Algorithm = gmsh_options.Algorithm2d.FrontalDelaunay
+        mesh.Algorithm3D = gmsh_options.Algorithm3d.HXT
+
         mesh.ToleranceInitialDelaunay = 0.01
         # mesh.ToleranceEdgeLength = fracture_mesh_step / 5
         mesh.CharacteristicLengthFromPoints = True
@@ -599,7 +605,7 @@ class Flow123d_WGC2020(Simulation):
         mesh.CharacteristicLengthMin = min_el_size
         mesh.CharacteristicLengthMax = max_el_size
         mesh.MinimumCirclePoints = 6
-        mesh.MinimumCurvePoints = 2
+        mesh.MinimumCurvePoints = 6
 
         # factory.make_mesh(mesh_groups, dim=2)
         factory.make_mesh(mesh_groups)
