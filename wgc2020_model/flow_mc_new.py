@@ -344,7 +344,7 @@ class Flow123d_WGC2020(Simulation):
         shapes = []
         for i, fr in enumerate(fractures):
             shape = base_shape.copy()
-            fr_mesh_step = np.min([fr.rx, fr.ry]) / 3
+            fr_mesh_step = np.min([fr.rx, fr.ry]) / 2
             if max_mesh_step != 0:
                 fr_mesh_step = np.min([fr_mesh_step, max_mesh_step])
             # print("fr: ", i, "tag: ", shape.dim_tags)
@@ -562,8 +562,8 @@ class Flow123d_WGC2020(Simulation):
         b_fr_right_well = b_fractures_group.select_by_intersect(b_right_well).modify_regions("{}_right_well")
         b_fractures_group = factory.group(b_fr_left_well, b_fr_right_well, b_fractures_box)
 
-        b_left_r.mesh_step(config_dict["geometry"]["well_effective_radius"] / 3)
-        b_right_r.mesh_step(config_dict["geometry"]["well_effective_radius"] / 3)
+        b_left_r.mesh_step(config_dict["geometry"]["well_effective_radius"] / 2)
+        b_right_r.mesh_step(config_dict["geometry"]["well_effective_radius"] / 2)
 
 
         mesh_groups = [*box_all, fractures_fr, b_fractures_group]
