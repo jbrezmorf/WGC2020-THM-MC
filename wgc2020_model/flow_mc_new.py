@@ -131,17 +131,13 @@ class Flow123d_WGC2020(Simulation):
         print("Creating mesh...")
         if mesh_repo:
             healed_mesh = Flow123d_WGC2020.sample_mesh_repository(mesh_repo)
-            Flow123d_WGC2020.config_fracture_regions(config_dict, config_dict["fracture_regions"])
         else:
             fractures = Flow123d_WGC2020.generate_fractures(config_dict)
             Flow123d_WGC2020.plot_fr_orientation(fractures)
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
-        print("Creating mesh...finished")
 
-        healed_mesh_bn = os.path.basename(healed_mesh)
-        config_dict["hm_params"]["mesh"] = healed_mesh_bn
-        config_dict["th_params"]["mesh"] = healed_mesh_bn
-        config_dict["th_params_ref"]["mesh"] = healed_mesh_bn
+        Flow123d_WGC2020.read_physical_names(config_dict, healed_mesh)
+        print("Creating mesh...finished")
 
         if config_dict["mesh_only"]:
             return Flow123d_WGC2020.empty_result()
@@ -314,14 +310,30 @@ class Flow123d_WGC2020(Simulation):
         return healed_mesh
 
     @staticmethod
-    def config_fracture_regions(config, used_families):
+    def read_physical_names(config_dict, mesh_file):
+        """
+        Read physical names to set fracture B.C. regions in Flow123d yaml later.
+        :param config_dict:
+        :param mesh_file:
+        :return:
+        """
+        mesh_bn = os.path.basename(mesh_file)
+        reader = gmsh_io.GmshIO()
+        reader.filename = mesh_file
+        regions = [*reader.read_physical_names()]
+
+        # fracture regions
+        reg_fr = [reg for reg in regions if reg.startswith("fr")]
+
+        # split boundary fracture regions on left and right well
+        reg_fr_left_well = [reg for reg in regions if ".fr" in reg and "left_well" in reg]
+        reg_fr_right_well = [reg for reg in regions if ".fr" in reg and "right_well" in reg]
         for model in ["hm_params", "th_params", "th_params_ref"]:
-            model_dict = config[model]
-            model_dict["fracture_regions"] = list(used_families)
-            # model_dict["left_well_fracture_regions"] = [".{}_left_well".format(f) for f in used_families]
-            # model_dict["right_well_fracture_regions"] = [".{}_right_well".format(f) for f in used_families]
-            model_dict["left_well_fracture_regions"] = [".fr_left_well"]
-            model_dict["right_well_fracture_regions"] = [".fr_right_well"]
+            model_dict = config_dict[model]
+            model_dict["mesh"] = mesh_bn
+            model_dict["fracture_regions"] = reg_fr
+            model_dict["left_well_fracture_regions"] = reg_fr_left_well
+            model_dict["right_well_fracture_regions"] = reg_fr_right_well
 
     @staticmethod
     def create_fractures_shapes(gmsh_geom, fractures, base_shape: 'ObjectSet', max_mesh_step = 0):
@@ -377,10 +389,9 @@ class Flow123d_WGC2020(Simulation):
         fractures = pop.sample(pos_distr=pos_gen, keep_nonempty=True)
         # fracture.fr_intersect(fractures)
 
-        for fr in fractures:
-            fr.region = "fr"
-        used_families = set((f.region for f in fractures))
-        Flow123d_WGC2020.config_fracture_regions(config_dict, used_families)
+        for i, fr in enumerate(fractures):
+            fr_name = "fr_" + str(i)
+            fr.region = fr_name
         return fractures
 
     @staticmethod
@@ -550,11 +561,6 @@ class Flow123d_WGC2020(Simulation):
         # boundary of fractures on right well
         b_fr_right_well = b_fractures_group.select_by_intersect(b_right_well).modify_regions("{}_right_well")
         b_fractures_group = factory.group(b_fr_left_well, b_fr_right_well, b_fractures_box)
-
-        for model in ["hm_params", "th_params", "th_params_ref"]:
-            model_dict = config_dict[model]
-            model_dict["left_well_fracture_regions"] = [r.name for r in b_fr_left_well.regions]
-            model_dict["right_well_fracture_regions"] = [r.name for r in b_fr_right_well.regions]
 
         b_left_r.mesh_step(config_dict["geometry"]["well_effective_radius"] / 3)
         b_right_r.mesh_step(config_dict["geometry"]["well_effective_radius"] / 3)
