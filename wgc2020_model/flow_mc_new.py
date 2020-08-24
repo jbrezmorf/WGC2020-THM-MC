@@ -571,7 +571,7 @@ class Flow123d_WGC2020(Simulation):
         mesh_groups = [*box_all, fractures_fr, b_fractures_group]
 
         # print(fracture_mesh_step)
-        # # fractures_fr.set_mesh_step(fracture_mesh_step)
+        # fractures_fr.mesh_step(fracture_mesh_step)
         # fracture_el_size = np.max(dimensions) / 20
         #
         # fracture_el_size = gmsh_field.constant(fracture_mesh_step, 10000)
@@ -605,7 +605,7 @@ class Flow123d_WGC2020(Simulation):
         mesh.CharacteristicLengthMin = min_el_size
         mesh.CharacteristicLengthMax = max_el_size
         mesh.MinimumCirclePoints = 6
-        mesh.MinimumCurvePoints = 6
+        mesh.MinimumCurvePoints = 2
 
         # factory.make_mesh(mesh_groups, dim=2)
         factory.make_mesh(mesh_groups)
