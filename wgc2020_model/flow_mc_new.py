@@ -567,7 +567,7 @@ class Flow123d_WGC2020(Simulation):
         # fractures_shapes = \
         #     Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.rectangle(), fracture_mesh_step)
         fractures_shapes = \
-            Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.disc(), fracture_mesh_step)
+            Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.disc(rx=0.5, ry=0.5), fracture_mesh_step)
         # fractures_tool = [fr.copy() for fr in fractures_shapes]
         fractures_shapes_group = factory.group(*fractures_shapes)
         # fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
