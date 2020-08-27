@@ -528,6 +528,8 @@ class Flow123d_WGC2020(Simulation):
 
         print("load gmsh api")
         factory = gmsh.GeometryOCC(mesh_name, verbose=True)
+        gmsh_logger = factory.get_logger()
+        gmsh_logger.start()
         gopt = gmsh_options.Geometry()
         gopt.Tolerance = 0.0001
         gopt.ToleranceBoolean = 0.001
@@ -664,15 +666,40 @@ class Flow123d_WGC2020(Simulation):
 
         # factory.make_mesh(mesh_groups, dim=2)
         factory.make_mesh(mesh_groups)
+
+        gmsh_log_msgs = gmsh_logger.get()
+        gmsh_logger.stop()
+        Flow123d_WGC2020.check_gmsh_log(gmsh_log_msgs)
+
         factory.write_mesh(format=gmsh.MeshFormat.msh2)
         os.rename(mesh_name + ".msh2", mesh_file)
         # factory.show()
 
-
-
-
-
-
+    @staticmethod
+    def check_gmsh_log(lines):
+        """
+        Search for "No elements in volume" message -> could not mesh the volume -> empty mesh.
+        # PLC Error:  A segment and a facet intersect at point (-119.217,65.5762,-40.8908).
+        #   Segment: [70,2070] #-1 (243)
+        #   Facet:   [3147,9829,13819] #482
+        # Info    : failed to recover constrained lines/triangles
+        # Info    : function failed
+        # Info    : function failed
+        # Error   : HXT 3D mesh failed
+        # Error   : No elements in volume 1
+        # Info    : Done meshing 3D (Wall 0.257168s, CPU 0.256s)
+        # Info    : 13958 nodes 34061 elements
+        # Error   : ------------------------------
+        # Error   : Mesh generation error summary
+        # Error   :     0 warnings
+        # Error   :     2 errors
+        # Error   : Check the full log for details
+        # Error   : ------------------------------
+        """
+        empty_volume_error = "No elements in volume"
+        res = [line for line in lines if empty_volume_error in line]
+        if len(res) != 0:
+            raise Exception("GMSH error - No elements in volume")
 
 
 
