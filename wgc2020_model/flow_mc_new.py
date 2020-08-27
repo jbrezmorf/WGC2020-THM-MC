@@ -133,6 +133,7 @@ class Flow123d_WGC2020(Simulation):
             healed_mesh = Flow123d_WGC2020.sample_mesh_repository(mesh_repo)
         else:
             fractures = Flow123d_WGC2020.generate_fractures(config_dict)
+            # fractures = Flow123d_WGC2020.generate_fixed_fractures()
             Flow123d_WGC2020.plot_fr_orientation(fractures)
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
 
@@ -360,6 +361,60 @@ class Flow123d_WGC2020(Simulation):
         fracture_fragments = gmsh_geom.fragment(*shapes)
         return fracture_fragments
 
+    @staticmethod
+    def generate_fixed_fractures():
+        fractures = []
+        f1 = fracture.FractureShape(
+            r=140,
+            centre=np.array([-100, -5, 15]),
+            rotation_axis=np.array([-0.17, -0.98, 0]),
+            rotation_angle=0.3,
+            shape_angle=4.2,
+            aspect=1,
+            region='fr_1')
+        fractures.append(f1)
+
+        f2 = fracture.FractureShape(
+            r=140,
+            centre=np.array([100, 5, -5]),
+            rotation_axis=np.array([0.07, -0.99, 0]),
+            rotation_angle=2.48,
+            shape_angle=0.6,
+            aspect=1,
+            region='fr_2')
+        fractures.append(f2)
+
+        f3 = fracture.FractureShape(
+            r=65,
+            centre=np.array([0, 0, 120]),
+            rotation_axis=np.array([0.5, 0.5, 0]),
+            rotation_angle=1.31,
+            shape_angle=1.56,
+            aspect=1,
+            region='fr_3')
+        fractures.append(f3)
+
+        f4 = fracture.FractureShape(
+            r=65,
+            centre=np.array([0, 0, -95]),
+            rotation_axis=np.array([0.5, -0.5, 0]),
+            rotation_angle=1.31,
+            shape_angle=1.56,
+            aspect=1,
+            region='fr_4')
+        fractures.append(f4)
+
+        f5 = fracture.FractureShape(
+            r=40,
+            centre=np.array([0, 0, 10]),
+            rotation_axis=np.array([0.5, -0.5, 0]),
+            rotation_angle=0.1,
+            shape_angle=0.1,
+            aspect=1,
+            region='fr_5')
+        fractures.append(f5)
+
+        return fractures
     @staticmethod
     def generate_fractures(config_dict):
         geom = config_dict["geometry"]
