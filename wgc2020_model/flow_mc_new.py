@@ -336,6 +336,14 @@ class Flow123d_WGC2020(Simulation):
             model_dict["left_well_fracture_regions"] = reg_fr_left_well
             model_dict["right_well_fracture_regions"] = reg_fr_right_well
 
+        # write grouped physical names into file for later usage (collection when having no mesh available anymore)
+        regions_dict = dict()
+        regions_dict["fracture_regions"] = reg_fr
+        regions_dict["left_well_fracture_regions"] = reg_fr_left_well
+        regions_dict["right_well_fracture_regions"] = reg_fr_right_well
+        with open('regions.yaml', 'w') as outfile:
+            yaml.dump(regions_dict, outfile, default_flow_style=False)
+
     @staticmethod
     def create_fractures_shapes(gmsh_geom, fractures, base_shape: 'ObjectSet', max_mesh_step = 0):
         # From given fracture date list 'fractures'.
@@ -967,8 +975,13 @@ class Flow123d_WGC2020(Simulation):
         :param config_dict: Parsed config.yaml. see key comments there.
         : return
         """
-        bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
-        out_regions = bc_regions[2:]
+        # bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
+        # out_regions = bc_regions[2:]
+
+        with open("regions.yaml", 'r') as f:
+            regions_dict = yaml.safe_load(f)
+            bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
+            out_regions = regions_dict["right_well_fracture_regions"]
 
         th_res = Flow123d_WGC2020.extract_th_results(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
         th_res_ref = Flow123d_WGC2020.extract_th_results(config_dict["th_params_ref"]["output_dir"], out_regions, bc_regions)
