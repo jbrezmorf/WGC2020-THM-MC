@@ -967,7 +967,7 @@ class Flow123d_WGC2020(Simulation):
         times = list(times)
         times.sort()
         series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
-        return np.array(times), series
+        return np.array(times), np.array(series)
 
     @staticmethod
     def extract_results(config_dict):
