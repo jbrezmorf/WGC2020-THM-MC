@@ -353,7 +353,7 @@ class Flow123d_WGC2020(Simulation):
         shapes = []
         for i, fr in enumerate(fractures):
             shape = base_shape.copy()
-            fr_mesh_step = np.min([fr.rx, fr.ry]) / 1.25
+            fr_mesh_step = np.min([fr.rx, fr.ry]) / 2
             if max_mesh_step != 0:
                 fr_mesh_step = np.min([fr_mesh_step, max_mesh_step])
             # print("fr: ", i, "tag: ", shape.dim_tags)
@@ -423,6 +423,7 @@ class Flow123d_WGC2020(Simulation):
         fractures.append(f5)
 
         return fractures
+
     @staticmethod
     def generate_fractures(config_dict):
         geom = config_dict["geometry"]
@@ -574,10 +575,10 @@ class Flow123d_WGC2020(Simulation):
         b_left_well = left_well.get_boundary()
 
         print("generating fracture shapes...")
-        # fractures_shapes = \
-        #     Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.rectangle(), fracture_mesh_step)
         fractures_shapes = \
-            Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.disc(rx=0.5, ry=0.5), fracture_mesh_step)
+            Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.rectangle(), fracture_mesh_step)
+        # fractures_shapes = \
+        #     Flow123d_WGC2020.create_fractures_shapes(factory, fractures, factory.disc(rx=0.5, ry=0.5), fracture_mesh_step)
         # fractures_tool = [fr.copy() for fr in fractures_shapes]
         fractures_shapes_group = factory.group(*fractures_shapes)
         # fractures_group = fractures_group.remove_small_mass(fracture_mesh_step * fracture_mesh_step / 10)
