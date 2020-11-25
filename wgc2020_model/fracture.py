@@ -37,6 +37,24 @@ class FractureShape:
     def ry(self):
         return self.r * self.aspect
 
+    def normal(self):
+        vtxs = unit_square_vtxs()
+        z_axis = np.array([0, 0, 1])
+
+        vtxs[:, 1] *= self.aspect
+        vtxs[:, :] *= self.r
+        vtxs = FisherOrientation.rotate(vtxs, axis=z_axis, angle=self.shape_angle)
+        vtxs = FisherOrientation.rotate(vtxs, axis=self.rotation_axis, angle=self.rotation_angle)
+        # vtxs += self.centre
+
+        u_vec = vtxs[1] - vtxs[0]
+        u_vec = u_vec / np.linalg.norm(u_vec)
+        v_vec = vtxs[2] - vtxs[0]
+        v_vec = v_vec / np.linalg.norm(v_vec)
+
+        nv = np.cross(u_vec, v_vec)
+        nv = nv / np.linalg.norm(nv)
+        return nv
 
 class Quat:
     """
