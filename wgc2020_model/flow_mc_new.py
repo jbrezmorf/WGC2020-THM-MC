@@ -4,7 +4,7 @@ import numpy as np
 import itertools
 import collections
 import shutil
-import yaml
+import ruamel.yaml as yaml
 from typing import List
 
 from bgem.gmsh import gmsh
@@ -134,7 +134,8 @@ class Flow123d_WGC2020(Simulation):
         else:
             fractures = Flow123d_WGC2020.generate_fractures(config_dict)
             # fractures = Flow123d_WGC2020.generate_fixed_fractures()
-            Flow123d_WGC2020.plot_fr_orientation(fractures)
+            Flow123d_WGC2020.export_fracture_data(fractures)
+            # Flow123d_WGC2020.plot_fr_orientation(fractures)
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
 
         Flow123d_WGC2020.read_physical_names(config_dict, healed_mesh)
@@ -457,6 +458,15 @@ class Flow123d_WGC2020(Simulation):
             fr_name = "fr_" + str(i)
             fr.region = fr_name
         return fractures
+
+    @staticmethod
+    def export_fracture_data(fractures):
+        # write grouped physical names into file for later usage (collection when having no mesh available anymore)
+        frac_dict = dict()
+        for f in fractures:
+            frac_dict[f.region] = f.normal().tolist()
+        with open('fracture_data.yaml', 'w') as outfile:
+            yaml.safe_dump(frac_dict, outfile)
 
     @staticmethod
     def to_polar(x, y, z):
