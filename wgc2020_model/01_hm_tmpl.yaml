@@ -151,6 +151,7 @@ problem: !Coupling_Sequential
             - cross_section_updated
             - displacement_divergence
             - region_id
+            - displacement_jump
         solver: !Petsc
           a_tol: <mechanics_solver__a_tol>
           r_tol: <mechanics_solver__r_tol>
