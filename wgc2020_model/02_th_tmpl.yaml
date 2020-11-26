@@ -23,34 +23,21 @@ problem: !Coupling_Sequential
         options: <flow_solver__options>
 
         #options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
-#        options: -ksp_type preonly -pc_type lu
-    n_schurs: 2
+        #options: -ksp_type preonly -pc_type lu
+
     input_fields:
       - region: box   # we assume steady flow, hence storativity is not set
-#        conductivity: <bulk_conductivity>
-        conductivity: !FieldFE  # loaded from HM simulation
-          mesh_data_file: th_input.msh
-          field_name: conductivity
-          default_value: <bulk_conductivity>
+        conductivity: <bulk_conductivity>
         init_piezo_head: 0
 
       - region: fractures
-        cross_section: !FieldFE  # loaded from HM simulation
-          mesh_data_file: th_input.msh
-          field_name: cross_section_updated
-          default_value: 1e-3
-          # ???
-          read_time_shift: [1, 'd']   # 86400
-        conductivity: !FieldFE  # loaded from HM simulation
-          mesh_data_file: th_input.msh
-          field_name: conductivity
-          default_value: <fr_conductivity>
-
+        cross_section: <fr_cross_section>
+        conductivity: <fr_conductivity>
         init_piezo_head: 0
 
       - region: .left_well_fr
         bc_type: total_flux
-        bc_piezo_head: <well_piezohead_inject> 
+        bc_piezo_head: <well_piezohead_inject>
         bc_robin_sigma: !FieldFormula
           value: <fr_conductivity> / (10*log(10/0.15)) # cca 5.5e-5
       - region: .left_well
@@ -78,7 +65,6 @@ problem: !Coupling_Sequential
         #- velocity_p0
         #- region_id
         #- cross_section
-        #- conductivity
     output_stream:
       times: [0]
       format: !vtk

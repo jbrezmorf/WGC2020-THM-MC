@@ -254,7 +254,7 @@ th_params:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
     mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
-    in_file: 02_th
+    in_file: 03_th
 
     step: &step [10, 'y']
     end_time: &end_time [30, 'y']
@@ -295,7 +295,7 @@ th_params_ref:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
     mesh: random_fractures.msh  # healed mesh is used at the end (programmatically replaced)
-    in_file: 03_th
+    in_file: 02_th
 
     step: *step
     end_time: *end_time
