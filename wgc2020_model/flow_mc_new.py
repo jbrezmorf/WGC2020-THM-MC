@@ -839,7 +839,8 @@ class Flow123d_WGC2020(Simulation):
         :param config_dict: Parsed config.yaml. see key comments there.
         """
         th_input_file = 'th_input.msh'
-        if os.path.exists(th_input_file):
+        th_input_shear_file = 'th_input_shear.msh'
+        if os.path.exists(th_input_file) and os.path.exists(th_input_shear_file):
             return
 
         # pass
@@ -849,6 +850,7 @@ class Flow123d_WGC2020(Simulation):
         orig_mesh_reader.filename = config_dict["th_params"]["mesh"]
         orig_mesh_reader.read_physical_names()
         fr_regs = orig_mesh_reader.get_reg_ids_by_physical_names(config_dict["th_params"]["fracture_regions"], 2)
+        fr_reg_id_map = dict(zip(fr_regs, config_dict["th_params"]["fracture_regions"]))
 
         # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
         #
@@ -862,38 +864,72 @@ class Flow123d_WGC2020(Simulation):
         # mechanics_output = 'output_01_hm/mechanics.msh'
 
         mesh = gmsh_io.GmshIO(mechanics_output)
+        mesh.physical = orig_mesh_reader.physical
         # map eid to the element position in the array
         # TODO: use extract_mesh
         ele_ids_map = dict()
         for i, eid in enumerate(mesh.elements.keys()):
             ele_ids_map[eid] = i
-
-        init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
-        init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
-        init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
-        min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
-        max_fr_cross_section = float(config_dict['th_params']['max_fr_cross_section'])
+        fr_indices = mesh.get_elements_of_regions(fr_regs)
 
         # read cross-section from HM model
         time_idx = 1
         time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
-        # cut small and large values of cross-section
-        cs = np.maximum(np.array([v[0] for v in field_cs.values()]), min_fr_cross_section)
-        cs = np.minimum(cs, max_fr_cross_section)
+        time, field_disp_jump = mesh.element_data['displacement_jump'][time_idx]
 
-        # IMPORTANT - we suppose mesh nodes continuous, so we can find neighboring elements
-        fr_indices = mesh.get_elements_of_regions(fr_regs)
+        min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
+        max_fr_cross_section = float(config_dict['th_params']['max_fr_cross_section'])
+
+        # Mohr-Coulomb shear displacement
+        dilation_angle = float(config_dict['th_params']['dilation_angle'])
+        dilation_angle = dilation_angle / 180 * np.pi
+        with open("fracture_data.yaml", 'r') as f:
+            fracture_data = yaml.safe_load(f)
+        # updated cs from mechanics, cut by min and max values
+        cs_mech = np.zeros(shape=(len(ele_ids_map), 1))
+        # cs_un = np.zeros(shape=(len(ele_ids_map), 1))
+        # cs_ud = np.zeros(shape=(len(ele_ids_map), 1))
+
+        cs_shear = np.zeros(shape=(len(ele_ids_map), 1))
+        for eid in fr_indices:
+            i = ele_ids_map[eid]
+            seid = str(eid)
+            cs_mech[i] = field_cs[seid]
+
+            if field_cs[seid][0] < min_fr_cross_section:
+                elem = mesh.elements[eid]
+                type, tags, node_ids = elem
+                frac_name = fr_reg_id_map[tags[0]]
+                normal = np.array(fracture_data[frac_name])
+                u_jump = np.array(field_disp_jump[seid])
+                # us ... tangential part of u_jump
+                us = u_jump - np.dot(u_jump, normal) * normal
+                ud = np.linalg.norm(us) * np.tan(dilation_angle)
+                cs_shear[i] = min_fr_cross_section + ud
+            else:
+                # cut large values
+                cs_shear[i] = np.minimum(field_cs[seid], max_fr_cross_section)
+            # cs_un[i] = np.abs(np.dot(u_jump, normal))
+            # cs_ud[i] = ud
+            # print("us = {},   ud = {}".format(cs_shear[i], ud))
+
+        # cut small and large values of cross-section
+        cs_mech = np.maximum(cs_mech, min_fr_cross_section)
+        cs_mech = np.minimum(cs_mech, max_fr_cross_section)
+
         # find bulk elements neighboring to the fractures
         fr_n_levels = config_dict["th_params"]["increased_bulk_cond_levels"]
         fracture_neighbors = Flow123d_WGC2020.find_fracture_neigh(mesh, fr_regs, n_levels=fr_n_levels)
 
+        # IMPORTANT - we suppose mesh nodes continuous, so we can find neighboring elements
         # create and fill conductivity field
         # set all values to initial bulk conductivity
-        K = init_bulk_K * np.ones(shape=(len(ele_ids_map),1))
-        # increase conductivity in fractures due to power law
-        for eid in fr_indices:
-            i = ele_ids_map[eid]
-            K[i] = init_fr_K * (cs[i] / init_fr_cs) ** 2
+        init_bulk_K = float(config_dict['hm_params']['bulk_conductivity'])
+        K = init_bulk_K * np.ones(shape=(len(ele_ids_map), 1))
+        K = Flow123d_WGC2020.conductivity_cubic_law(config_dict, K, cs_mech, fr_indices, ele_ids_map)
+        K_shear = init_bulk_K * np.ones(shape=(len(ele_ids_map), 1))
+        K_shear = Flow123d_WGC2020.conductivity_cubic_law(config_dict, K_shear, cs_shear, fr_indices, ele_ids_map)
+
         # increase the bulk conductivity in the vicinity of the fractures
         level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
         for eid, lev in fracture_neighbors:
@@ -903,6 +939,34 @@ class Flow123d_WGC2020(Simulation):
             # assert eid < len(ele_ids_map)
             assert ele_ids_map[eid] < len(K)
             K[ele_ids_map[eid]] = init_bulk_K * level_factor[lev]
+            assert ele_ids_map[eid] < len(K_shear)
+            K_shear[ele_ids_map[eid]] = init_bulk_K * level_factor[lev]
+
+        # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
+        ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
+        with open(th_input_file, "w") as fout:
+            mesh.write_ascii(fout)
+            mesh.write_element_data(fout, ele_ids, 'conductivity', K)
+            mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs_mech)
+
+        with open(th_input_shear_file, "w") as fout:
+            mesh.write_ascii(fout)
+            mesh.write_element_data(fout, ele_ids, 'conductivity', K_shear)
+            # mesh.write_element_data(fout, ele_ids, 'cross_section_mech', cs_mech)
+            # mesh.write_element_data(fout, ele_ids, 'cross_section_normal', cs_un)
+            # mesh.write_element_data(fout, ele_ids, 'cross_section_shear', cs_ud)
+            mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs_shear)
+
+    @staticmethod
+    def conductivity_cubic_law(config_dict, K, cs, fr_indices, ele_ids_map):
+
+        init_fr_cs = float(config_dict['hm_params']['fr_cross_section'])
+        init_fr_K = float(config_dict['hm_params']['fr_conductivity'])
+
+        # increase conductivity in fractures due to power law
+        for eid in fr_indices:
+            i = ele_ids_map[eid]
+            K[i] = init_fr_K * (cs[i] / init_fr_cs) ** 2
 
         # get cs and K on fracture elements only
         cs_fr = np.array([cs[ele_ids_map[i]] for i in fr_indices])
@@ -922,19 +986,7 @@ class Flow123d_WGC2020(Simulation):
 
         with open('fr_param_output.yaml', 'w') as outfile:
             yaml.dump(fr_param, outfile, default_flow_style=False)
-
-        # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
-        th_input_file = 'th_input.msh'
-        ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
-        with open(th_input_file, "w") as fout:
-            mesh.write_ascii(fout)
-            mesh.write_element_data(fout, ele_ids, 'conductivity', K)
-            mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs[:, None])
-
-
-
-
-
+        return K
 
 
 
