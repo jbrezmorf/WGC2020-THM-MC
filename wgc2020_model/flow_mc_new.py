@@ -222,11 +222,13 @@ class Flow123d_WGC2020(Simulation):
         step = 10
         end_time = 31
         times = list(range(0, end_time, step))
-        spec1 = QuantitySpec(name="avg_temp", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec2 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        spec3 = QuantitySpec(name="avg_temp_ref", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec4 = QuantitySpec(name="power_ref", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        return [spec1, spec2, spec3, spec4]
+        spec1 = QuantitySpec(name="avg_temp_ref", unit="C", shape=(1, 1), times=times, locations=['.well'])
+        spec2 = QuantitySpec(name="power_ref", unit="J", shape=(1, 1), times=times, locations=['.well'])
+        spec3 = QuantitySpec(name="avg_temp", unit="C", shape=(1, 1), times=times, locations=['.well'])
+        spec4 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
+        spec5 = QuantitySpec(name="avg_temp_04", unit="C", shape=(1, 1), times=times, locations=['.well'])
+        spec6 = QuantitySpec(name="power_04", unit="J", shape=(1, 1), times=times, locations=['.well'])
+        return [spec1, spec2, spec3, spec4, spec5, spec6]
 
     @staticmethod
     def empty_result():
