@@ -150,20 +150,12 @@ class Flow123d_WGC2020(Simulation):
             raise Exception("HM model failed.")
         print("Running Flow123d - HM...finished")
 
-        print("Running Flow123d - TH_ref...")
-        th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params_ref', result_files=["energy_balance.yaml"])
-        if not th_succeed:
-            raise Exception("TH reference model failed.")
-        print("Running Flow123d - TH_ref...finished")
-
-        print("Preparing TH input...")
-        Flow123d_WGC2020.prepare_th_input(config_dict)
-        print("Preparing TH input...finished")
-        print("Running Flow123d - TM...")
-        th_succeed = Flow123d_WGC2020.call_flow(config_dict, 'th_params', result_files=["energy_balance.yaml"])
-        if not th_succeed:
-            raise Exception("TH model failed.")
-        print("Running Flow123d - TH...finished")
+        for variant in config_dict["variants"]:
+            print("Running Flow123d - TH - variant '{}'...".format(variant))
+            th_succeed = Flow123d_WGC2020.call_flow(config_dict, variant, result_files=["energy_balance.yaml"])
+            if not th_succeed:
+                raise Exception("TH - variant '{}' model failed.".format(variant))
+            print("Running Flow123d - TH - variant '{}'... finished".format(variant))
 
         print("Finished computation")
 
@@ -187,32 +179,34 @@ class Flow123d_WGC2020(Simulation):
 
     @staticmethod
     def collect_results(config_dict):
-        config_dict["th_params"]["output_dir"] = "output_" + config_dict["th_params"]["in_file"]
-        config_dict["th_params_ref"]["output_dir"] = "output_" + config_dict["th_params_ref"]["in_file"]
         filenames = ["energy_balance.yaml",
                      "water_balance.yaml",
                      "Heat_AdvectionDiffusion_region_stat.yaml"]
-        result_files = list()
-        result_files.extend([os.path.join(config_dict["th_params"]["output_dir"], f) for f in filenames])
-        result_files.extend([os.path.join(config_dict["th_params_ref"]["output_dir"], f) for f in filenames])
 
-        if all([os.path.isfile(f) for f in result_files]):
-            print("Extracting results...")
-            series = Flow123d_WGC2020.extract_results(config_dict)
-            # Flow123d_WGC2020.plot_exchanger_evolution(*series)
-            print("Extracting results...finished")
-            (avg_temp, power), (avg_temp_ref, power_ref) = series
+        print("Extracting results...")
+        result = []
+        for variant in config_dict["variants"]:
+            config_dict[variant]["output_dir"] = "output_" + config_dict[variant]["in_file"]
 
-            Flow123d_WGC2020.check_data(avg_temp, config_dict["extract"]["temp_min"], config_dict["extract"]["temp_max"])
-            Flow123d_WGC2020.check_data(power, config_dict["extract"]["power_min"], config_dict["extract"]["power_max"])
-            Flow123d_WGC2020.check_data(avg_temp_ref, config_dict["extract"]["temp_min"], config_dict["extract"]["temp_max"])
-            Flow123d_WGC2020.check_data(power_ref, config_dict["extract"]["power_min"], config_dict["extract"]["power_max"])
+            result_files = list()
+            result_files.extend([os.path.join(config_dict[variant]["output_dir"], f) for f in filenames])
+            files_present = all([os.path.isfile(f) for f in result_files])
+            if not files_present:
+                raise Exception("Not all result files present.")
 
-            # [fine, coarse] -> [fine_vector, fine_vector]
-            return [[*avg_temp, *power, *avg_temp_ref, *power_ref],
-                    [*avg_temp, *power, *avg_temp_ref, *power_ref]]
-        else:
-            raise Exception("Not all result files present.")
+            avg_temp, power = Flow123d_WGC2020.extract_results(config_dict, variant)
+
+            Flow123d_WGC2020.check_data(avg_temp, config_dict["extract"]["temp_min"],
+                                        config_dict["extract"]["temp_max"])
+            Flow123d_WGC2020.check_data(power, config_dict["extract"]["power_min"],
+                                        config_dict["extract"]["power_max"])
+
+            result.extend(avg_temp)
+            result.extend(power)
+
+        print("Extracting results...finished")
+
+        return [result, result]
 
     @staticmethod
     def result_format()-> List[QuantitySpec]:
@@ -225,7 +219,7 @@ class Flow123d_WGC2020(Simulation):
 
         # TODO: define times according to output times of Flow123d
         # TODO: how should be units defined (and other members)?
-        step = 1
+        step = 10
         end_time = 31
         times = list(range(0, end_time, step))
         spec1 = QuantitySpec(name="avg_temp", unit="C", shape=(1, 1), times=times, locations=['.well'])
@@ -330,7 +324,7 @@ class Flow123d_WGC2020(Simulation):
         # split boundary fracture regions on left and right well
         reg_fr_left_well = [reg for reg in regions if ".fr" in reg and "left_well" in reg]
         reg_fr_right_well = [reg for reg in regions if ".fr" in reg and "right_well" in reg]
-        for model in ["hm_params", "th_params", "th_params_ref"]:
+        for model in ["hm_params", *config_dict["variants"]]:
             model_dict = config_dict[model]
             model_dict["mesh"] = mesh_bn
             model_dict["fracture_regions"] = reg_fr
@@ -1033,8 +1027,9 @@ class Flow123d_WGC2020(Simulation):
         return np.array(times), np.array(series)
 
     @staticmethod
-    def extract_results(config_dict):
+    def extract_results(config_dict, variant):
         """
+        :param variant: string defining TH model variant
         :param config_dict: Parsed config.yaml. see key comments there.
         : return
         """
@@ -1046,10 +1041,9 @@ class Flow123d_WGC2020(Simulation):
             bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
             out_regions = regions_dict["right_well_fracture_regions"]
 
-        th_res = Flow123d_WGC2020.extract_th_results(config_dict["th_params"]["output_dir"], out_regions, bc_regions)
-        th_res_ref = Flow123d_WGC2020.extract_th_results(config_dict["th_params_ref"]["output_dir"], out_regions, bc_regions)
+        th_res = Flow123d_WGC2020.extract_th_results(config_dict[variant]["output_dir"], out_regions, bc_regions)
 
-        return th_res, th_res_ref
+        return th_res
 
     @staticmethod
     def extract_th_results(output_dir, out_regions, bc_regions):

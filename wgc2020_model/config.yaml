@@ -40,7 +40,9 @@ metacentrum:
 # True - reuse existing results
 # reuse_samples: true
 
-copy_files: [config.yaml, flow_mc_new.py, 01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml]
+copy_files: [config.yaml, flow_mc_new.py, 01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml, 04_th_tmpl.yaml]
+
+variants: [th_params_ref, th_params, th_params_04]
 
 extract:
   temp_min: 0
@@ -264,11 +266,11 @@ th_params:
     
     fr_conductivity: *fr_cond_init
     bulk_conductivity: *bulk_cond_init
-    increased_bulk_cond_levels: 2
-    sigma_bulk_conductivity: 1e-7
-    min_fr_cross_section: 5e-5
-    max_fr_cross_section: 5e-3
-    dilation_angle: 45
+    increased_bulk_cond_levels: &increased_bulk_cond_levels 2
+    sigma_bulk_conductivity: &sigma_bulk 1e-7
+    min_fr_cross_section: &min_fr_cs 5e-5
+    max_fr_cross_section: &max_fr_cs 5e-3
+    dilation_angle: &dilation_angle 45
 
     flow_solver__a_tol: *fatol
     flow_solver__r_tol: *frtol
@@ -276,8 +278,8 @@ th_params:
 
     # residual is the energy balance which is in order of MW
     # we prescribe a tol about # orders of mag. lower
-    heat_solver__a_tol: 1e+3
-    heat_solver__r_tol: 1e-5
+    heat_solver__a_tol: &hatol 1e+3
+    heat_solver__r_tol: &hrtol 1e-5
         # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
 
     #heat_solver__options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
@@ -286,9 +288,35 @@ th_params:
     # failed do to 1000 iterations
     # heat_solver__options: -ksp_type preonly -pc_type lu -pc_factor_mat_solver_type mumps
     # out of memory 12GB
-    heat_solver__options: -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
+    heat_solver__options: &hopt -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
 
+# parameters substituted into the TH model template
+th_params_04:
+    # The mesh to use in both simulations.
+    mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
+    in_file: 04_th
 
+    step: *step
+    end_time: *end_time
+
+    well_piezohead_inject: *w_p_inject
+    well_piezohead_pump: *w_p_pump
+
+    fr_conductivity: *fr_cond_init
+    bulk_conductivity: *bulk_cond_init
+    increased_bulk_cond_levels: *increased_bulk_cond_levels
+    sigma_bulk_conductivity: *sigma_bulk
+    min_fr_cross_section: *min_fr_cs
+    max_fr_cross_section: *max_fr_cs
+    dilation_angle: *dilation_angle
+
+    flow_solver__a_tol: *fatol
+    flow_solver__r_tol: *frtol
+    flow_solver__options: *fopt
+
+    heat_solver__a_tol: *hatol
+    heat_solver__r_tol: *hrtol
+    heat_solver__options: *hopt
     
 # parameters substituted into the TH model template
 th_params_ref: 
@@ -307,23 +335,13 @@ th_params_ref:
     fr_conductivity: *fr_cond_init
     bulk_conductivity: *bulk_cond_init
     sigma_bulk_conductivity: *bulk_cond_init
-    min_fr_cross_section: 1e-4
+    min_fr_cross_section: *min_fr_cs
 
     flow_solver__a_tol: *fatol
     flow_solver__r_tol: *frtol
     flow_solver__options: *fopt
 
-    # residual is the energy balance which is in order of MW
-    # we prescribe a tol about # orders of mag. lower
-    heat_solver__a_tol: 1e+3
-    heat_solver__r_tol: 1e-5
-        # -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg
-
-    #heat_solver__options: -ksp_type cg -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
-    # faild fo indef PC
-    #heat_solver__options: -ksp_type gmres -pc_type hypre -pc_hypre_type boomeramg  -pc_hypre_boomeramg_coarsen_type PMIS -pc_hypre_boomeramg_strong_threshold 0.5  -ksp_monitor
-    # failed do to 1000 iterations
-    # heat_solver__options: -ksp_type preonly -pc_type lu -pc_factor_mat_solver_type mumps
-    # out of memory 12GB
-    heat_solver__options: -ksp_type gmres -pc_type ilu -pc_factor_levels 3 -ksp_diagonal_scale -ksp_diagonal_scale_fix -pc_factor_fill 5.0 -ksp_monitor
+    heat_solver__a_tol: *hatol
+    heat_solver__r_tol: *hrtol
+    heat_solver__options: *hopt
 
