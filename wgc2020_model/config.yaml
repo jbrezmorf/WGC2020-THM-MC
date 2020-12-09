@@ -42,7 +42,7 @@ metacentrum:
 
 copy_files: [config.yaml, flow_mc_new.py, 01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml, 04_th_tmpl.yaml]
 
-variants: [th_params_ref, th_params, th_params_04]
+variants: [th_params_02, th_params_03, th_params_04]
 
 extract:
   temp_min: 0
@@ -161,7 +161,7 @@ geometry:
 # base of the mesh file name
 mesh_name: random_fractures
 
-fracture_regions: ['fr']
+#fracture_regions: ['fr']
 # for testing fixed fracture mesh
 #fracture_regions: ['left_fr', 'right_fr', 'center_fr']
 
@@ -252,7 +252,7 @@ hm_params:
 
 
 # parameters substituted into the TH model template
-th_params:
+th_params_03:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
     mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
@@ -261,8 +261,11 @@ th_params:
     step: &step [10, 'y']
     end_time: &end_time [30, 'y']
 
-    well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
-    well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
+#    well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
+#    well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
+
+    well_piezohead_inject: &w_p_inject -4500 # # h * rho*g = 4.5e3 * 1e3*10 = 45 MPa
+    well_piezohead_pump: &w_p_pump -5000 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
     
     fr_conductivity: *fr_cond_init
     bulk_conductivity: *bulk_cond_init
@@ -304,11 +307,7 @@ th_params_04:
 
     fr_conductivity: *fr_cond_init
     bulk_conductivity: *bulk_cond_init
-    increased_bulk_cond_levels: *increased_bulk_cond_levels
     sigma_bulk_conductivity: *sigma_bulk
-    min_fr_cross_section: *min_fr_cs
-    max_fr_cross_section: *max_fr_cs
-    dilation_angle: *dilation_angle
 
     flow_solver__a_tol: *fatol
     flow_solver__r_tol: *frtol
@@ -319,7 +318,8 @@ th_params_04:
     heat_solver__options: *hopt
     
 # parameters substituted into the TH model template
-th_params_ref: 
+# REFERENCE model
+th_params_02:
     # The mesh to use in both simulations.
     #mesh: three_frac_symmetric.msh
     mesh: random_fractures.msh  # healed mesh is used at the end (programmatically replaced)
@@ -335,7 +335,6 @@ th_params_ref:
     fr_conductivity: *fr_cond_init
     bulk_conductivity: *bulk_cond_init
     sigma_bulk_conductivity: *bulk_cond_init
-    min_fr_cross_section: *min_fr_cs
 
     flow_solver__a_tol: *fatol
     flow_solver__r_tol: *frtol

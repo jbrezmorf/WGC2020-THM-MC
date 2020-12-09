@@ -222,10 +222,10 @@ class Flow123d_WGC2020(Simulation):
         step = 10
         end_time = 31
         times = list(range(0, end_time, step))
-        spec1 = QuantitySpec(name="avg_temp_ref", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec2 = QuantitySpec(name="power_ref", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        spec3 = QuantitySpec(name="avg_temp", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec4 = QuantitySpec(name="power", unit="J", shape=(1, 1), times=times, locations=['.well'])
+        spec1 = QuantitySpec(name="avg_temp_02", unit="C", shape=(1, 1), times=times, locations=['.well'])
+        spec2 = QuantitySpec(name="power_02", unit="J", shape=(1, 1), times=times, locations=['.well'])
+        spec3 = QuantitySpec(name="avg_temp_03", unit="C", shape=(1, 1), times=times, locations=['.well'])
+        spec4 = QuantitySpec(name="power_03", unit="J", shape=(1, 1), times=times, locations=['.well'])
         spec5 = QuantitySpec(name="avg_temp_04", unit="C", shape=(1, 1), times=times, locations=['.well'])
         spec6 = QuantitySpec(name="power_04", unit="J", shape=(1, 1), times=times, locations=['.well'])
         return [spec1, spec2, spec3, spec4, spec5, spec6]
@@ -839,14 +839,15 @@ class Flow123d_WGC2020(Simulation):
         if os.path.exists(th_input_file) and os.path.exists(th_input_shear_file):
             return
 
+        base_variant = "th_params_03"
         # pass
         # we have to read region names from the input mesh
         # get fracture regions ids
         orig_mesh_reader = gmsh_io.GmshIO()
-        orig_mesh_reader.filename = config_dict["th_params"]["mesh"]
+        orig_mesh_reader.filename = config_dict[base_variant]["mesh"]
         orig_mesh_reader.read_physical_names()
-        fr_regs = orig_mesh_reader.get_reg_ids_by_physical_names(config_dict["th_params"]["fracture_regions"], 2)
-        fr_reg_id_map = dict(zip(fr_regs, config_dict["th_params"]["fracture_regions"]))
+        fr_regs = orig_mesh_reader.get_reg_ids_by_physical_names(config_dict[base_variant]["fracture_regions"], 2)
+        fr_reg_id_map = dict(zip(fr_regs, config_dict[base_variant]["fracture_regions"]))
 
         # input_mesh = gmsh_io.GmshIO(config_dict['hm_params']['mesh'])
         #
@@ -873,11 +874,11 @@ class Flow123d_WGC2020(Simulation):
         time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
         time, field_disp_jump = mesh.element_data['displacement_jump'][time_idx]
 
-        min_fr_cross_section = float(config_dict['th_params']['min_fr_cross_section'])
-        max_fr_cross_section = float(config_dict['th_params']['max_fr_cross_section'])
+        min_fr_cross_section = float(config_dict[base_variant]['min_fr_cross_section'])
+        max_fr_cross_section = float(config_dict[base_variant]['max_fr_cross_section'])
 
         # Mohr-Coulomb shear displacement
-        dilation_angle = float(config_dict['th_params']['dilation_angle'])
+        dilation_angle = float(config_dict[base_variant]['dilation_angle'])
         dilation_angle = dilation_angle / 180 * np.pi
         with open("fracture_data.yaml", 'r') as f:
             fracture_data = yaml.safe_load(f)
@@ -914,7 +915,7 @@ class Flow123d_WGC2020(Simulation):
         cs_mech = np.minimum(cs_mech, max_fr_cross_section)
 
         # find bulk elements neighboring to the fractures
-        fr_n_levels = config_dict["th_params"]["increased_bulk_cond_levels"]
+        fr_n_levels = config_dict[base_variant]["increased_bulk_cond_levels"]
         fracture_neighbors = Flow123d_WGC2020.find_fracture_neigh(mesh, fr_regs, n_levels=fr_n_levels)
 
         # IMPORTANT - we suppose mesh nodes continuous, so we can find neighboring elements
