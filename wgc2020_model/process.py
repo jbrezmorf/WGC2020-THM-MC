@@ -214,27 +214,10 @@ class WGC2020_Process(process_base.ProcessBase):
         # sample_storage = SampleStorageHDF(file_path=hdf_file, append=True)
 
         print("N levels: ", sample_storage.n_levels())
-        avg_temp_vals, avg_temp\
-            = sample_storage.load_collected_values("0", "avg_temp", fine_res=True)
-        power_vals, power\
-            = sample_storage.load_collected_values("0", "power", fine_res=True)
 
-        self.plot_histogram(avg_temp, avg_temp_vals, 30)
-        self.plot_histogram(power, power_vals, 30)
+        self.get_variant_results(sample_storage, "avg_temp_03", "power_03")
+        self.get_variant_results(sample_storage, "avg_temp_04", "power_04")
 
-        plot_dict = dict()
-        plot_dict["ylabel"] = "Temperature [$^\circ$C]"
-        plot_dict["file_name"] = "temp_comparison"
-        plot_dict["color"] = "red"
-        plot_dict["color_ref"] = "orange"
-        self.plot_comparison(sample_storage, "avg_temp", "avg_temp_ref", plot_dict)
-
-        plot_dict = dict()
-        plot_dict["ylabel"] = "Power [MW]"
-        plot_dict["file_name"] = "power_comparison"
-        plot_dict["color"] = "blue"
-        plot_dict["color_ref"] = "forestgreen"
-        self.plot_comparison(sample_storage, "power", "power_ref", plot_dict)
         # TODO: problems:
         # quantity_estimate.get_level_results does not support array quantities
         # it only gets the first (i.e. temp at time 0)
@@ -247,6 +230,31 @@ class WGC2020_Process(process_base.ProcessBase):
         # I implemented load_collected_values() which selects the quantities by name at all times
 
         return
+
+    def get_variant_results(self, sample_storage, avg_temp_quant, power_quant):
+        avg_temp_name_ref = "avg_temp_02"
+        power_name_ref = "power_02"
+        avg_temp_vals, avg_temp \
+            = sample_storage.load_collected_values("0", avg_temp_quant, fine_res=True)
+        power_vals, power \
+            = sample_storage.load_collected_values("0", power_quant, fine_res=True)
+
+        self.plot_histogram(avg_temp, avg_temp_vals, 30)
+        self.plot_histogram(power, power_vals, 30)
+
+        plot_dict = dict()
+        plot_dict["ylabel"] = "Temperature [$^\circ$C]"
+        plot_dict["file_name"] = "temp_comparison"
+        plot_dict["color"] = "red"
+        plot_dict["color_ref"] = "orange"
+        self.plot_comparison(sample_storage, avg_temp_quant, avg_temp_name_ref, plot_dict)
+
+        plot_dict = dict()
+        plot_dict["ylabel"] = "Power [MW]"
+        plot_dict["file_name"] = "power_comparison"
+        plot_dict["color"] = "blue"
+        plot_dict["color_ref"] = "forestgreen"
+        self.plot_comparison(sample_storage, power_quant, power_name_ref, plot_dict)
 
     def plot_histogram(self, quantity: QuantitySpec, data, bins):
         fig, ax1 = plt.subplots()
