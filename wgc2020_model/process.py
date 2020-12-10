@@ -244,14 +244,14 @@ class WGC2020_Process(process_base.ProcessBase):
 
         plot_dict = dict()
         plot_dict["ylabel"] = "Temperature [$^\circ$C]"
-        plot_dict["file_name"] = "temp_comparison"
+        plot_dict["file_name"] = avg_temp_quant + "_comparison"
         plot_dict["color"] = "red"
         plot_dict["color_ref"] = "orange"
         self.plot_comparison(sample_storage, avg_temp_quant, avg_temp_name_ref, plot_dict)
 
         plot_dict = dict()
         plot_dict["ylabel"] = "Power [MW]"
-        plot_dict["file_name"] = "power_comparison"
+        plot_dict["file_name"] = power_quant + "_comparison"
         plot_dict["color"] = "blue"
         plot_dict["color_ref"] = "forestgreen"
         self.plot_comparison(sample_storage, power_quant, power_name_ref, plot_dict)
