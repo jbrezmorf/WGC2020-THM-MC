@@ -150,6 +150,10 @@ class Flow123d_WGC2020(Simulation):
             raise Exception("HM model failed.")
         print("Running Flow123d - HM...finished")
 
+        print("Preparing TH input...")
+        Flow123d_WGC2020.prepare_th_input(config_dict)
+        print("Preparing TH input...finished")
+
         for variant in config_dict["variants"]:
             print("Running Flow123d - TH - variant '{}'...".format(variant))
             th_succeed = Flow123d_WGC2020.call_flow(config_dict, variant, result_files=["energy_balance.yaml"])
