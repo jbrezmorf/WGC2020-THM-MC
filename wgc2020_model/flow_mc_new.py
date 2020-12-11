@@ -188,8 +188,17 @@ class Flow123d_WGC2020(Simulation):
                      "Heat_AdvectionDiffusion_region_stat.yaml"]
 
         print("Extracting results...")
+        # read regions of interest
+        # bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
+        # out_regions = bc_regions[2:]
+        with open("regions.yaml", 'r') as f:
+            regions_dict = yaml.safe_load(f)
+            bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
+            out_regions = regions_dict["right_well_fracture_regions"]
+
         result = []
         for variant in config_dict["variants"]:
+            print("collecting TH - variant '{}'...".format(variant))
             config_dict[variant]["output_dir"] = "output_" + config_dict[variant]["in_file"]
 
             result_files = list()
@@ -197,8 +206,8 @@ class Flow123d_WGC2020(Simulation):
             files_present = all([os.path.isfile(f) for f in result_files])
             if not files_present:
                 raise Exception("Not all result files present.")
-
-            avg_temp, power = Flow123d_WGC2020.extract_results(config_dict, variant)
+            avg_temp, power = Flow123d_WGC2020.extract_th_results(config_dict[variant]["output_dir"],
+                                                                  out_regions, bc_regions)
 
             Flow123d_WGC2020.check_data(avg_temp, config_dict["extract"]["temp_min"],
                                         config_dict["extract"]["temp_max"])
@@ -1032,25 +1041,6 @@ class Flow123d_WGC2020(Simulation):
         times.sort()
         series = [np.array(region_series, dtype=float) for region_series in reg_series.values()]
         return np.array(times), np.array(series)
-
-    @staticmethod
-    def extract_results(config_dict, variant):
-        """
-        :param variant: string defining TH model variant
-        :param config_dict: Parsed config.yaml. see key comments there.
-        : return
-        """
-        # bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
-        # out_regions = bc_regions[2:]
-
-        with open("regions.yaml", 'r') as f:
-            regions_dict = yaml.safe_load(f)
-            bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
-            out_regions = regions_dict["right_well_fracture_regions"]
-
-        th_res = Flow123d_WGC2020.extract_th_results(config_dict[variant]["output_dir"], out_regions, bc_regions)
-
-        return th_res
 
     @staticmethod
     def extract_th_results(output_dir, out_regions, bc_regions):
