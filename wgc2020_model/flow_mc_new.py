@@ -192,7 +192,7 @@ class Flow123d_WGC2020(Simulation):
         # bc_regions = ['.fr_left_well', '.left_well', '.fr_right_well', '.right_well']
         # out_regions = bc_regions[2:]
         with open("regions.yaml", 'r') as f:
-            regions_dict = yaml.load(f, yaml.CBaseLoader)
+            regions_dict = yaml.load(f, yaml.CSafeLoader)
             bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
             out_regions = regions_dict["right_well_fracture_regions"]
 
@@ -440,7 +440,7 @@ class Flow123d_WGC2020(Simulation):
         # possibly read fractures from file
         if os.path.isfile('fractures.yaml'):
             with open('fractures.yaml', 'r') as outfile:
-                deserialized_fracs = yaml.load(outfile, yaml.CBaseLoader)
+                deserialized_fracs = yaml.load(outfile, yaml.CSafeLoader)
                 fractures = [fracture.FractureShape.load(df) for df in deserialized_fracs]
                 return fractures
 
@@ -1031,7 +1031,7 @@ class Flow123d_WGC2020(Simulation):
         :param regions:
         :return: times list, list: for every region the array of value series
         """
-        data = yaml.load(yaml_stream, yaml.CBaseLoader)['data']
+        data = yaml.load(yaml_stream, yaml.CSafeLoader)['data']
         times = set()
         reg_series = {reg: [] for reg in regions}
 
