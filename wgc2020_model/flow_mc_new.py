@@ -129,12 +129,12 @@ class Flow123d_WGC2020(Simulation):
         # a = p[5]
 
         print("Creating mesh...")
+        fractures = []
         if mesh_repo:
             healed_mesh = Flow123d_WGC2020.sample_mesh_repository(mesh_repo)
         else:
             fractures = Flow123d_WGC2020.generate_fractures(config_dict)
             # fractures = Flow123d_WGC2020.generate_fixed_fractures()
-            Flow123d_WGC2020.export_fracture_data(fractures)
             # Flow123d_WGC2020.plot_fr_orientation(fractures)
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
 
@@ -151,7 +151,7 @@ class Flow123d_WGC2020(Simulation):
         print("Running Flow123d - HM...finished")
 
         print("Preparing TH input...")
-        Flow123d_WGC2020.prepare_th_input(config_dict)
+        Flow123d_WGC2020.prepare_th_input(config_dict, fractures)
         print("Preparing TH input...finished")
 
         for variant in config_dict["variants"]:
@@ -436,6 +436,14 @@ class Flow123d_WGC2020(Simulation):
 
     @staticmethod
     def generate_fractures(config_dict):
+
+        # possibly read fractures from file
+        if os.path.isfile('fractures.yaml'):
+            with open('fractures.yaml', 'r') as outfile:
+                deserialized_fracs = yaml.safe_load(outfile)
+                fractures = [fracture.FractureShape.load(df) for df in deserialized_fracs]
+                return fractures
+
         geom = config_dict["geometry"]
         dimensions = geom["box_dimensions"]
         well_z0, well_z1 = geom["well_openning"]
@@ -466,16 +474,13 @@ class Flow123d_WGC2020(Simulation):
         for i, fr in enumerate(fractures):
             fr_name = "fr_" + str(i)
             fr.region = fr_name
-        return fractures
 
-    @staticmethod
-    def export_fracture_data(fractures):
-        # write grouped physical names into file for later usage (collection when having no mesh available anymore)
-        frac_dict = dict()
-        for f in fractures:
-            frac_dict[f.region] = f.normal().tolist()
-        with open('fracture_data.yaml', 'w') as outfile:
-            yaml.safe_dump(frac_dict, outfile)
+        # write fracture data into a file for possible future deserialization
+        fractures_list = [f.yaml() for f in fractures]
+        with open('fractures.yaml', 'w') as outfile:
+            yaml.safe_dump(fractures_list, outfile)
+
+        return fractures
 
     @staticmethod
     def to_polar(x, y, z):
@@ -842,7 +847,7 @@ class Flow123d_WGC2020(Simulation):
         return fracture_neighbors
 
     @staticmethod
-    def prepare_th_input(config_dict):
+    def prepare_th_input(config_dict, fractures):
         """
         Prepare FieldFE input file for the TH simulation.
         :param config_dict: Parsed config.yaml. see key comments there.
@@ -893,8 +898,7 @@ class Flow123d_WGC2020(Simulation):
         # Mohr-Coulomb shear displacement
         dilation_angle = float(config_dict[base_variant]['dilation_angle'])
         dilation_angle = dilation_angle / 180 * np.pi
-        with open("fracture_data.yaml", 'r') as f:
-            fracture_data = yaml.safe_load(f)
+        fractures_dict = {f.region: f for f in fractures}
         # updated cs from mechanics, cut by min and max values
         cs_mech = np.zeros(shape=(len(ele_ids_map), 1))
         # cs_un = np.zeros(shape=(len(ele_ids_map), 1))
@@ -910,7 +914,7 @@ class Flow123d_WGC2020(Simulation):
                 elem = mesh.elements[eid]
                 type, tags, node_ids = elem
                 frac_name = fr_reg_id_map[tags[0]]
-                normal = np.array(fracture_data[frac_name])
+                normal = fractures_dict[frac_name].normal()
                 u_jump = np.array(field_disp_jump[seid])
                 # us ... tangential part of u_jump
                 us = u_jump - np.dot(u_jump, normal) * normal

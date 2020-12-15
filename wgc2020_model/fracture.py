@@ -29,6 +29,38 @@ class FractureShape:
     aspect: float = 1
     # aspect ratio of the fracture =  y_length / x_length where  x_length == r
 
+    def __init__(self, r, c, rax, rag, sg, reg, asp):
+        self.r = r
+        self.centre = c
+        self.rotation_axis = rax
+        self.rotation_angle = rag
+        self.shape_angle = sg
+        self.region = reg
+        self.aspect = asp
+
+    @staticmethod
+    def load( d):
+        r = d["r"]
+        centre = np.array(d["centre"])
+        rotation_axis = np.array(d["rotation_axis"])
+        rotation_angle = d["rotation_angle"]
+        shape_angle = d["shape_angle"]
+        region = d["region"]
+        aspect = d["aspect"]
+        f = FractureShape(r,centre,rotation_axis, rotation_angle, shape_angle, region, aspect)
+        return f
+
+    def yaml(self):
+        d = dict()
+        d["r"] = float(self.r)
+        d["centre"] = self.centre.tolist()
+        d["rotation_axis"] = self.rotation_axis.tolist()
+        d["rotation_angle"] = float(self.rotation_angle)
+        d["shape_angle"] = float(self.shape_angle)
+        d["region"] = self.region
+        d["aspect"] = float(self.aspect)
+        return d
+
     @property
     def rx(self):
         return self.r
@@ -55,6 +87,10 @@ class FractureShape:
         nv = np.cross(u_vec, v_vec)
         nv = nv / np.linalg.norm(nv)
         return nv
+
+    def surface(self):
+        sur = self.rx * self.ry
+        return sur
 
 class Quat:
     """
