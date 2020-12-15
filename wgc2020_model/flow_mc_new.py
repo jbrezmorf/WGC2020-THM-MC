@@ -352,7 +352,7 @@ class Flow123d_WGC2020(Simulation):
         regions_dict["left_well_fracture_regions"] = reg_fr_left_well
         regions_dict["right_well_fracture_regions"] = reg_fr_right_well
         with open('regions.yaml', 'w') as outfile:
-            yaml.dump(regions_dict, outfile, default_flow_style=False)
+            yaml.dump(regions_dict, outfile, default_flow_style=False, Dumper=yaml.CDumper)
 
     @staticmethod
     def create_fractures_shapes(gmsh_geom, fractures, base_shape: 'ObjectSet', max_mesh_step = 0):
@@ -478,7 +478,7 @@ class Flow123d_WGC2020(Simulation):
         # write fracture data into a file for possible future deserialization
         fractures_list = [f.yaml() for f in fractures]
         with open('fractures.yaml', 'w') as outfile:
-            yaml.safe_dump(fractures_list, outfile)
+            yaml.dump(fractures_list, outfile, Dumper=yaml.CDumper)
 
         return fractures
 
@@ -999,7 +999,7 @@ class Flow123d_WGC2020(Simulation):
         fr_param["fr_conductivity"] = {"avg": avg, "median": median, "interquantile": interquantile}
 
         with open('fr_param_output.yaml', 'w') as outfile:
-            yaml.dump(fr_param, outfile, default_flow_style=False)
+            yaml.dump(fr_param, outfile, default_flow_style=False, Dumper=yaml.CDumper)
         return K
 
 
