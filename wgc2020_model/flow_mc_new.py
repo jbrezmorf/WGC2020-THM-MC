@@ -944,6 +944,10 @@ class Flow123d_WGC2020(Simulation):
         K_shear = init_bulk_K * np.ones(shape=(len(ele_ids_map), 1))
         K_shear = Flow123d_WGC2020.conductivity_cubic_law(config_dict, K_shear, cs_shear, fr_indices, ele_ids_map)
 
+        Flow123d_WGC2020.export_frac_stats([("fr_K", K), ("fr_cs", cs_mech),
+                                            ("fr_K_shear", K_shear), ("fr_cs_shear", cs_shear)],
+                                           fr_indices, ele_ids_map)
+
         # increase the bulk conductivity in the vicinity of the fractures
         level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
         for eid, lev in fracture_neighbors:
@@ -982,26 +986,21 @@ class Flow123d_WGC2020(Simulation):
             i = ele_ids_map[eid]
             K[i] = init_fr_K * (cs[i] / init_fr_cs) ** 2
 
-        # get cs and K on fracture elements only
-        cs_fr = np.array([cs[ele_ids_map[i]] for i in fr_indices])
-        k_fr = np.array([K[ele_ids_map[i]] for i in fr_indices])
-
-        # compute cs and K statistics and write it to a file
-        fr_param = {}
-        avg = float(np.average(cs_fr))
-        median = float(np.median(cs_fr))
-        interquantile = float(1.5 * (np.quantile(cs_fr, 0.75) - np.quantile(cs_fr, 0.25)))
-        fr_param["fr_cross_section"] = {"avg": avg, "median": median, "interquantile": interquantile}
-
-        avg = float(np.average(k_fr))
-        median = float(np.median(k_fr))
-        interquantile = float(1.5 * (np.quantile(k_fr, 0.75) - np.quantile(k_fr, 0.25)))
-        fr_param["fr_conductivity"] = {"avg": avg, "median": median, "interquantile": interquantile}
-
-        with open('fr_param_output.yaml', 'w') as outfile:
-            yaml.dump(fr_param, outfile, default_flow_style=False, Dumper=yaml.CDumper)
         return K
 
+    @staticmethod
+    def export_frac_stats(field_list, fr_indices, ele_ids_map):
+
+        fr_param_dict = {}
+        for name, field in field_list:
+            field_fr = np.array([field[ele_ids_map[i]] for i in fr_indices])
+            avg = float(np.average(field_fr))
+            median = float(np.median(field_fr))
+            interquantile = float(1.5 * (np.quantile(field_fr, 0.75) - np.quantile(field_fr, 0.25)))
+            fr_param_dict[name] = {"avg": avg, "median": median, "interquantile": interquantile}
+
+        with open('fr_param_stats.yaml', 'w') as outfile:
+            yaml.dump(fr_param_dict, outfile, default_flow_style=False, Dumper=yaml.CDumper)
 
 
 
