@@ -218,6 +218,19 @@ class WGC2020_Process(process_base.ProcessBase):
         self.get_variant_results(sample_storage, "avg_temp_03", "power_03")
         self.get_variant_results(sample_storage, "avg_temp_04", "power_04")
 
+        n_fracture_ele, n_fracture_ele_quant \
+            = sample_storage.load_collected_values("0", "n_fracture_elements", fine_res=True)
+        n_contact_ele, n_contact_ele_quant \
+            = sample_storage.load_collected_values("0", "n_contact_elements", fine_res=True)
+
+        # [:, 0] due to times
+        self.plot_fractures_histogram(n_fracture_ele_quant, n_fracture_ele[:, 0], 30)
+        self.plot_fractures_histogram(n_contact_ele_quant, n_contact_ele[:, 0], 30)
+        n_contact_ele_percentage = np.divide(n_contact_ele[:, 0], n_fracture_ele[:, 0]) * 100
+        n_contact_ele_quant.name = n_contact_ele_quant.name + "_ratio"
+        n_contact_ele_quant.unit = "%"
+        self.plot_fractures_histogram(n_contact_ele_quant, n_contact_ele_percentage, 30)
+
         # TODO: problems:
         # quantity_estimate.get_level_results does not support array quantities
         # it only gets the first (i.e. temp at time 0)
@@ -255,6 +268,33 @@ class WGC2020_Process(process_base.ProcessBase):
         plot_dict["color"] = "blue"
         plot_dict["color_ref"] = "forestgreen"
         self.plot_comparison(sample_storage, power_quant, power_name_ref, plot_dict)
+
+    def plot_fractures_histogram(self, quantity: QuantitySpec, data, bins):
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel(quantity.name + " [" + quantity.unit + "]")
+        ax1.set_ylabel('Frequency [-]')
+        ax1.tick_params(axis='y', labelcolor='black')
+
+        n_samples = data.shape
+        # times = quantity.times
+        # t_min = 0
+        # t_max = len(times)-1
+        # # t_min = times[0]
+        # # t_max = int(times[-1])
+        # # for t in [0, int((t_min + t_max)/2), t_max]:
+        # for t in [0, int(t_max / 2), t_max]:
+        #     print(t)
+        #     label = "t = " + str(t) + " y"
+        #     ax1.hist(data[:, t], alpha=0.5, bins=bins, label=label) #edgecolor='white')
+        # ax1.hist(data[:, 0], alpha=0.5, bins=bins)  # edgecolor='white')
+        ax1.hist(data, alpha=0.5, bins=bins)  # edgecolor='white')
+
+        ns = "N = " + str(n_samples)
+        ax1.set_title(ns)
+        # ax1.legend()
+        fig.savefig(os.path.join(self.work_dir, quantity.name + ".pdf"))
+        fig.savefig(os.path.join(self.work_dir, quantity.name + ".png"))
+        # plt.show()
 
     def plot_histogram(self, quantity: QuantitySpec, data, bins):
         fig, ax1 = plt.subplots()
