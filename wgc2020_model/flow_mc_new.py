@@ -196,6 +196,7 @@ class Flow123d_WGC2020(Simulation):
             bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
             out_regions = regions_dict["right_well_fracture_regions"]
 
+        n_times = 0
         result = []
         for variant in config_dict["variants"]:
             print("collecting TH - variant '{}'...".format(variant))
@@ -208,7 +209,7 @@ class Flow123d_WGC2020(Simulation):
                 raise Exception("Not all result files present.")
             avg_temp, power = Flow123d_WGC2020.extract_th_results(config_dict[variant]["output_dir"],
                                                                   out_regions, bc_regions)
-
+            n_times=len(power)
             Flow123d_WGC2020.check_data(avg_temp, config_dict["extract"]["temp_min"],
                                         config_dict["extract"]["temp_max"])
             Flow123d_WGC2020.check_data(power, config_dict["extract"]["power_min"],
@@ -216,6 +217,16 @@ class Flow123d_WGC2020(Simulation):
 
             result.extend(avg_temp)
             result.extend(power)
+
+        fr_file = "fr_param_stats.yaml"
+        if os.path.isfile(fr_file):
+            with open(fr_file, 'r') as f:
+                fr_param_dict = yaml.load(f, yaml.CSafeLoader)
+                result.extend([fr_param_dict["n_fracture_elements"]]*n_times)
+                result.extend([fr_param_dict["n_contact_elements"]]*n_times)
+        else:
+            raise Exception("Fracture stats file '{}' not present.".format(fr_file))
+
 
         print("Extracting results...finished")
 
@@ -235,13 +246,16 @@ class Flow123d_WGC2020(Simulation):
         step = 10
         end_time = 31
         times = list(range(0, end_time, step))
-        spec1 = QuantitySpec(name="avg_temp_02", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec2 = QuantitySpec(name="power_02", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        spec3 = QuantitySpec(name="avg_temp_03", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec4 = QuantitySpec(name="power_03", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        spec5 = QuantitySpec(name="avg_temp_04", unit="C", shape=(1, 1), times=times, locations=['.well'])
-        spec6 = QuantitySpec(name="power_04", unit="J", shape=(1, 1), times=times, locations=['.well'])
-        return [spec1, spec2, spec3, spec4, spec5, spec6]
+        spec = []
+        spec.append(QuantitySpec(name="avg_temp_02", unit="C", shape=(1, 1), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_02", unit="J", shape=(1, 1), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_03", unit="C", shape=(1, 1), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_03", unit="J", shape=(1, 1), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_04", unit="C", shape=(1, 1), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_04", unit="J", shape=(1, 1), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=(1, 1), times=[0], locations=['-']))
+        spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=(1, 1), times=[0], locations=['-']))
+        return spec
 
     @staticmethod
     def empty_result():
@@ -905,6 +919,7 @@ class Flow123d_WGC2020(Simulation):
         # cs_ud = np.zeros(shape=(len(ele_ids_map), 1))
 
         cs_shear = np.zeros(shape=(len(ele_ids_map), 1))
+        n_contact_fr_elements = 0
         for eid in fr_indices:
             i = ele_ids_map[eid]
             seid = str(eid)
@@ -920,6 +935,7 @@ class Flow123d_WGC2020(Simulation):
                 us = u_jump - np.dot(u_jump, normal) * normal
                 ud = np.linalg.norm(us) * np.tan(dilation_angle)
                 cs_shear[i] = min_fr_cross_section + ud
+                n_contact_fr_elements = n_contact_fr_elements + 1
             else:
                 # cut large values
                 cs_shear[i] = np.minimum(field_cs[seid], max_fr_cross_section)
@@ -946,7 +962,8 @@ class Flow123d_WGC2020(Simulation):
 
         Flow123d_WGC2020.export_frac_stats([("fr_K", K), ("fr_cs", cs_mech),
                                             ("fr_K_shear", K_shear), ("fr_cs_shear", cs_shear)],
-                                           fr_indices, ele_ids_map)
+                                           fr_indices, ele_ids_map,
+                                           n_contact_fr_elements)
 
         # increase the bulk conductivity in the vicinity of the fractures
         level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
@@ -989,7 +1006,7 @@ class Flow123d_WGC2020(Simulation):
         return K
 
     @staticmethod
-    def export_frac_stats(field_list, fr_indices, ele_ids_map):
+    def export_frac_stats(field_list, fr_indices, ele_ids_map, n_contact_fr_elements):
 
         fr_param_dict = {}
         for name, field in field_list:
@@ -999,6 +1016,8 @@ class Flow123d_WGC2020(Simulation):
             interquantile = float(1.5 * (np.quantile(field_fr, 0.75) - np.quantile(field_fr, 0.25)))
             fr_param_dict[name] = {"avg": avg, "median": median, "interquantile": interquantile}
 
+        fr_param_dict["n_fracture_elements"] = len(fr_indices)
+        fr_param_dict["n_contact_elements"] = n_contact_fr_elements
         with open('fr_param_stats.yaml', 'w') as outfile:
             yaml.dump(fr_param_dict, outfile, default_flow_style=False, Dumper=yaml.CDumper)
 
