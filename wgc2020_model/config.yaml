@@ -333,8 +333,8 @@ th_params_02:
     
     fr_cross_section: *fr_cs_init
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: *bulk_cond_init
-    sigma_bulk_conductivity: *bulk_cond_init
+    bulk_conductivity: 1e-8 #*bulk_cond_init
+    sigma_bulk_conductivity: *sigma_bulk
 
     flow_solver__a_tol: *fatol
     flow_solver__r_tol: *frtol
