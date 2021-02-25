@@ -15,6 +15,10 @@
 \usepackage{color}
 \usepackage[square]{natbib}
 
+\usepackage{calc}
+\usepackage{makecell} % makecell for tables
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+\newcolumntype{N}{@{}m{0pt}@{}}
 
 \newcommand{\CC}{\mathbb C}
 \renewcommand{\div}{\operatorname{div}}
@@ -67,7 +71,7 @@ fractures are used in a simple hydro-mechanical model of the stimulation process
 higher conductivity is used in the heat transfer model of the operation regime of the underground exchanger. This model is used to
 compute a single realization of the key EGS properties: the output power and temperature. Monte Carlo method is then applied to
 predict probabilistic distribution of the EGS properties. The conceptual model and input data are loosely based on the geologic
-properties at the Litoměřice site, possible location of the first EGS in the Czech Republic.
+properties at the Litom{\v e}{\v r}ice site, possible location of the first EGS in the Czech Republic.
 \end{abstract}
 
 
@@ -78,17 +82,17 @@ properties at the Litoměřice site, possible location of the first EGS in the C
 \section{Introduction}
 As the natural hydrothermal resources are sparse in the Czech Republic, the EGS (enhanced geothermal system) concept is subject
 of the recent research focused on the usage of the geothermal energy. According to the available geological data (\cite{Capova2013}), the
-Litoměřice site is the most attractive due to presence of a hot crystalline rock in relatively shallow depth. This motivates the
+Litom{\v e}{\v r}ice site is the most attractive due to presence of a hot crystalline rock in relatively shallow depth. This motivates the
 implementation of the poroelastic model within the software Flow123d (\cite{flow123d}), the simulator
 of the transport processes in fractured porous media. The study exploits this development to investigate uncertainty in the operational
 properties of EGS caused by the stochastic nature of the fracture system.
 
-The EGS approach depends on opening and reconnecting of the preexisting fracture network in the low permeable rock induced by
+The EGS approach depends on opening and reconnecting the preexisting fracture network in the low permeable rock induced by
 the hydraulic stimulation and the temperature changes. Since the fracture network is a-priori unknown as well as the spatial
 distribution of the essential parameters, we consider operational properties of the EGS as random variables. In order to predict their
 distribution, the Monte Carlo method can be applied, providing the forward model and the distribution of input parameters.
 Considering the forward model, three main approaches to the simulation of processes in a fractured porous media, namely single
-continuum, discrete fracture networks and continuum-fracture approach. The heterogeneous single continuum fully coupled THM
+continuum, discrete fracture networks and continuum-fracture approach. The heterogeneous single continuum fully coupled THM \todo{PE: abbreviation not defined}
 model was used in \cite{Watanabe2009} to study uncertainty in the output temperature caused by spatially random input fields.
 The DFN approach essentially uses random fractures and thus is often combined with the Monte Carlo method, see e.g. \cite{ezzedine2008}. We adopt the continuum-fracture approach that is much less common especially for significantly more demanding
 implementation. In \cite{Doonechaly2016} this approach was used for sensitivity analysis of the EGS operation, but
@@ -105,15 +109,9 @@ fracture network in particular.
 
 
 \section{Conceptual model}
-According to available geological data for the Litoměřice locality (see \cite{Capova2013}), the crystalline rock possibly consisting of granite, gneiss or mica schist 
+According to available geological data for the Litom{\v e}{\v r}ice site, see \cite{Capova2013}, the crystalline bedrock possibly consisting of granite, gneiss or mica schist is located in the depth below 3 km.
 % zula, rula, svor
-is located in the depth
-below 3 km. Two geological scenarios predict temperatures 140 \degC{}  and 146 \degC{} respectively in the depth 5 km. We consider in our model two vertical wells in distance 200 m with opened part of the length 100 m located in the target depth of 5 km. The simulation domain is a box with dimensions $600\times600\times600$ m covering only the close neighbourhood of the stimulated domain. The wells are placed in the center. In order to reduce the complexity of the computational mesh, we
-cut off cylinders of the radius 10 m at the wells positions and apply boundary conditions on their walls while avoiding very fine meshing at the wells scale.
-This approximation is discussed in detail in Section \todo{ref}. %\ref{}.
-This simplified geometry is consistent with the simplification in the mathematical model as the precision of the model prediction is not of our interest in this work. We refer to the contribution paper \cite{Ralek} for the more EGS study for the Litoměřice locality.
-
-According to available geological data for the Litom{\v e}{\v r}ice site, see \cite{Capova2013}, the crystalline bedrock possibly consisting of granite, gneiss or mica schist is located in the depth below 3 km. Two geological scenarios lead to predicted temperatures in the depth of 5 km: 140 and 146 \degC{} respectively. In this depth, we consider two vertical wells in distance 200 m with opened part of the length 100 m. The simulation domain is a box with dimensions   m covering only the close neighborhood of the fractured volume with the two wells placed in its center. In order to reduce the complexity of the computational mesh, we cut off cylinders of the radius 10 m at the wells positions and apply boundary conditions on their walls while avoiding very fine meshing at the wells scale. This approximation is discussed in detail in Section 6. This simplified geometry is consistent with the simplification in the mathematical model as the precision of the model prediction is not of our interest in this work. We refer to the contribution paper \cite{Ralek} for the more thorough EGS study of the Litoměřice site.
+Two geological scenarios lead to predicted temperatures in the depth of 5 km: 140 \degC{} and 146 \degC{} respectively. In this depth, we consider two vertical wells in the distance 200 m with opened part of the length 100 m. The simulation domain is a box with dimensions $600\times600\times600$ m covering only the close neighborhood of the fractured volume with the two wells placed in its center. In order to reduce the complexity of the computational mesh, we cut off cylinders of the radius 10 m at the wells positions and apply boundary conditions on their walls while avoiding very fine meshing at the wells scale. This approximation is discussed in detail in Section \ref{sec:analytic_wells}. This simplified geometry is consistent with the simplification in the mathematical model as the precision of the model prediction is not of our interest in this work. We refer to the contribution paper \cite{Ralek} for the more thorough EGS study of the Litom{\v e}{\v r}ice site.
 
 
 \section{Hydro-mechanical model}
@@ -130,7 +128,7 @@ for the isotropic material:
 = (\lambda_M I\otimes I +2\mu_M I):\epsilon, \quad \epsilon = (\nabla \uu^T + \nabla \uu)/2}
 where $\mu_M=E/(2(1+\nu))$ and $\lambda_M=E\nu/((1+\nu)(1-2\nu))$
 are the Lammé parameters [Pa].
-
+\todo{define delta}
 
 The continuum-fracture approach consists in integration of the governing equations across the volume of a thin fracture effectively reducing its dimension to a 2d surface. This procedure was introduced by \cite{martin_modeling_2005} for the Darcy flow and extended for general advection-diffusion process in \cite{brezina_analysis_2015}. For the purpose of this work, the same approach was applied also to the equations of linear elasticity. We introduce the unit normal vector $\vc\nu$ to the fracture plane with arbitrary but fixed orientation.
 For a general quantity $s$ that is defined on both faces of the fracture volume, we define the jump $\jmp{s}:=s^+-s^-$, where $s^\pm$ are the traces of $s$ on the faces. 
@@ -140,7 +138,7 @@ Then, integrating \eqref{eq:biot} across the fracture aperture results in the fo
 \delta\left(-\div_\tau\CC_f(\nabla_\tau\uu_f+\tfrac1\delta\vc\nu\otimes\jmp{\uu}) + \tilde\alpha_f\nabla_\tau h_f\right) &= \jmp{\vc Q}.
 \end{aligned}\right\} }
 Here $p_f$ and $\uu_f$ is the average pressure head and the average displacement on the fractures, respectively. The subscript $\tau$ indicates tangential operators on the fracture plane, $\otimes$ is the outer product and $\tilde\alpha_f:=\alpha_f\varrho_l g$.
-The jumps $\jmp{F}=F^+-F^-$ and $\jmp{\vc Q}=\vc Q^+-\vc Q^-$ are the water sources and the forces, respectively that arise from the approximation of derivatives in the normal direction:
+The jumps $\jmp{F}=F^+-F^-$ and $\jmp{\vc Q}=\vc Q^+-\vc Q^-$ are the water sources and the forces, respectively, that arise from the approximation of derivatives in the normal direction:
 \eq{ 
 \label{eq:fr_coupling}
 \left.\begin{aligned}
@@ -158,13 +156,16 @@ k\nabla h^\pm\cdot\vc\nu = F^\pm,\qquad \left(\CC(\nabla\uu^\pm) - \tilde\alpha 
 For the sake of simplicity we stimulate both wells simultaneously which results in very similar change of the fracture aperture as if the wells were stimulated one by one. Zero piezometric head and zero displacement are used as the initial conditions. The liquid is injected for 1 day under the stimulation pressure of 50 MPa (piezometric head $h_s=5\times10^3$ m). This pressure is not applied directly on the surface of the well's cylinders, but through the Robin boundary condition with the transition parameter derived from the approximate analytical solution at the vicinity of the well. The zero piezometric head is prescribed on the box sides, while the no flow condition is applied on the top and bottom face. Following boundary conditions were applied for the elasticity equation: zero displacement on the bottom of the box, zero normal displacement on the well's cylinders and zero traction elsewhere.
 
 \section{Thermo-hydraulic model}
-The TH model describes the heat transport in the EGS through the operation phase within 30 years after the hydraulic stimulation performed according to Section \ref{sc:hm_model}. In this scenario, we consider a steady Darcy flow: 
+The TH model describes the heat transport in the EGS during the operation phase within 30 years after the hydraulic stimulation performed according to Section \ref{sc:hm_model}. In this scenario, we consider a steady Darcy flow: 
 \eq{ \label{th_darcy}
     \div \vc q = 0, \quad \div  \vc q_f =  \jmp F,\quad
     \vc q_f = -\tilde\delta \tilde k_f \nabla h_f
 }
 for the bulk domain and fractures, respectively. The fracture aperture $\tilde \delta$ is updated according to the HM model.
-The conductivity of the fractures is also adjusted according to the cubic law $\tilde k_f = k_f\tilde\delta_f^2 / \delta_f^2$.
+The conductivity of the fractures is also adjusted according to the cubic law 
+\eq{ \label{eqn:cubic_law}
+\tilde k_f = k_f\tilde\delta_f^2 / \delta_f^2.
+}
 The communication between the fractures and the bulk rock is defined by the conditions \eqref{eq:fr_coupling} and \eqref{eq:fr_coupling_bulk}.
 
 The heat transport model is sequentially coupled with the hydraulic model using the computed Darcy flux $\vc q$ and $\vc q_f$. It assumes thermodynamic equilibrium between the liquid and the rock, the advection-diffusion equation for the bulk and fracture domain reads:
@@ -179,7 +180,7 @@ Here $T$ [\degC] is the temperature, $\varrho_l$, $\varrho_s$ is the density, $c
 \tilde s = \vartheta \varrho_l c_l + (1-\vartheta)\varrho_s c_s,\quad 
 \lambda= \vartheta \lambda_l + (1-\vartheta)\lambda_s
 }
-where $\theta$ is the porosity and $\lambda_l,\lambda_s$ is the thermal conductivity.
+where $\vartheta$ is the porosity and $\lambda_l,\lambda_s$ is the thermal conductivity.
 
 Similarly, to \eqref{eq:fr_coupling} we obtain the relationship for the normal heat fluxes on the fracture faces:
 \eq{ 
@@ -226,22 +227,19 @@ The storativity $S$ is calculated from water compressibility $\beta_l=5\times 10
 \[ S = \varrho_l g(\beta + \vartheta\beta_l) \approx 2\times 10^{-7} \mbox{ m}^{-1}. \]
 
 
-The values of physical parameters in the fractured zone are mostly unknown, hence the following values are only approximate. The aperture of the fractures is considered constant in the input of the HM model. The elastic modulus of fracture is assumed much smaller than in the bulk rock, $E_f=50$ Pa. After the process of the hydraulic fractioning, the aperture and hydraulic conductivity are adjusted according to the displacement results, see TH model in \eqref{th_darcy}. The porosity is taken much higher than in the rock due to the increased $k_f$, i.e. we consider $\vartheta=0.8$. We assume the same compressibility $\beta_f=\beta$ , which gives approximately the same value of storativity $S_f\approx S$.
-
 The values of physical parameters in the fractured zone are mostly unknown, hence the following values are only approximate.
-The aperture of the fractures is considered constant in the input of the HM model according to \todo{Honza-clanek o laborratornich mikropuklinach??}. %\cite{XXX}
-After the process of the hydraulic fractioning, the aperture and hydraulic conductivity are adjusted according to the displacement results in TH model in \eqref{th_darcy}.
-The hydraulic conductivity $k$ in the bulk rock is set similarly to \cite{Sperl2008} and \cite{Doonechaly2016}, where they also consider DFN and surrounding rock.
-Additionally we assume that the hydraulic fractioning impacts also the smaller fractures not included in our DFN,
-so we increase $k=10^{-8}$ of the bulk rock.
+The aperture of the fractures is considered constant in the input of the HM model according to \todo{JB-clanek o laborratornich mikropuklinach??}. %\cite{XXX}
+The elastic modulus of fracture is assumed much smaller than in the bulk rock, $E_f=50$ Pa. After the process of the hydraulic fractioning, the aperture and hydraulic conductivity are adjusted according to the displacement results, see TH model in \eqref{eqn:cubic_law}. The porosity is taken much higher than in the rock due to the increased $k_f$, i.e. we consider $\vartheta=0.8$. We assume the same compressibility $\beta_f=\beta$ , which gives approximately the same value of storativity $S_f\approx S$ \todo{check whether it is true - different porosity in fractures}.
 
+The hydraulic conductivity $k$ in the bulk rock is set similarly to \cite{Sperl2008} and \cite{Doonechaly2016}, where they also consider DFN and surrounding rock.
+Additionally we assume that the hydraulic fractioning impacts also the smaller fractures not included in our DFN, so we increase $k=10^{-8}$ of the bulk rock.
+\todo{PE: describe increased $k$ in the vicinity of fracture network.}
 
 The hydraulic conductivity of fractures dominates than the one of intact rock by several orders of magnitude, we consider $k_f=10^{-3}$ m.s${}^{-1}$
 On the other hand, the elastic modulus of fracture is assumed much smaller, we take $E_f=50$ Pa.
-The porosity is taken one order higher that in the rock, i.e. we consider $\vartheta_f=0.05$.
+The porosity is taken one order higher that in the rock, i.e. we consider $\vartheta_f=0.05$ \todo{PE:nonsense-0.05 is one order lower,
+we have actually $\vartheta=0.005$ and $\vartheta_f=0.8$ in the model}.
 We assume the same compressibility $\beta_f=\beta$, which gives approximately the same value of storativity $S_f\approx S$.
-
-The hydraulic conductivity $k$ in the bulk rock is set similarly to \cite{Sperl2008} and \cite{Doonechaly2016}, where they also consider DFN and surrounding rock. Additionally we assume that the hydraulic fractioning impacts also the smaller fractures not included in our DFN, so we increase $\tilde k=10^{-8}$ m.s${}^{-1}$ of the bulk rock.
 
 \begin{table}
 \centering
@@ -289,6 +287,7 @@ Thermal conductivity $\lambda$ [W.m${}^{-1}$.K${}^{-1}$] & 2.5 & 2.5 & 0.5 \\
 
 
 \subsection{Analytical models in the vicinity of the well}
+\label{sec:analytic_wells}
 In order to keep the mesh size treatable, we cut out of the computational domain two cylinders around the open well parts with a larger radius $R=10$ m. On the surface of these cylinders we consider the Robin type boundary condition for the piezometric head:
 %
 \eq{\label{eq:H_robin} k\nabla h\cdot\nn = \sigma(H_w-h), }
@@ -354,10 +353,36 @@ In order to obtain fracture sets of the size tractable by our simulation tools, 
 Positions of the fracture centers are sampled uniformly over the smaller box around the wells with dimensions $(300, 150, 150)$. 
 
 Since no fracture statistics data for the target locality are available, we use data for the Forsmark site in Sweden
-(\cite{Follin}) with a crystalline bedrock. Parameters of the distributions for five families of the fractures are summarized in Table.
-\todo{JB: copy table from other word report}.
+(\cite{Follin}) with a crystalline bedrock. Parameters of the distributions for five families of the fractures are summarized in Table \ref{tab:stochastic_params}.
 
-caption: Used stochastic parameters of the five fracture families. Parameters of the distributions of the fracture orientation, size and intensity.
+\begin{table}[!htb]
+\centering
+\begin{tabular}{|M{15pt}|M{20pt}|M{25pt}|M{30pt}|M{22pt}|M{22pt}|M{22pt}|M{20pt}|M{54pt}|N}
+\hline
+\multicolumn{9}{|M{275pt+10\tabcolsep}|}{SKB data - FFM01 and FFM06 (depth 0 to -200 m)} &\\[10pt]
+\hline
+\multicolumn{2}{|M{35pt+3\tabcolsep}|}{FFM01a} &
+\multicolumn{3}{M{77pt+4\tabcolsep}|}{Fisher orientation} &
+\multicolumn{4}{M{118pt+5\tabcolsep}|}{Power law}&\\[10pt]
+\hline
+Set & Name &
+\makecell{Trend \\ $[^\circ]$} &
+\makecell{Plunge \\ $[^\circ]$} &
+\makecell{Conc. \\ $[-]$} &
+\makecell{$r_0$ \\ $[\mathrm{m}]$} &
+\makecell{$k_r$ \\ $[-]$ } &
+\makecell{$r_{\mathrm{max}}$ \\ $[\mathrm{m}]$} &
+\makecell{$P_{32}[r_0,r_{\mathrm{max}}]$ \\ $[\mathrm{m}^2\cdot\mathrm{m}^{-3}]$} & \\[10pt]\hline
+1 & NS & 292 & 1  & 17.8 & 0.038 & 2.50 & 564 & 0.073 &\\[8pt]\hline
+2 & NE & 326 & 2  & 14.3 & 0.038 & 2.70 & 564 & 0.319 &\\[8pt]\hline
+3 & NW & 60  & 6  & 12.9 & 0.038 & 3.10 & 564 & 0.107 &\\[8pt]\hline
+4 & EW & 15  & 2  & 14.0 & 0.038 & 3.10 & 564 & 0.088 &\\[8pt]\hline
+5 & HZ & 5   & 86 & 15.2 & 0.038 & 2.38 & 564 & 0.543 &\\[8pt]
+\hline
+\end{tabular}
+\caption{Used stochastic parameters of the five fracture families. Parameters of the distributions of the fracture orientation, size and intensity.}
+\label{tab:stochastic_params}
+\end{table}
 
 % \subsection{Effective properties of the fractured porous media}
 % Assuming the cubic law for the permeability of fracture and fracture independency (over simplification) the effective permeability tensor of the grid of parallel infinite fractures of the aperture $b$ and distance $D$
@@ -397,7 +422,7 @@ The model described above is used to sample the production temperature and the h
     \item execute the TH model in Flow123d with opened fractures
     \item execute the TH model in Flow123d with unmodified fractures (reference sample)
 \end{enumerate}
-An example of a single realization of the fracture network can be seen in Figure \ref{fig:fracture_temp}. The confinement of the fracture centers to a box around the wells is clearly visible, we obtain pretty good intersection with the well cylinders but the fracture network typically does not create a connect path between the wells. Due to technical reasons, we use the expected number of fractures 100 and set $r_2$ accordingly using \eqref{eq:pl_rescale}, approximately 30 m. The domain diameter is used for the upper fracture size limit $r_3=600$ m. We do not expect significantly better connectivity of the fracture network for larger number of fractures due to the nature of the power law which permits adding only smaller fractures. The temperature distribution on the fractures and on the vertical cut of the domain after 5 years can be seen in Figure \ref{fig:fracture_temp} and Figure \ref{fig:bulk_temp}. The influence of the fractures on the heat transfer in the bulk domain is clearly visible.
+An example of a single realization of the fracture network can be seen in Figure \ref{fig:fracture_temp}. The confinement of the fracture centers to a box around the wells is clearly visible, we obtain pretty good intersection with the well cylinders but the fracture network typically does not create a connected path between the wells. Due to technical reasons, we use the expected number of fractures 300 and set $r_2$ accordingly using \eqref{eq:pl_rescale}, approximately 30 m. The domain diameter is used for the upper fracture size limit $r_3=600$ m. We do not expect significantly better connectivity of the fracture network for larger number of fractures due to the nature of the power law which permits adding only smaller fractures. The temperature distribution on the fractures and on the vertical cut of the domain after 5 years can be seen in Figure \ref{fig:fracture_temp} and Figure \ref{fig:bulk_temp}. The influence of the fractures on the heat transfer in the bulk domain is clearly visible.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{sample_6_bulk_t5_fr_final.pdf}
@@ -462,11 +487,11 @@ We have shown, that the uncertainty of the power due to fracture dispersion is r
 
 \section*{Acknowledgement}
 \begin{itemize}
-    \item[a)] RINGEN:
-    The research was supported by the Czech Ministry of Education, Youth and Sports under the project No. LM2015084.
- 
-    \item[b)] RINGEN+:
-    The research was supported by the project No. CZ.02.1.01/0.0/0.0/16\_013/0001792, co-funded by the EU Operational Programme ``Research, Development and Education''.
+    \item[a)] RINGEN+:
+    The research was supported by the project No. CZ.02.1.01/0.0/0.0/16\_013/0001792, co-funded by the EU Operational Program ``Research, Development and Education''.
+    
+    \item[b)] Metacentrum:
+    Computational resources were supplied by the project ``e-Infrastruktura CZ'' (e-INFRA LM2018140) provided within the program Projects of Large Research, Development and Innovations Infrastructures.
 \end{itemize}
 
 \bibliographystyle{dinat}
