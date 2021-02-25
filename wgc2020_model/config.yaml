@@ -270,6 +270,7 @@ th_params_03:
     fr_conductivity: *fr_cond_init
     bulk_conductivity: *bulk_cond_init
     increased_bulk_cond_levels: &increased_bulk_cond_levels 2
+    increase_level_factor: &increase_level_factor 7
     sigma_bulk_conductivity: &sigma_bulk 1e-7
     min_fr_cross_section: &min_fr_cs 5e-5
     max_fr_cross_section: &max_fr_cs 5e-3

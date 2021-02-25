@@ -949,6 +949,7 @@ class Flow123d_WGC2020(Simulation):
 
         # find bulk elements neighboring to the fractures
         fr_n_levels = config_dict[base_variant]["increased_bulk_cond_levels"]
+        fr_lev_factor = config_dict[base_variant]["increase_level_factor"]
         fracture_neighbors = Flow123d_WGC2020.find_fracture_neigh(mesh, fr_regs, n_levels=fr_n_levels)
 
         # IMPORTANT - we suppose mesh nodes continuous, so we can find neighboring elements
@@ -966,7 +967,7 @@ class Flow123d_WGC2020(Simulation):
                                            n_contact_fr_elements)
 
         # increase the bulk conductivity in the vicinity of the fractures
-        level_factor = [10**(fr_n_levels - i) for i in range(fr_n_levels)]
+        level_factor = [fr_lev_factor**(fr_n_levels - i) for i in range(fr_n_levels)]
         for eid, lev in fracture_neighbors:
             assert lev < len(level_factor)
             # if eid >= len(ele_ids_map):
