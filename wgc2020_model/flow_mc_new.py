@@ -243,7 +243,7 @@ class Flow123d_WGC2020(Simulation):
 
         # TODO: define times according to output times of Flow123d
         # TODO: how should be units defined (and other members)?
-        step = 10
+        step = 1
         end_time = 31
         times = list(range(0, end_time, step))
         spec = []

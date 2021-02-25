@@ -1,12 +1,16 @@
 # true -> work with pbs on metacentrum
 # false -> run locally, no pbs
 run_on_metacentrum: false
-# number of samples
-n_samples: 1
 
-mesh_only: True
+# number of samples
+n_samples: 10
+task_size: 0.001
+collect_only: True
+mesh_only: False
+
 # Set to None to generate new meshes. ABSOLUTE PATH
 mesh_repository:
+#mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository_new/
 #mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository
 #mesh_repository: /home/paulie/docker_flow123d/WGC2020-THM-MC/wgc2020_model/mesh_repository_fixed_frac
 #mesh_repository: /storage/liberec3-tul/home/jan_brezina/workspace/wgc/mlmc_random_frac/fr200_unif_s100/mesh_repository/
@@ -15,22 +19,27 @@ mesh_repository:
 local:
   flow_executable:
   #  - /home/jb/workspace/flow123d_JB/bin/fterm
-    - /home/paulie/docker_flow123d/flow123d/bin/fterm
+    - /home/paulie/Workspace/flow123d/bin/fterm
     - --no-term
     - rel
     - run
   np: 1
   gmsh_executable:
-    - /home/paulie/docker_flow123d/WGC2020-THM-MC/mlmc_random_frac/env/bin/gmsh
+    - /home/paulie/Workspace/WGC2020-THM-MC/wgc2020_model/venv/bin/gmsh
 
 metacentrum:
   flow_executable:
   # release
-   - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+    #- /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+    #- '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/mpiexec'
+    #- '-np'
+    #- '10'
+    - '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/flow123d'
   # debug
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
   gmsh_executable:
-   - /storage/liberec3-tul/home/martin_spetlik/astra/gmsh/bin/gmsh
+    #- /storage/liberec3-tul/home/martin_spetlik/astra/gmsh/bin/gmsh
+    - /storage/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model/env/bin/gmsh
 
 #finish_sleep: 0
 
@@ -62,9 +71,9 @@ geometry:
   # horizontal distance of the well axes
   well_distance: 200
   # mesh step on fractures
-  fracture_mesh_step: 15
+  fracture_mesh_step: 20
   # upper limit on the number of fractures
-  n_frac_limit: 200
+  n_frac_limit: 300
 
   # Uniform distribution of the fracture centers near the existing surfaces
   # in order to enhance connectivity.
@@ -334,7 +343,7 @@ th_params_02:
     
     fr_cross_section: *fr_cs_init
     fr_conductivity: *fr_cond_init
-    bulk_conductivity: 1e-8 #*bulk_cond_init
+    bulk_conductivity: *bulk_cond_init
     sigma_bulk_conductivity: *sigma_bulk
 
     flow_solver__a_tol: *fatol
@@ -344,4 +353,3 @@ th_params_02:
     heat_solver__a_tol: *hatol
     heat_solver__r_tol: *hrtol
     heat_solver__options: *hopt
-
