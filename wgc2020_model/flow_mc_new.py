@@ -398,52 +398,52 @@ class Flow123d_WGC2020(Simulation):
         fractures = []
         f1 = fracture.FractureShape(
             r=140,
-            centre=np.array([-100, -5, 15]),
-            rotation_axis=np.array([-0.17, -0.98, 0]),
-            rotation_angle=0.3,
-            shape_angle=4.2,
-            aspect=1,
-            region='fr_1')
+            c=np.array([-100, -5, 15]),
+            rax=np.array([-0.17, -0.98, 0]),
+            rag=0.3,
+            sg=4.2,
+            asp=1,
+            reg='fr_1')
         fractures.append(f1)
 
         f2 = fracture.FractureShape(
             r=140,
-            centre=np.array([100, 5, -5]),
-            rotation_axis=np.array([0.07, -0.99, 0]),
-            rotation_angle=2.48,
-            shape_angle=0.6,
-            aspect=1,
-            region='fr_2')
+            c=np.array([100, 5, -5]),
+            rax=np.array([0.07, -0.99, 0]),
+            rag=2.48,
+            sg=0.6,
+            asp=1,
+            reg='fr_2')
         fractures.append(f2)
 
         f3 = fracture.FractureShape(
             r=65,
-            centre=np.array([0, 0, 120]),
-            rotation_axis=np.array([0.5, 0.5, 0]),
-            rotation_angle=1.31,
-            shape_angle=1.56,
-            aspect=1,
-            region='fr_3')
+            c=np.array([0, 0, 120]),
+            rax=np.array([0.5, 0.5, 0]),
+            rag=1.31,
+            sg=1.56,
+            asp=1,
+            reg='fr_3')
         fractures.append(f3)
 
         f4 = fracture.FractureShape(
             r=65,
-            centre=np.array([0, 0, -95]),
-            rotation_axis=np.array([0.5, -0.5, 0]),
-            rotation_angle=1.31,
-            shape_angle=1.56,
-            aspect=1,
-            region='fr_4')
+            c=np.array([0, 0, -95]),
+            rax=np.array([0.5, -0.5, 0]),
+            rag=1.31,
+            sg=1.56,
+            asp=1,
+            reg='fr_4')
         fractures.append(f4)
 
         f5 = fracture.FractureShape(
             r=40,
-            centre=np.array([0, 0, 10]),
-            rotation_axis=np.array([0.5, -0.5, 0]),
-            rotation_angle=0.1,
-            shape_angle=0.1,
-            aspect=1,
-            region='fr_5')
+            c=np.array([0, 0, 10]),
+            rax=np.array([0.5, -0.5, 0]),
+            rag=0.1,
+            sg=0.1,
+            asp=1,
+            reg='fr_5')
         fractures.append(f5)
 
         return fractures
@@ -901,7 +901,6 @@ class Flow123d_WGC2020(Simulation):
 
         # read mesh and mechanichal output data
         mechanics_output = os.path.join(config_dict['hm_params']["output_dir"], 'mechanics.msh')
-        # mechanics_output = 'output_01_hm/mechanics.msh'
 
         mesh = gmsh_io.GmshIO(mechanics_output)
         mesh.physical = orig_mesh_reader.physical
@@ -1112,4 +1111,4 @@ class Flow123d_WGC2020(Simulation):
         ax2.tick_params(axis='y', labelcolor=pow_color)
 
         fig.tight_layout()  # otherwise the right y-label is slightly clipped
-        plt.show()
+        # plt.show()

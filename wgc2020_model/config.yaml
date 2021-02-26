@@ -3,9 +3,9 @@
 run_on_metacentrum: false
 
 # number of samples
-n_samples: 10
+n_samples: 3
 task_size: 0.001
-collect_only: True
+collect_only: False
 mesh_only: False
 
 # Set to None to generate new meshes. ABSOLUTE PATH
@@ -71,7 +71,10 @@ geometry:
   # effective well radius (cut off from the geometry)
   well_effective_radius: 10
   # horizontal distance of the well axes
-  well_distance: 200
+  well_distance: &well_distance 200
+
+  fracture_rmin: 10
+  fracture_rmax: *well_distance
   # mesh step on fractures
   fracture_mesh_step: 20
   # upper limit on the number of fractures
