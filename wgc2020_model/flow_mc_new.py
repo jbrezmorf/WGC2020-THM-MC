@@ -454,8 +454,11 @@ class Flow123d_WGC2020(Simulation):
         # possibly read fractures from file
         if os.path.isfile('fractures.yaml'):
             with open('fractures.yaml', 'r') as outfile:
-                deserialized_fracs = yaml.load(outfile, yaml.CSafeLoader)
-                fractures = [fracture.FractureShape.load(df) for df in deserialized_fracs]
+                loaded_dict = yaml.load(outfile, yaml.CSafeLoader)
+                fractures = [fracture.FractureShape.load(df) for df in loaded_dict["fractures"]]
+                print("final sample range: ", loaded_dict["sample_range"])
+                print("final fracture count: ", len(fractures))
+                print("total mean size: ", loaded_dict["mean_size"])
                 return fractures
 
         geom = config_dict["geometry"]
@@ -470,8 +473,9 @@ class Flow123d_WGC2020(Simulation):
         volume = np.product(fracture_box)
         pop = fracture.Population(volume)
         pop.initialize(geom["fracture_stats"])
-        pop.set_sample_range([1, well_dist], max_sample_size=geom["n_frac_limit"])
-        print("total mean size: ", pop.mean_size())
+        sample_range = pop.set_sample_range(sample_range=[geom["fracture_rmin"], geom["fracture_rmax"]],
+                                            max_sample_size=geom["n_frac_limit"])
+
         connected_position = geom.get('connected_position_distr', False)
         if connected_position:
             eps = well_r / 2
@@ -485,14 +489,21 @@ class Flow123d_WGC2020(Simulation):
         fractures = pop.sample(pos_distr=pos_gen, keep_nonempty=True)
         # fracture.fr_intersect(fractures)
 
+        print("final sample range: ", sample_range)
+        print("final fracture count: ", len(fractures))
+        print("total mean size: ", pop.mean_size())
+
         for i, fr in enumerate(fractures):
             fr_name = "fr_" + str(i)
             fr.region = fr_name
 
         # write fracture data into a file for possible future deserialization
-        fractures_list = [f.yaml() for f in fractures]
+        fracture_dict = {"sample_range": [float(sample_range[0]), float(sample_range[1])],
+                         "mean_size": float(pop.mean_size()),
+                         "box": fracture_box,
+                         "fractures": [f.yaml() for f in fractures]}
         with open('fractures.yaml', 'w') as outfile:
-            yaml.dump(fractures_list, outfile, Dumper=yaml.CDumper)
+            yaml.dump(fracture_dict, outfile, Dumper=yaml.CDumper)
 
         return fractures
 

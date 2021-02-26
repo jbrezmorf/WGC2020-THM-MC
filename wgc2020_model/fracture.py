@@ -645,6 +645,8 @@ class Population:
                     family_intensity = size / total_size * max_sample_size / self.volume
                     f.shape.set_range_by_intensity(family_intensity)
 
+        return f.shape.sample_range
+
     def sample(self, pos_distr = None, keep_nonempty=False):
         """
         Provide a single fracture set  sample from the population.
