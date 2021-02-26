@@ -34,7 +34,7 @@ metacentrum:
     #- '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/mpiexec'
     #- '-np'
     #- '10'
-    - '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/flow123d'
+    - /storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/flow123
   # debug
   #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
   gmsh_executable:
@@ -52,6 +52,8 @@ metacentrum:
 copy_files: [config.yaml, flow_mc_new.py, 01_hm_tmpl.yaml, 02_th_tmpl.yaml, 03_th_tmpl.yaml, 04_th_tmpl.yaml]
 
 variants: [th_params_02, th_params_03, th_params_04]
+step: &step [10, 'y']
+end_time: &end_time [30, 'y']
 
 extract:
   temp_min: 0
@@ -267,8 +269,8 @@ th_params_03:
     mesh: random_fractures.msh # healed mesh is used at the end (programmatically replaced)
     in_file: 03_th
 
-    step: &step [10, 'y']
-    end_time: &end_time [30, 'y']
+    step: *step
+    end_time: *end_time
 
 #    well_piezohead_inject: &w_p_inject 50 # # h * rho*g = 50 * 1e3*10 = 0.5 MPa
 #    well_piezohead_pump: &w_p_pump -5e3 # # h * rho*g = 5e3 * 1e3*10 = 50 MPa
