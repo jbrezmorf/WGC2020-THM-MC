@@ -58,12 +58,14 @@ class Flow123d_WGC2020(Simulation):
     zero_temperature_offset = 273.15
 
     def __init__(self, config, clean):
-        super(Flow123d_WGC2020, self).__init__(config)
+        super(Flow123d_WGC2020, self).__init__()
 
         # TODO: how should I know, that these variables must be set here ?
         self.need_workspace = True
         self.work_dir = config["work_dir"]
         self.clean = clean
+
+        self._config = config
 
     def level_instance(self, fine_level_params: List[float], coarse_level_params: List[float])-> LevelSimulation:
         """

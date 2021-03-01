@@ -1,3 +1,4 @@
+debug: True
 # true -> work with pbs on metacentrum
 # false -> run locally, no pbs
 run_on_metacentrum: false

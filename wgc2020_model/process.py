@@ -86,8 +86,7 @@ class WGC2020_Process(process_base.ProcessBase):
             if os.path.exists(hdf_file):
                 os.remove(hdf_file)
         sample_storage = SampleStorageHDF(
-            file_path=hdf_file,
-            append=self.append)
+            file_path=hdf_file)
 
         # Create sampler, it manages sample scheduling and so on
         # the length of level_parameters must correspond to number of MLMC levels, at least 1 !!!
@@ -116,25 +115,25 @@ class WGC2020_Process(process_base.ProcessBase):
             self.config_dict["_aux_gmsh_path"] = self.config_dict["local"]["gmsh_executable"].copy()
 
     def create_sampling_pool(self):
-
+        debug = self.config_dict["debug"]
         if self.config_dict["run_on_metacentrum"]:
             #if self.config_dict["collect_only"]:
                 #return OneProcessPool(work_dir=self.work_dir)
             #else:
-            return self.create_pbs_sampling_pool()
+            return self.create_pbs_sampling_pool(debug)
         elif self.config_dict["local"]["np"] > 1:
             # Simulations run in different processes
             ProcessPool(n_processes=self.config_dict["local"]["np"], work_dir=self.work_dir)
         else:
-            return OneProcessPool(work_dir=self.work_dir)
+            return OneProcessPool(work_dir=self.work_dir, debug=debug)
 
-    def create_pbs_sampling_pool(self):
+    def create_pbs_sampling_pool(self, debug):
         """
         Initialize object for PBS execution
         :return: None
         """
         # Create PBS sampling pool
-        sampling_pool = SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean)
+        sampling_pool = SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean, debug=debug)
 
         with open(self.config_dict["config_pbs"], "r") as f:
             pbs_config = yaml.safe_load(f)
