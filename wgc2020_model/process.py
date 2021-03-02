@@ -30,6 +30,9 @@ class WGC2020_Process(process_base.ProcessBase):
         self.config_dict["config_pbs"] = os.path.join(os.getcwd(), "config_PBS.yaml")
         super(WGC2020_Process, self).__init__()
 
+        # Create simulation factory
+        self.simulation_factory = None
+
     def run(self, renew=False):
         """
         Run MLMC
@@ -41,6 +44,8 @@ class WGC2020_Process(process_base.ProcessBase):
         os.makedirs(self.work_dir, mode=0o775, exist_ok=True)
         self.config_dict["work_dir"] = self.work_dir
         self.config_dict["script_dir"] = os.getcwd()
+
+        self.simulation_factory = Flow123d_WGC2020(config=self.config_dict, clean=self.clean)
 
         # Create sampler (mlmc.Sampler instance) - crucial class which actually schedule samples
         sampler = self.setup_config(n_levels=1, clean=True)
@@ -76,9 +81,6 @@ class WGC2020_Process(process_base.ProcessBase):
 
         sampling_pool = self.create_sampling_pool()
 
-        # Create simulation factory
-        simulation_factory = Flow123d_WGC2020(config=self.config_dict, clean=clean)
-
         # Create HDF sample storage, possibly remove old one
         hdf_file = os.path.join(self.work_dir, "wgc2020_mlmc.hdf5")
         if self.clean:
@@ -90,8 +92,8 @@ class WGC2020_Process(process_base.ProcessBase):
 
         # Create sampler, it manages sample scheduling and so on
         # the length of level_parameters must correspond to number of MLMC levels, at least 1 !!!
-        sampler = Sampler(sample_storage=sample_storage, sampling_pool=sampling_pool, sim_factory=simulation_factory,
-                          level_parameters=[1])
+        sampler = Sampler(sample_storage=sample_storage, sampling_pool=sampling_pool,
+                          sim_factory=self.simulation_factory, level_parameters=[[1]])
 
         return sampler
 
