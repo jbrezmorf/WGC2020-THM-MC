@@ -169,9 +169,9 @@ class Flow123d_WGC2020(Simulation):
 
     @staticmethod
     def check_data(data, minimum, maximum):
-        n_times = len(Flow123d_WGC2020.result_format()[0].times)
-        if len(data) != n_times:
-            raise Exception("Data not corresponding with time axis.")
+        # n_times = len(Flow123d_WGC2020.result_format()[0].times)
+        # if len(data) != n_times:
+        #     raise Exception("Data not corresponding with time axis.")
 
         if np.isnan(np.sum(data)):
             raise Exception("NaN present in extracted data.")
@@ -198,7 +198,6 @@ class Flow123d_WGC2020(Simulation):
             bc_regions = [*regions_dict["left_well_fracture_regions"], *regions_dict["right_well_fracture_regions"]]
             out_regions = regions_dict["right_well_fracture_regions"]
 
-        n_times = 0
         result = []
         for variant in config_dict["variants"]:
             print("collecting TH - variant '{}'...".format(variant))
@@ -211,7 +210,6 @@ class Flow123d_WGC2020(Simulation):
                 raise Exception("Not all result files present.")
             avg_temp, power = Flow123d_WGC2020.extract_th_results(config_dict[variant]["output_dir"],
                                                                   out_regions, bc_regions)
-            n_times=len(power)
             Flow123d_WGC2020.check_data(avg_temp, config_dict["extract"]["temp_min"],
                                         config_dict["extract"]["temp_max"])
             Flow123d_WGC2020.check_data(power, config_dict["extract"]["power_min"],
@@ -224,18 +222,16 @@ class Flow123d_WGC2020(Simulation):
         if os.path.isfile(fr_file):
             with open(fr_file, 'r') as f:
                 fr_param_dict = yaml.load(f, yaml.CSafeLoader)
-                result.extend([fr_param_dict["n_fracture_elements"]]*n_times)
-                result.extend([fr_param_dict["n_contact_elements"]]*n_times)
+                result.append(fr_param_dict["n_fracture_elements"])
+                result.append(fr_param_dict["n_contact_elements"])
         else:
             raise Exception("Fracture stats file '{}' not present.".format(fr_file))
-
 
         print("Extracting results...finished")
 
         return [result, result]
 
-    @staticmethod
-    def result_format()-> List[QuantitySpec]:
+    def result_format(self) -> List[QuantitySpec]:
         """
         Overrides Simulation.result_format
         :return:
@@ -243,20 +239,24 @@ class Flow123d_WGC2020(Simulation):
         # create simple instance of QuantitySpec for each quantity we want to collect
         # the time vector of the data must be specified here!
 
-        # TODO: define times according to output times of Flow123d
-        # TODO: how should be units defined (and other members)?
-        step = 1
-        end_time = 31
-        times = list(range(0, end_time, step))
+        times = []
+        start = 0
+        step = self._config["step"][0]
+        end = self._config["end_time"][0]
+        for t in np.arange(start, end, step):
+            times.append(int(t))
+        times.append(end)
+
         spec = []
-        spec.append(QuantitySpec(name="avg_temp_02", unit="C", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="power_02", unit="J", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="avg_temp_03", unit="C", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="power_03", unit="J", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="avg_temp_04", unit="C", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="power_04", unit="J", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=(1, 1), times=[0], locations=['-']))
-        spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=(1, 1), times=[0], locations=['-']))
+        # spec.append(QuantitySpec(name="avg_temp_02", unit="C", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_02", unit="C", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_02", unit="J", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_03", unit="C", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_03", unit="J", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_04", unit="C", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_04", unit="J", shape=(1,), times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=(1,), times=[0], locations=['-']))
+        spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=(1,), times=[0], locations=['-']))
         return spec
 
     @staticmethod
