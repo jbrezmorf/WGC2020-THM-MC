@@ -8,7 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 
-import MLMC.src.gmsh_io as gmsh_io
+#import MLMC.src.gmsh_io as gmsh_io
+from bgem.gmsh import gmsh_io
 
 
 @attr.s(auto_attribs=True)

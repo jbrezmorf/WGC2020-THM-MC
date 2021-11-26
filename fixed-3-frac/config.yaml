@@ -1,9 +1,13 @@
 # The flow executable and arguments to use.
 flow_executable:
-  - ../../flow123d/bin/fterm
-  - --no-term
-  - dbg
-  - run
+  #- ../../flow123d/bin/fterm
+  #- --no-term
+  #- dbg
+  #- run
+  - singularity
+  - exec
+  - docker://flow123d/flow-dev-gnu-rel:3.1.0
+  - ../../flow123d/bin/flow123d
 
 # parameters substituted into the HM model template
 hm_params:
