@@ -26,3 +26,31 @@ Fine mesh, wells approximated by 12 side polygons, three fixed fractures, about 
 ## `three_frac_symmetric_5000el.msh`
 Coarse mesh, wells approximated by 6 side polygons, about 5000 elements.
 
+
+
+
+
+
+Running with Singularity on Charon
+Building Flow123d
+1. clone repositories
+>> git clone <Flow123d>
+>> git clone <WGC2020>
+2. run Singularity container (replace "../../workspace/" with your own workspace path - has to include both flow123d and wgc2020 directories)
+>> singularity shell -B ../../workspace/:/../../workspace docker://flow123d/flow-dev-gnu-rel:3.1.0
+3. checkout your branch and build it inside container
+4. remember the path to flow123d, e.g. workspace/flow123d/bin/flow123d
+
+Python script:
+1. load necessary modules (for Python)
+>> source load_modules.sh
+2. for the first time, create virtual environment with necessary packages
+>> ./setup_python_environment.sh
+3. activate env
+>> source env/bin/activate
+4. Possibly edit config.yaml and set correct Docker image and relative path to flow123d build
+5. run process:
+>> python3 process.py
+
+
+
