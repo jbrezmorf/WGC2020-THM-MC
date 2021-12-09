@@ -10,8 +10,9 @@ which pip
 pip install --upgrade pip
 pip -V
 
-# pip install wheel # error then installing bih 
-pip install pyyaml attrs numpy ruamel.yaml
+# install packages
+pip install pyyaml attrs numpy ruamel.yaml matplotlib
+# our packages
 pip install bgem
 
 #pip freeze

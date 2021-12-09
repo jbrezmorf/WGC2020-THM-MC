@@ -32,24 +32,24 @@ Coarse mesh, wells approximated by 6 side polygons, about 5000 elements.
 
 
 Running with Singularity on Charon
-Building Flow123d
+Building Flow123d (inside singularity container)
 1. clone repositories
 >> git clone <Flow123d>
 >> git clone <WGC2020>
 2. run Singularity container (replace "../../workspace/" with your own workspace path - has to include both flow123d and wgc2020 directories)
 >> singularity shell -B ../../workspace/:/../../workspace docker://flow123d/flow-dev-gnu-rel:3.1.0
-3. checkout your branch and build it inside container
-4. remember the path to flow123d, e.g. workspace/flow123d/bin/flow123d
+3. go to flow123d repository, checkout your branch and build it inside container
+4. remember the path to flow123d binary, e.g. workspace/flow123d/bin/flow123d
 
-Python script:
-1. load necessary modules (for Python)
->> source load_modules.sh
-2. for the first time, create virtual environment with necessary packages
+Python script (still inside singularity container)
+(update 2021-12: no need to load python modules anymore - use python inside singularity)
+1. go to WG2020 repository (and your model subdir)
+2. for the first time, create virtual environment with necessary packages (possibly add new ones)
 >> ./setup_python_environment.sh
 3. activate env
 >> source env/bin/activate
-4. Possibly edit config.yaml and set correct Docker image and relative path to flow123d build
-5. run process:
+4. Possibly edit config.yaml and set correct relative path to flow123d build
+5. run process (you are inside singularity and python env)
 >> python3 process.py
 
 
