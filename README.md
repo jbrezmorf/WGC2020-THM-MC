@@ -26,11 +26,16 @@ Each sample takes several computation steps:
 6. heat transfer model with modified parameters (thermo-hydraulic model in Flow123d)
 7. heat transfer model with original parameters as a reference (thermo-hydraulic model in Flow123d)
 
-## Running the simulation
+
+## Installation
 For running the simulation one has to install Python 3 and MLMC package.
 Sample computation then requires running BGEM and Flow123d inside Geomop 2.0.0 Docker container (download the image at http://geomop.github.io/).
-This obviously requires having Docker or Singularity installed for running the container.
+This obviously requires having Docker (https://www.docker.com/) or Singularity (https://apptainer.org/) installed for running the container.
 
 For installing MLMC in virtual environment one can use the enclosed script `setup_python_envinroment.sh`.
 
 
+## Running the simulation
+Model can be run locally by script `run_process_local.sh` or on cluster (Metacentrum in CZ tested) by script `run_process_pbs.sh`.
+In case of cluster run, one has to specify the computational resources in file `config_pbs.yaml`, the PBS script itself is then created automatically.
+In both cases, the main configuration is loaded from file `config.yaml`.
