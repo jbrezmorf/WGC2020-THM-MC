@@ -53,14 +53,15 @@ def substitute_placeholders(file_in, file_out, params):
         dst.write(text)
     return used_params
 
+
 class Flow123d_WGC2020(Simulation):
 
     zero_temperature_offset = 273.15
 
     def __init__(self, config, clean):
-        super(Flow123d_WGC2020, self).__init__(config)
+        super(Flow123d_WGC2020, self).__init__()
 
-        # TODO: how should I know, that these variables must be set here ?
+        self.config = config
         self.need_workspace = True
         self.work_dir = config["work_dir"]
         self.clean = clean
@@ -77,24 +78,22 @@ class Flow123d_WGC2020(Simulation):
          so it allows pass simulation data from main process to PBS process
         """
 
-        config = self._config.copy()
-
         # Set fine simulation common files directory
         # Files in the directory are used by each simulation at that level
         common_files_dir = os.path.join(self.work_dir, "common_files")
         force_mkdir(common_files_dir, force=self.clean)
-        config["common_files_dir"] = common_files_dir
+        self.config["common_files_dir"] = common_files_dir
 
         # copy common files
-        for f in config["copy_files"]:
-            shutil.copyfile(os.path.join(config["script_dir"], f), os.path.join(common_files_dir, f))
+        for f in self.config["copy_files"]:
+            shutil.copyfile(os.path.join(self.config["script_dir"], f), os.path.join(common_files_dir, f))
 
 
         #TODO: what is the role of task_size
         # in one-level method it does not matter [by JB]
-        return LevelSimulation(config_dict=config,
+        return LevelSimulation(config_dict=self.config,
                                # task_size=len(fine_mesh_data['points']),
-                               task_size=config["task_size"],
+                               task_size=self.config["task_size"],
                                calculate=Flow123d_WGC2020.calculate,
                                # method which carries out the calculation, will be called from PBS processs
                                need_sample_workspace=True  # If True, a sample directory is created
@@ -297,7 +296,8 @@ class Flow123d_WGC2020(Simulation):
         if all([os.path.isfile(os.path.join(output_dir, f)) for f in result_files]):
             status = True
         else:
-            substitute_placeholders(os.path.join(config_dict["common_files_dir"], fname + '_tmpl.yaml'),
+            tmpl_yaml_file = os.path.join(config_dict["common_files_dir"], fname + '_tmpl.yaml')
+            substitute_placeholders(tmpl_yaml_file,
                                     fname + '.yaml',
                                     params)
             arguments.extend(['--no_profiler', '--output_dir', output_dir, fname + ".yaml"])
@@ -307,7 +307,11 @@ class Flow123d_WGC2020(Simulation):
                     completed = subprocess.run(arguments, stdout=stdout, stderr=stderr)
             print("Exit status: ", completed.returncode)
             status = completed.returncode == 0
-        conv_check = Flow123d_WGC2020.check_conv_reasons(os.path.join(output_dir, "flow123.0.log"))
+        flow123d_log = os.path.join(output_dir, "flow123.0.log")
+        if os.path.exists(flow123d_log):
+            conv_check = Flow123d_WGC2020.check_conv_reasons(flow123d_log)
+        else:
+            conv_check = -1000
         print("converged: ", conv_check)
         return status and conv_check
 
@@ -345,7 +349,7 @@ class Flow123d_WGC2020(Simulation):
         mesh_bn = os.path.basename(mesh_file)
         reader = gmsh_io.GmshIO()
         reader.filename = mesh_file
-        regions = [*reader.read_physical_names()]
+        regions = [*reader.physical]
 
         # fracture regions
         reg_fr = [reg for reg in regions if reg.startswith("fr")]

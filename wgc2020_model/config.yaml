@@ -18,28 +18,33 @@ mesh_repository:
 # The flow executable and arguments to use.
 local:
   flow_executable:
-  #  - /home/jb/workspace/flow123d_JB/bin/fterm
-    - /home/paulie/Workspace/flow123d/bin/fterm
-    - --no-term
-    - rel
-    - run
+#    - /home/jb/workspace/flow123d_JB/bin/fterm
+#    - /home/paulie/Workspace/flow123d/bin/fterm
+#    - --no-term
+#    - rel
+#    - run
+    - /opt/flow123d/bin/flow123d
+    - --no_profiler
   np: 1
   gmsh_executable:
-    - /home/paulie/Workspace/WGC2020-THM-MC/wgc2020_model/venv/bin/gmsh
+    - /usr/local/bin/gmsh
 
 metacentrum:
   flow_executable:
-  # release
-    #- /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
-    #- '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/mpiexec'
-    #- '-np'
-    #- '10'
-    - '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/flow123d'
-  # debug
-  #- /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
+#   release
+#    - /storage/liberec3-tul/home/jan_brezina/workspace/flow123d/bin/flow123d
+#    - '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/mpiexec'
+#    - '-np'
+#    - '10'
+#    - '/storage/liberec3-tul/home/pavel_exner/workspace/flow123d/build-PE_wgc2020/bin/flow123d'
+#   debug
+#  - /storage/liberec3-tul/home/jan_brezina/workspace/flow-dbg/flow123d/bin/flow123d
+    - /opt/flow123d/bin/flow123d
+    - --no_profiler
   gmsh_executable:
-    #- /storage/liberec3-tul/home/martin_spetlik/astra/gmsh/bin/gmsh
-    - /storage/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model/env/bin/gmsh
+#    - /storage/liberec3-tul/home/martin_spetlik/astra/gmsh/bin/gmsh
+#    - /storage/liberec3-tul/home/pavel_exner/WGC2020-THM-MC/wgc2020_model/env/bin/gmsh
+    - /usr/local/bin/gmsh
 
 #finish_sleep: 0
 

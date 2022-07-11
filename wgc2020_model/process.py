@@ -15,7 +15,7 @@ from mlmc.sampling_pool_pbs import SamplingPoolPBS
 from mlmc.sim.simulation import QuantitySpec
 from mlmc.tool import process_base
 import mlmc.moments as moments
-from mlmc.quantity_estimate import QuantityEstimate
+from mlmc.estimator import Estimate
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,7 +39,7 @@ class WGC2020_Process(process_base.ProcessBase):
 
         # Create working directory if necessary
         os.makedirs(self.work_dir, mode=0o775, exist_ok=True)
-        self.config_dict["work_dir"] = self.work_dir
+        self.config_dict["work_dir"] = os.path.abspath(self.work_dir)
         self.config_dict["script_dir"] = os.getcwd()
 
         # Create sampler (mlmc.Sampler instance) - crucial class which actually schedule samples
@@ -80,14 +80,12 @@ class WGC2020_Process(process_base.ProcessBase):
         simulation_factory = Flow123d_WGC2020(config=self.config_dict, clean=clean)
 
         # Create HDF sample storage, possibly remove old one
-        hdf_file = os.path.join(self.work_dir, "wgc2020_mlmc.hdf5")
+        hdf_file = os.path.join(self.config_dict["work_dir"], "wgc2020_mlmc.hdf5")
         if self.clean:
             # Remove HFD5 file
             if os.path.exists(hdf_file):
                 os.remove(hdf_file)
-        sample_storage = SampleStorageHDF(
-            file_path=hdf_file,
-            append=self.append)
+        sample_storage = SampleStorageHDF(file_path=hdf_file)
 
         # Create sampler, it manages sample scheduling and so on
         # the length of level_parameters must correspond to number of MLMC levels, at least 1 !!!
@@ -213,7 +211,7 @@ class WGC2020_Process(process_base.ProcessBase):
         # hdf_file = os.path.join(self.work_dir, "wgc2020_mlmc.hdf5")
         # sample_storage = SampleStorageHDF(file_path=hdf_file, append=True)
 
-        print("N levels: ", sample_storage.n_levels())
+        print("N levels: ", sample_storage.get_n_levels())
 
         self.get_variant_results(sample_storage, "avg_temp_03", "power_03")
         self.get_variant_results(sample_storage, "avg_temp_04", "power_04")
