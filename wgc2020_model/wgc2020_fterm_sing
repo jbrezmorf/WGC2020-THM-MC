@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -x
+
+rep_dir=$(pwd)
+
+image=$(./wgc2020_fterm image)
+echo "singularity will open docker image: $image"
+# command for running correct docker image
+singularity shell -B $rep_dir:$rep_dir docker://$image
+

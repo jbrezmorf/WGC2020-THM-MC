@@ -1,0 +1,348 @@
+#!/bin/bash
+# 
+# Start docker environment for development.
+#
+# For documentation run:
+#
+#     fterm --help
+#
+#
+# This is development fterm, simpler variants are available in the installation packages.
+# See: https://github.com/flow123d/flow123d-package/tree/master/project/src/linux
+#
+#
+#
+# function will try to find proper dir to be mounted
+# it will return $FLOW123D_WORK is set
+# otherwise will return dir in $HOME, in which is flow123d located (can be even more nested)
+# if the flow is not in a $HOME dir, will return parent directory
+#    of the flow123d repo root direcotry (the one containing build-master etc)
+
+
+# bin/fterm -- -di --name contrelease -euid=$(id -u) -v /opt/flow123d:/opt/flow123d
+
+# get CWD as realtive path to current directory, which enables to build image on Windows
+OLD_PWD="$(pwd)"
+ABS_FLOW_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+REL_FLOW_DIR=$(realpath --relative-to=$(pwd) $ABS_FLOW_DIR)
+
+# orig image with OpenMPI
+#image_name=ci-gnu
+#image_tag=master_2815a84fd
+
+# new image without OpenMPI, without mpi4py
+#image_name=geomop
+#image_tag=master_29638ef6f
+
+# only MPICH, mpi4py installed
+#image_name=geomop
+#image_tag=master_8c1b58980
+
+#image_name=geomop
+#image_tag=JS_nonlinear_conductivity_2_b971e62bf
+
+# includes nonlinear conductivity from JS_nonlinear_conductivity_2
+#image_name=geomop
+#image_tag=master_1edfbef2b
+
+# testing branch - due to parsing fieldformula
+#image_name=flow123d-gnu
+#image_tag=3.9.0_34a1462
+image_name=geomop-gnu
+image_tag=2.0.0
+
+function get_base_image() {
+    local image=flow123d/$image_name:$image_tag
+    echo $image
+}
+
+function print_usage() {
+  cat << EOF
+  
+Usage:  $bold fterm [tag] [options] [action] [arguments]$reset
+  
+Start docker container with realease Flow123d version available.
+   
+tag     image tag in form <branch>_<commit_short_hash>
+        Images automatically downloaded from docker hub, see:  ${bblue} https://hub.docker.com/r/flow123d/flow-dev-gnu-dbg/tags ${reset}
+        for avalilable tags. Default tag is ${bblue} ${image_tag} ${reset}
+    
+${bold}Options:${reset}
+  ${bold}-h|--help ${reset}       fterm documentation
+  ${bold}-V|--no-verbose ${reset} turn off configuration summary when starting container
+  ${bold}-x|--set-x ${reset}      turn on script debuging mode (set -x)
+  ${bold}-p|--privileged ${reset} add --privileged=true when starting docker container. SECURITY RISK
+                   May be necessary on hosts with SELinux (mounting issues) or for using 
+                   'gdb' within docker to turn off address space layout randomization. 
+                   
+  ${bold}-T|--no-term ${reset}    Turn off terminal for 'run' and 'exec' actions. Necessary when called from another process.
+
+${bold}Actions:${reset}
+  ${bold}shell${reset}            start interactive shell (default action)
+  ${bold}exec${reset}             execute a linux command given by 'arguments' in the container
+  ${bold}run${reset}              run flow123d binary with 'arguments'
+    
+                   These actions mount PWD and a work directory given by FLOW123D_WORK
+                   or as a subdirectory of HOME containing the Flow123d root directory.
+                   We prevent mounting full HOME as clashs with container's HOME.
+    
+  ${bold}--${reset}               execute 'docker run' with given image pass remaining arguments
+  ${bold}update${reset}           update all flow123d images (download form docker hub)
+  ${bold}image${reset}            get docker image prepared for Endorse
+
+    
+${bold}Evironment variables:${reset}
+  ${bold}nocolor${reset}          turn off terminal colors.
+  ${bold}FLOW123D_WORK${reset}    explicit working directory to mount
+  
+${bold}Examples:${reset}
+  ${bblue}bin/fterm dbg @2.2.0 exec make -C . all$reset  
+  Start make of the Flow123d using the debug environment at version 2.2.0.
+    
+  ${bblue}bin/fterm run --help$reset
+  Run flow123d --help command.
+EOF
+#  ${bblue}bin/fterm dbg --detach dbg_run$reset
+#      docker run <opts> ... flow123d/flow-dev-gnu-dbg:2.2.0
+
+}
+
+function dbg() {
+  if [[ $verbose -eq 1 ]]; then
+    echo -e "$bgreen[DBG]$reset $@"
+  fi
+}
+function dbg2() {
+  if [[ $verbose -eq 1 ]]; then
+    echo -e "$byellow[DBG]$reset $@"
+  fi
+}
+function dbgc() {
+  if [[ $verbose -eq 1 ]]; then
+    echo -e "$bblue[RUN]$reset $@"
+  fi
+#  $@
+  eval "$@"
+}
+
+function get_mount_dir() {
+  if [[ -n $FLOW123D_WORK ]]; then
+    echo $FLOW123D_WORK;
+  else
+    # try to find the first dir in $HOME, in which
+    # flow123d is located
+    local workdir=$1
+    local workdir_tmp=
+    for (( i = 0; i < 10; i++ )); do
+      workdir_tmp=$(dirname $workdir)
+      if [[ "$workdir_tmp" == "$HOME" ]]; then
+        # we found what we were looking for
+        echo $workdir
+        return
+      fi
+      workdir=$workdir_tmp
+    done
+    # the folder is too deep or not in HOME
+    # we return entire $HOME
+    echo $(dirname $1)
+  fi
+}
+
+
+# Will check whether given image exists and return 0 if it does
+function image_exist() {
+  did=$(docker images $1 -q)
+  if [[ -z $did ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+
+# Will pull all the images to newest
+function update_images() {
+  for image in $flow123d_images
+  do
+    docker pull flow123d/$image:$image_tag
+  done
+}
+
+
+# check if stdout is a terminal...
+if [[ -z "$nocolor" ]]; then
+  if test -t 1; then
+      # see if it supports colors...
+      ncolors=$(tput colors)
+      if test -n "$ncolors" && test $ncolors -ge 8; then
+          bold="$(tput bold)"
+          reset="$(tput sgr0)"
+          red="$(tput setaf 1)"
+          green="$(tput setaf 2)"
+          yellow="$(tput setaf 3)"
+          blue="$(tput setaf 4)"
+          bblue="$bold$blue"
+          bgreen="$bold$green"
+          byellow="$bold$yellow"
+          bred="$bold$red"
+      fi
+  fi
+fi
+
+
+# grab user's id
+gid=$(id -g)
+uid=$(id -u)
+
+# not using $(whoami) so there are no collisions with $HOME
+uname=flow
+autopull=${autopull:-1}
+theme=${theme:-light}
+
+# source config, that way we know what to mount, etc.
+DCFG="$CFG/docker.cfg"
+if [[ -f "$DCFG" ]]; then
+  source "$DCFG"
+fi
+
+# default settings
+privileged=0
+verbose=1
+action=shell
+work=$(get_mount_dir $ABS_FLOW_DIR)
+contname=""
+docker_terminal="-it"
+
+while [[ $# -gt 0 ]]
+  do
+  key="$1"
+  case $key in
+    -x|--set-x)
+      set -x
+      shift
+    ;;
+    -p|--privileged)
+      privileged=1
+      shift
+    ;;
+    -V|--no-verbose)
+      verbose=0
+      shift
+    ;;
+    --)
+      shift
+      action=raw
+      rest="$@"
+      break
+    ;;
+    --detach)
+      contname="$2"
+      action=detach
+      shift; shift;
+      rest="$@"
+      break
+    ;;
+    -T|--no-term)
+      docker_terminal=""
+      shift
+    ;;
+    shell|run|exec|update)
+      action=$1
+      shift
+      rest="$@"
+      break
+    ;;
+    @*)
+      image_tag=${1#@}  # cut at (@) from the value
+      shift
+    ;;
+    build@*|update@*)
+      echo "Please use new syntax to specify docker image version"
+      echo "instead of: "
+      echo "./fterm build@2.2.0"
+      echo "use"
+      echo "./fterm @2.2.0 build"
+      exit 1
+    ;;
+    -h|--help)
+      print_usage
+      exit 1
+    ;;
+    image)
+      get_base_image
+      exit 1
+    ;;
+    -i|--images)
+      shift
+      flow123d_images=$1
+      shift
+    ;;
+    *)
+      echo -e "${bred}ERROR:$reset ${red} Invalid argument '$1'!$reset"
+      print_usage
+      echo -e "${bred}ERROR:$reset ${red} Invalid argument '$1'!$reset"
+      exit 1
+    ;;
+  esac
+done
+
+
+# set flow123d_images if empty
+if [ -z "$flow123d_images" ]
+then
+flow123d_images=$image_name
+fi
+
+
+# determine image names
+# base_image=flow123d/flow-dev-$image_env-$image_kind:$image_tag
+base_image=flow123d/$image_name:$image_tag
+
+
+dbg "base_image     = $base_image"
+dbg "image_tag      = $image_tag"
+dbg "action         = $action"
+dbg "mount dirs     - $work"
+dbg "               - $OLD_PWD"
+dbg "user           = $uname($uid:$gid)"
+dbg "theme          = $theme"
+dbg "autopull       = $autopull"
+dbg "privileged     = $privileged"
+
+# env variables which will be passed as well
+envarg="-euid=$uid -egid=$gid -etheme=$theme -ewho=$uname -ehome=/mnt/$HOME -v /$HOME:/mnt/$HOME"
+mountargs="-w /${OLD_PWD} -v /${OLD_PWD}:/${OLD_PWD} -v /${work}:/${work}"
+if [[ $privileged == "1" ]]; then
+  priv_true="--privileged=true"
+fi
+
+
+# perform action based on variable action
+case $action in
+  run)
+    if [[ $autopull == "1" ]]; then
+      update_images
+    fi
+    dbg2 "Executing flow123d with args $rest"
+    dbgc docker run --rm ${docker_terminal} $envarg $mountargs $priv_true $base_image "flow123d" "$rest"
+  ;;
+  exec)
+    if [[ $autopull == "1" ]]; then
+      update_images
+    fi
+    dbg2 "Executing command $rest"
+    dbgc docker run --rm ${docker_terminal} $envarg $mountargs $priv_true $base_image "$rest"
+  ;;
+  shell)
+    if [[ $autopull == "1" ]]; then
+      update_images
+    fi
+    dbg2 "Entering shell"
+    dbgc docker run --rm -it $envarg $mountargs $priv_true $base_image
+  ;;
+  update)
+    update_images
+  ;;
+esac
+
+exit $?
