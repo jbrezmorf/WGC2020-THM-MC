@@ -300,7 +300,7 @@ class Flow123d_WGC2020(Simulation):
             substitute_placeholders(tmpl_yaml_file,
                                     fname + '.yaml',
                                     params)
-            arguments.extend(['--no_profiler', '--output_dir', output_dir, fname + ".yaml"])
+            arguments.extend(['--output_dir', output_dir, fname + ".yaml"])
             print("Running: ", " ".join(arguments))
             with open(fname + "_stdout", "w") as stdout:
                 with open(fname + "_stderr", "w") as stderr:

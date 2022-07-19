@@ -2,7 +2,7 @@ n_cores: 1
 n_nodes: 1
 select_flags: ['cgroups=cpuacct']
 mem: '2gb'
-wall_time: '03:00:00'
+walltime: '03:00:00'
 queue: 'charon'
 home_dir: '/storage/liberec3-tul/home/pavel_exner/'
 python: 'python'
