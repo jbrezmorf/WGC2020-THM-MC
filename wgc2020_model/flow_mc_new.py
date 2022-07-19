@@ -347,8 +347,8 @@ class Flow123d_WGC2020(Simulation):
         :return:
         """
         mesh_bn = os.path.basename(mesh_file)
-        reader = gmsh_io.GmshIO()
-        reader.filename = mesh_file
+        reader = gmsh_io.GmshIO(filename=mesh_file)
+        # reader.filename = mesh_file
         regions = [*reader.physical]
 
         # fracture regions
@@ -562,8 +562,10 @@ class Flow123d_WGC2020(Simulation):
             hm = heal_mesh.HealMesh.read_mesh(mesh_file, node_tol=1e-4)
             hm.heal_mesh(gamma_tol=0.01)
             hm.stats_to_yaml(mesh_name + "_heal_stats.yaml")
-            hm.write()
-            assert hm.healed_mesh_name == mesh_healed
+            # write format is determined by extension => .msh2 for 2.x format
+            hm.write(mesh_healed + "2")
+            os.rename(mesh_healed + "2", mesh_healed)
+
         return mesh_healed
 
     @staticmethod
