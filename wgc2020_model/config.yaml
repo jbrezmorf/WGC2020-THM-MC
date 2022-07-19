@@ -18,17 +18,19 @@ mesh_repository:
 # The flow executable and arguments to use.
 local:
   flow_executable:
-#    - /home/jb/workspace/flow123d_JB/bin/fterm
-#    - /home/paulie/Workspace/flow123d/bin/fterm
-#    - --no-term
-#    - rel
-#    - run
-    - /opt/flow123d/bin/flow123d
-    - --no_profiler
+    # for working with MLMC outside container
+    - /home/paulie/Workspace/WGC2020-THM-MC/wgc2020_model/wgc2020_fterm
+    - --no-term
+    - run
+    # for working fully inside container
+#    - /opt/flow123d/bin/flow123d
+#    - --no_profiler
   np: 1
   gmsh_executable:
-    - /usr/local/bin/gmsh
-
+#    - /usr/local/bin/gmsh
+    - /home/paulie/Workspace/WGC2020-THM-MC/wgc2020_model/wgc2020_fterm
+    - exec
+    - gmsh
 metacentrum:
   flow_executable:
 #   release
