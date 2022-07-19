@@ -146,12 +146,12 @@ problem: !Coupling_Sequential
           format: !gmsh
         output:
           fields:
-            - { field: displacement, interpolation: P1_average }
+#            - { field: displacement, interpolation: P1_average }
             - stress
             - cross_section_updated
             - displacement_divergence
             - region_id
-            - displacement_jump
+#            - displacement_jump
         solver: !Petsc
           a_tol: <mechanics_solver__a_tol>
           r_tol: <mechanics_solver__r_tol>

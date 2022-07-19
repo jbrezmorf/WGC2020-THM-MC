@@ -881,9 +881,9 @@ class Flow123d_WGC2020(Simulation):
         # pass
         # we have to read region names from the input mesh
         # get fracture regions ids
-        orig_mesh_reader = gmsh_io.GmshIO()
-        orig_mesh_reader.filename = config_dict[base_variant]["mesh"]
-        orig_mesh_reader.read_physical_names()
+        orig_mesh_reader = gmsh_io.GmshIO(config_dict[base_variant]["mesh"])
+        # orig_mesh_reader.filename = config_dict[base_variant]["mesh"]
+        # orig_mesh_reader.read_physical_names()
         fr_regs = orig_mesh_reader.get_reg_ids_by_physical_names(config_dict[base_variant]["fracture_regions"], 2)
         fr_reg_id_map = dict(zip(fr_regs, config_dict[base_variant]["fracture_regions"]))
 
@@ -900,6 +900,7 @@ class Flow123d_WGC2020(Simulation):
 
         mesh = gmsh_io.GmshIO(mechanics_output)
         mesh.physical = orig_mesh_reader.physical
+        # mesh.write_ascii(th_input_file + "2")
         # map eid to the element position in the array
         # TODO: use extract_mesh
         ele_ids_map = dict()
@@ -909,8 +910,10 @@ class Flow123d_WGC2020(Simulation):
 
         # read cross-section from HM model
         time_idx = 1
-        time, field_cs = mesh.element_data['cross_section_updated'][time_idx]
-        time, field_disp_jump = mesh.element_data['displacement_jump'][time_idx]
+        cs_data = mesh.element_data['cross_section_updated'][time_idx]
+        time = cs_data.time
+        field_cs = cs_data.values
+        # time, field_disp_jump = mesh.element_data['displacement_jump'][time_idx]
 
         min_fr_cross_section = float(config_dict[base_variant]['min_fr_cross_section'])
         max_fr_cross_section = float(config_dict[base_variant]['max_fr_cross_section'])
@@ -928,23 +931,24 @@ class Flow123d_WGC2020(Simulation):
         n_contact_fr_elements = 0
         for eid in fr_indices:
             i = ele_ids_map[eid]
-            seid = str(eid)
-            cs_mech[i] = field_cs[seid]
+            # seid = str(eid)
+            cs_mech[i] = field_cs[i]
 
-            if field_cs[seid][0] < min_fr_cross_section:
-                elem = mesh.elements[eid]
-                type, tags, node_ids = elem
-                frac_name = fr_reg_id_map[tags[0]]
-                normal = fractures_dict[frac_name].normal()
-                u_jump = np.array(field_disp_jump[seid])
-                # us ... tangential part of u_jump
-                us = u_jump - np.dot(u_jump, normal) * normal
-                ud = np.linalg.norm(us) * np.tan(dilation_angle)
-                cs_shear[i] = min_fr_cross_section + ud
+            if field_cs[i][0] < min_fr_cross_section:
+                # elem = mesh.elements[eid]
+                # type, tags, node_ids = elem
+                # frac_name = fr_reg_id_map[tags[0]]
+                # normal = fractures_dict[frac_name].normal()
+                # u_jump = np.array(field_disp_jump[seid])
+                # # us ... tangential part of u_jump
+                # us = u_jump - np.dot(u_jump, normal) * normal
+                # ud = np.linalg.norm(us) * np.tan(dilation_angle)
+                # cs_shear[i] = min_fr_cross_section + ud
+                cs_shear[i] = min_fr_cross_section
                 n_contact_fr_elements = n_contact_fr_elements + 1
             else:
                 # cut large values
-                cs_shear[i] = np.minimum(field_cs[seid], max_fr_cross_section)
+                cs_shear[i] = np.minimum(field_cs[i], max_fr_cross_section)
             # cs_un[i] = np.abs(np.dot(u_jump, normal))
             # cs_ud[i] = ud
             # print("us = {},   ud = {}".format(cs_shear[i], ud))
@@ -986,13 +990,17 @@ class Flow123d_WGC2020(Simulation):
 
         # mesh.write_fields('output_hm/th_input.msh', ele_ids, {'conductivity': K})
         ele_ids = np.array(list(mesh.elements.keys()), dtype=float)
-        with open(th_input_file, "w") as fout:
-            mesh.write_ascii(fout)
+        th_input_file2 = th_input_file + "2"
+        orig_mesh_reader.write_ascii(th_input_file2)
+        os.rename(th_input_file2, th_input_file)
+        with open(th_input_file, "a") as fout:
             mesh.write_element_data(fout, ele_ids, 'conductivity', K)
             mesh.write_element_data(fout, ele_ids, 'cross_section_updated', cs_mech)
 
-        with open(th_input_shear_file, "w") as fout:
-            mesh.write_ascii(fout)
+        th_input_shear_file2 = th_input_shear_file + "2"
+        orig_mesh_reader.write_ascii(th_input_shear_file2)
+        os.rename(th_input_shear_file2, th_input_shear_file)
+        with open(th_input_shear_file, "a") as fout:
             mesh.write_element_data(fout, ele_ids, 'conductivity', K_shear)
             # mesh.write_element_data(fout, ele_ids, 'cross_section_mech', cs_mech)
             # mesh.write_element_data(fout, ele_ids, 'cross_section_normal', cs_un)
