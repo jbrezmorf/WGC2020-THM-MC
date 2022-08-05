@@ -1,3 +1,4 @@
+import math
 import os
 import subprocess
 import numpy as np
@@ -138,6 +139,7 @@ class Flow123d_WGC2020(Simulation):
             healed_mesh = Flow123d_WGC2020.prepare_mesh(config_dict, fractures)
 
         Flow123d_WGC2020.read_physical_names(config_dict, healed_mesh)
+        Flow123d_WGC2020.define_well_observe_points(config_dict)
         print("Creating mesh...finished")
 
         if config_dict["mesh_only"]:
@@ -184,7 +186,7 @@ class Flow123d_WGC2020(Simulation):
     def collect_results(config_dict):
         filenames = ["energy_balance.yaml",
                      "water_balance.yaml",
-                     "Heat_AdvectionDiffusion_region_stat.yaml"]
+                     "heat_observe.yaml"]
 
         print("Extracting results...")
         # read regions of interest
@@ -376,6 +378,34 @@ class Flow123d_WGC2020(Simulation):
         regions_dict["right_well_fracture_regions"] = reg_fr_right_well
         with open('regions.yaml', 'w') as outfile:
             yaml.dump(regions_dict, outfile, default_flow_style=False, Dumper=yaml.CDumper)
+
+    @staticmethod
+    def define_well_observe_points(config_dict):
+        geom = config_dict["geometry"]
+        well_z0, well_z1 = geom["well_openning"]
+        well_length = well_z1 - well_z0
+        well_r = geom["well_effective_radius"]
+        well_dist = geom["well_distance"]
+
+        # create observe points on the surface of well cylinders
+        left_well_points = []
+        right_well_points = []
+        n_z_steps = 5
+        n_points = 6
+        for zi in range(n_z_steps+1):
+            z_step = well_length / n_z_steps
+            for pi in range(n_points):
+                phi = pi * (2 * math.pi / n_points)
+                idx = zi*n_points + pi
+                left_well_points.append(
+                    {"name": "left_" + str(idx),
+                     "point": [-well_dist / 2 + math.cos(phi) * well_r, math.sin(phi) * well_r, well_z0 + zi * z_step]})
+                right_well_points.append(
+                    {"name": "right_" + str(idx),
+                     "point": [well_dist / 2 + math.cos(phi) * well_r, math.sin(phi) * well_r, well_z0 + zi * z_step]})
+        left_well_points.extend(right_well_points)
+        with open('well_observe_points.yaml', 'w') as outfile:
+            yaml.dump(left_well_points, outfile, default_flow_style=False, Dumper=yaml.CDumper)
 
     @staticmethod
     def create_fractures_shapes(gmsh_geom, fractures, base_shape: 'ObjectSet', max_mesh_step = 0):
@@ -875,7 +905,7 @@ class Flow123d_WGC2020(Simulation):
     def prepare_th_input(config_dict, fractures):
         """
         Prepare FieldFE input file for the TH simulation.
-        :param config_dict: Parsed config.yaml. see key comments there.
+        param config_dict: Parsed config.yaml. see key comments there.
         """
         th_input_file = 'th_input.msh'
         th_input_shear_file = 'th_input_shear.msh'

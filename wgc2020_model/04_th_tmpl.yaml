@@ -120,14 +120,13 @@ problem: !Coupling_Sequential
       file: heat
       format: !vtk
         variant: ascii
-      #observe_points:
-        #- point: [ 90.875, -4.091, -17.826 ]   # observe temperature at intersection of right fracture and right "well"
-          #snap_region: right_fr
+      observe_points: !include
+        well_observe_points.yaml
     output:
       fields: []
         #- temperature
         #- region_id
-      #observe_fields: temperature
+      observe_fields: temperature
       times:
         - step: <step>
     solver: !Petsc
