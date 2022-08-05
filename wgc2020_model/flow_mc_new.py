@@ -244,16 +244,21 @@ class Flow123d_WGC2020(Simulation):
         # TODO: how should be units defined (and other members)?
         step = 1
         end_time = 31
-        times = list(range(0, end_time, step))
+        times = np.asarray(list(range(0, end_time, step)), dtype=np.float64)
         spec = []
-        spec.append(QuantitySpec(name="avg_temp_02", unit="C", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="power_02", unit="J", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="avg_temp_03", unit="C", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="power_03", unit="J", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="avg_temp_04", unit="C", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="power_04", unit="J", shape=(1, 1), times=times, locations=['.well']))
-        spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=(1, 1), times=[0], locations=['-']))
-        spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=(1, 1), times=[0], locations=['-']))
+        shape = np.asarray([1, 1], dtype=np.int32)
+        spec.append(QuantitySpec(name="avg_temp_02", unit="C", shape=shape, times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_02", unit="J", shape=shape, times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_03", unit="C", shape=shape, times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_03", unit="J", shape=shape, times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="avg_temp_04", unit="C", shape=shape, times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="power_04", unit="J", shape=shape, times=times, locations=['.well']))
+        spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=shape, times=times, locations=['-']))
+        spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=shape, times=times, locations=['-']))
+        # spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=shape, times=np.asarray([0], dtype=np.float64), locations=['-']))
+        # spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=shape, times=np.asarray([0], dtype=np.float64), locations=['-']))
+        # spec.append(QuantitySpec(name="n_fracture_elements", unit="-", shape=shape, times=[0], locations=['-']))
+        # spec.append(QuantitySpec(name="n_contact_elements", unit="-", shape=shape, times=[0], locations=['-']))
         return spec
 
     @staticmethod
