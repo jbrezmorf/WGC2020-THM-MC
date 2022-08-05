@@ -1115,20 +1115,36 @@ class Flow123d_WGC2020(Simulation):
         return np.array(times), np.array(series)
 
     @staticmethod
+    def extract_observe_data(observe_file, field_name):
+        with open(observe_file, "r") as f:
+            loaded_yaml = yaml.load(f, yaml.CSafeLoader)
+
+        points = loaded_yaml['points']
+        point_names = [p["name"] for p in points]
+        # left_well_indices = [i for i in range(len(point_names)) if point_names[i].startswith("left_")]
+        right_well_indices = [i for i in range(len(point_names)) if point_names[i].startswith("right_")]
+
+        data = loaded_yaml['data']
+        data_values = np.array([d[field_name] for d in data])
+        values_right = np.average(data_values[:, right_well_indices], axis=1, keepdims=True).transpose()
+        obs_times = np.array([d["time"] for d in data]).transpose()
+
+        return obs_times, values_right
+
+    @staticmethod
     def extract_th_results(output_dir, out_regions, bc_regions):
         with open(os.path.join(output_dir, "energy_balance.yaml"), "r") as f:
             power_times, reg_powers = Flow123d_WGC2020.extract_time_series(f, bc_regions, extract=lambda frame: frame['data'][0])
             power_series = -sum(reg_powers)
-
-        with open(os.path.join(output_dir, "Heat_AdvectionDiffusion_region_stat.yaml"), "r") as f:
-            temp_times, reg_temps = Flow123d_WGC2020.extract_time_series(f, out_regions, extract=lambda frame: frame['average'][0])
         with open(os.path.join(output_dir, "water_balance.yaml"), "r") as f:
             flux_times, reg_fluxes = Flow123d_WGC2020.extract_time_series(f, out_regions, extract=lambda frame: frame['data'][0])
         sum_flux = sum(reg_fluxes)
 
-        reg_temps = reg_temps - Flow123d_WGC2020.zero_temperature_offset
+        temp_observe_times, temp_observe = Flow123d_WGC2020.extract_observe_data(
+            os.path.join(output_dir, "heat_observe.yaml"), "temperature")
+        temp_observe = temp_observe - Flow123d_WGC2020.zero_temperature_offset
 
-        avg_temp_flux = sum([temp * flux for temp, flux in zip(reg_temps, reg_fluxes)]) / sum_flux
+        avg_temp_flux = sum([temp * flux for temp, flux in zip(temp_observe, reg_fluxes)]) / sum_flux
         return avg_temp_flux, power_series
 
     @staticmethod
