@@ -1,26 +1,18 @@
-import gmsh
 import os
-import sys
-import shutil
 import ruamel.yaml as yaml
-
-from flow_mc_new import Flow123d_WGC2020
-
-# from mlmc.random import correlated_field as cf
-# from mlmc.tool import flow_mc
-from mlmc.sampler import Sampler
-from mlmc.sample_storage_hdf import SampleStorageHDF
-from mlmc.sampling_pool import OneProcessPool, ProcessPool, ThreadPool
-from mlmc.sampling_pool_pbs import SamplingPoolPBS
-from mlmc.sim.simulation import QuantitySpec
-from mlmc.tool import process_base
-import mlmc.moments as moments
-from mlmc.estimator import Estimate
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-class WGC2020_Process(process_base.ProcessBase):
+from flow_mc_new import Flow123d_WGC2020
+
+import mlmc as mlmc
+from mlmc.quantity.quantity_spec import QuantitySpec, ChunkSpec
+from mlmc.quantity.quantity import Quantity
+from mlmc.quantity.quantity import make_root_quantity
+import mlmc.tool.process_base
+
+
+class WGC2020_Process(mlmc.tool.process_base.ProcessBase):
 
     def __init__(self):
         #TODO: separate constructor and run call
@@ -57,7 +49,6 @@ class WGC2020_Process(process_base.ProcessBase):
 
         self.get_some_results(sampler.sample_storage)
 
-
     def setup_config(self, n_levels, clean):
         """
         # TODO: specify, what should be done here.
@@ -85,12 +76,12 @@ class WGC2020_Process(process_base.ProcessBase):
             # Remove HFD5 file
             if os.path.exists(hdf_file):
                 os.remove(hdf_file)
-        sample_storage = SampleStorageHDF(file_path=hdf_file)
+        sample_storage = mlmc.sample_storage_hdf.SampleStorageHDF(file_path=hdf_file)
 
         # Create sampler, it manages sample scheduling and so on
         # the length of level_parameters must correspond to number of MLMC levels, at least 1 !!!
-        sampler = Sampler(sample_storage=sample_storage, sampling_pool=sampling_pool, sim_factory=simulation_factory,
-                          level_parameters=[1])
+        sampler = mlmc.sampler.Sampler(sample_storage=sample_storage, sampling_pool=sampling_pool,
+                                      sim_factory=simulation_factory, level_parameters=[1])
 
         return sampler
 
@@ -122,9 +113,9 @@ class WGC2020_Process(process_base.ProcessBase):
             return self.create_pbs_sampling_pool()
         elif self.config_dict["local"]["np"] > 1:
             # Simulations run in different processes
-            ProcessPool(n_processes=self.config_dict["local"]["np"], work_dir=self.work_dir)
+            mlmc.sampling_pool.ProcessPool(n_processes=self.config_dict["local"]["np"], work_dir=self.work_dir)
         else:
-            return OneProcessPool(work_dir=self.work_dir)
+            return mlmc.sampling_pool.OneProcessPool(work_dir=self.work_dir, debug=True)
 
     def create_pbs_sampling_pool(self):
         """
@@ -132,7 +123,7 @@ class WGC2020_Process(process_base.ProcessBase):
         :return: None
         """
         # Create PBS sampling pool
-        sampling_pool = SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean)
+        sampling_pool = mlmc.sampling_pool_pbs.SamplingPoolPBS(job_weight=1, work_dir=self.work_dir, clean=self.clean)
 
         with open(self.config_dict["config_pbs"], "r") as f:
             pbs_config = yaml.safe_load(f)
@@ -160,7 +151,7 @@ class WGC2020_Process(process_base.ProcessBase):
             sampler.schedule_samples()
             sampler.ask_sampling_pool_for_samples(sleep=self.sample_sleep, timeout=self.sample_timeout)
 
-    def calculate_moments(self, storage: SampleStorageHDF, qspec: QuantitySpec):
+    def calculate_moments(self, sample_storage, qspec: QuantitySpec, quantity: Quantity):
         """
         Calculate moments of given quantity for all times.
         :param storage: Sample HDF storage
@@ -171,34 +162,16 @@ class WGC2020_Process(process_base.ProcessBase):
         means = []
         vars = []
         for time_id in range(len(qspec.times)):
-            true_domain = QuantityEstimate.estimate_domain(storage, qspec, time_id, quantile=0.01)
-            # moments_fn = moments.Legendre(n_moments, true_domain)
-            # moments_fn = moments.Monomial(n_moments, true_domain)
-
-            # compute mean in real values (without transform to ref domain)
-            # mean_moment_fn = moments.Monomial.factory(2, domain=true_domain, ref_domain=true_domain, safe_eval=False)
-            # q_estimator = QuantityEstimate(sample_storage=storage, sim_steps=self.step_range,
-            #                                qspec=qspec, time_id=time_id)
-            # m, v = q_estimator.estimate_moments(mean_moment_fn)
-            #
-            # # The first moment is in any case 1 and its variance is 0
-            # assert m[0] == 1
-            # assert v[0] == 0
-
-            # compute variance in real values (center by computed mean)
-            # mean_moment_fn = moments.Monomial.factory(3, center=m[1])
-            mean_moment_fn = moments.Monomial.factory(3, domain=true_domain, ref_domain=true_domain, safe_eval=False)
-            q_estimator = QuantityEstimate(sample_storage=storage, sim_steps=self.step_range,
-                                           qspec=qspec, time_id=time_id)
-            mm, vv = q_estimator.estimate_moments(mean_moment_fn)
+            q_value = quantity[qspec.times[time_id]]
+            true_domain = mlmc.Estimate.estimate_domain(q_value, sample_storage, quantile=0.01)
+            moments_fn = mlmc.Monomial(n_moments, domain=true_domain, ref_domain=true_domain, safe_eval=False)
+            estimate_obj = mlmc.Estimate(q_value, sample_storage=sample_storage, moments_fn=moments_fn)
+            mm, vv = estimate_obj.estimate_moments()
 
             # The first moment is in any case 1 and its variance is 0
             assert np.isclose(mm[0], 1, atol=1e-10)
             assert vv[0] == 0
-            # assert np.isclose(mm[1], 0, atol=1e-10)
 
-            # means.append([1, m[1], mm[2]])
-            # vars.append([0, v[1], vv[2]])
             means.append(mm)
             vars.append(vv)
             # print("t = ", qspec.times[time_id], " means ", mm[1], mm[2])
@@ -206,28 +179,38 @@ class WGC2020_Process(process_base.ProcessBase):
 
         return np.array(means), np.array(vars)
 
-    def get_some_results(self, sample_storage):
-        # Open HDF sample storage
-        # hdf_file = os.path.join(self.work_dir, "wgc2020_mlmc.hdf5")
-        # sample_storage = SampleStorageHDF(file_path=hdf_file, append=True)
+    def get_quantity(self, result_format, root_quantity, quantity_name):
 
+        iqspec, qspec = next(((i, q) for i, q in enumerate(result_format) if q.name == quantity_name), (0, None))
+        assert qspec is not None
+
+        quantity = root_quantity[quantity_name]
+        return qspec, quantity
+
+
+    def get_some_results(self, sample_storage):
         print("N levels: ", sample_storage.get_n_levels())
 
-        self.get_variant_results(sample_storage, "avg_temp_03", "power_03")
-        self.get_variant_results(sample_storage, "avg_temp_04", "power_04")
+        # Load result format from sample storage
+        result_format = sample_storage.load_result_format()
+        # Create quantity instance representing your real quantity of interest
+        root_quantity = make_root_quantity(sample_storage, result_format)
 
-        n_fracture_ele, n_fracture_ele_quant \
-            = sample_storage.load_collected_values("0", "n_fracture_elements", fine_res=True)
-        n_contact_ele, n_contact_ele_quant \
-            = sample_storage.load_collected_values("0", "n_contact_elements", fine_res=True)
+        n_fracture_ele_QS, n_fracture_ele_Q = self.get_quantity(result_format, root_quantity, "n_fracture_elements")
+        n_contact_ele_QS, n_contact_ele_Q = self.get_quantity(result_format, root_quantity, "n_contact_elements")
 
         # [:, 0] due to times
-        self.plot_fractures_histogram(n_fracture_ele_quant, n_fracture_ele[:, 0], 30)
-        self.plot_fractures_histogram(n_contact_ele_quant, n_contact_ele[:, 0], 30)
-        n_contact_ele_percentage = np.divide(n_contact_ele[:, 0], n_fracture_ele[:, 0]) * 100
-        n_contact_ele_quant.name = n_contact_ele_quant.name + "_ratio"
-        n_contact_ele_quant.unit = "%"
-        self.plot_fractures_histogram(n_contact_ele_quant, n_contact_ele_percentage, 30)
+        self.plot_fractures_histogram(sample_storage, n_fracture_ele_QS, n_fracture_ele_Q, 30)
+        self.plot_fractures_histogram(sample_storage, n_contact_ele_QS, n_fracture_ele_Q, 30)
+
+        # n_contact_ele_percentage_Q = np.divide(n_contact_ele_Q, n_fracture_ele_Q) * 100
+        n_contact_ele_percentage_Q = n_contact_ele_Q / n_fracture_ele_Q * 100
+        n_contact_ele_QS.name = n_contact_ele_QS.name + "_ratio"
+        n_contact_ele_QS.unit = "%"
+        self.plot_fractures_histogram(sample_storage, n_contact_ele_QS, n_contact_ele_percentage_Q, 30)
+
+        self.get_variant_results(sample_storage, "avg_temp_03", "power_03")
+        # self.get_variant_results(root_quantity, "avg_temp_04", "power_04")
 
         # TODO: problems:
         # quantity_estimate.get_level_results does not support array quantities
@@ -236,90 +219,106 @@ class WGC2020_Process(process_base.ProcessBase):
         # moments are mapped to interval [0,1]
         # 1. moment (mean) can be mapped by Moments.inv_linear() function
         # what about higher moments (need to get std)
-        #
-        # SampleStorageHDF.sample_pairs get the data
-        # I implemented load_collected_values() which selects the quantities by name at all times
 
         return
 
-    def get_variant_results(self, sample_storage, avg_temp_quant, power_quant):
-        avg_temp_name_ref = "avg_temp_02"
-        power_name_ref = "power_02"
-        avg_temp_vals, avg_temp \
-            = sample_storage.load_collected_values("0", avg_temp_quant, fine_res=True)
-        power_vals, power \
-            = sample_storage.load_collected_values("0", power_quant, fine_res=True)
+    def get_variant_results(self, sample_storage, avg_temp_qname, power_qname):
 
-        self.plot_histogram(avg_temp, avg_temp_vals, 30)
-        self.plot_histogram(power, power_vals, 30)
+        # Load result format from sample storage
+        result_format = sample_storage.load_result_format()
+        # Create quantity instance representing your real quantity of interest
+        root_quantity = make_root_quantity(sample_storage, result_format)
+        n_samples = sample_storage.get_n_collected()[0]
+        chunk_spec = next(sample_storage.chunks(level_id=0, n_samples=n_samples))
+
+        avg_temp_QS, avg_temp_Q = self.get_quantity(result_format, root_quantity, avg_temp_qname)
+        power_QS, power_Q = self.get_quantity(result_format, root_quantity, power_qname)
+
+        avg_temp_qname_ref = "avg_temp_02"
+        power_qname_ref = "power_02"
+        avg_temp_ref_QS, avg_temp_ref_Q = self.get_quantity(result_format, root_quantity, avg_temp_qname_ref)
+        power_ref_QS, power_ref_Q = self.get_quantity(result_format, root_quantity, power_qname_ref)
+
+        # avg_temp_vals, avg_temp \
+        #     = sample_storage.load_collected_values("0", avg_temp_quant, fine_res=True)
+        # power_vals, power \
+        #     = sample_storage.load_collected_values("0", power_quant, fine_res=True)
+
+        self.plot_histogram(avg_temp_QS, avg_temp_Q, chunk_spec, 30)
+        self.plot_histogram(power_QS, power_Q, chunk_spec, 30)
 
         plot_dict = dict()
         plot_dict["ylabel"] = "Temperature [$^\circ$C]"
-        plot_dict["file_name"] = avg_temp_quant + "_comparison"
+        plot_dict["file_name"] = avg_temp_qname + "_comparison"
         plot_dict["color"] = "red"
         plot_dict["color_ref"] = "orange"
-        self.plot_comparison(sample_storage, avg_temp_quant, avg_temp_name_ref, plot_dict)
+        self.plot_comparison(sample_storage, avg_temp_QS, avg_temp_Q, avg_temp_ref_QS, avg_temp_ref_Q,
+                             chunk_spec, plot_dict)
 
         plot_dict = dict()
         plot_dict["ylabel"] = "Power [MW]"
-        plot_dict["file_name"] = power_quant + "_comparison"
+        plot_dict["file_name"] = power_qname + "_comparison"
         plot_dict["color"] = "blue"
         plot_dict["color_ref"] = "forestgreen"
-        self.plot_comparison(sample_storage, power_quant, power_name_ref, plot_dict)
+        self.plot_comparison(sample_storage, power_QS, power_Q, power_ref_QS, power_ref_Q,
+                             chunk_spec, plot_dict)
 
-    def plot_fractures_histogram(self, quantity: QuantitySpec, data, bins):
+    def plot_fractures_histogram(self, sample_storage, quant_spec: QuantitySpec, quantity: Quantity, bins):
+
+        n_samples = sample_storage.get_n_collected()[0]
+        chunk_spec = next(sample_storage.chunks(level_id=0, n_samples=n_samples))
+        # select by time interpolation and location
+        data_quant = quantity.time_interpolation(0)['-']
+        # get samples data
+        data_chunk = data_quant.samples(chunk_spec)
+        data = data_chunk[0, :].flatten()     # [0] time, [0] location
+
         fig, ax1 = plt.subplots()
-        ax1.set_xlabel(quantity.name + " [" + quantity.unit + "]")
+        ax1.set_xlabel(quant_spec.name + " [" + quant_spec.unit + "]")
         ax1.set_ylabel('Frequency [-]')
         ax1.tick_params(axis='y', labelcolor='black')
 
-        n_samples = data.shape
-        # times = quantity.times
-        # t_min = 0
-        # t_max = len(times)-1
-        # # t_min = times[0]
-        # # t_max = int(times[-1])
-        # # for t in [0, int((t_min + t_max)/2), t_max]:
-        # for t in [0, int(t_max / 2), t_max]:
-        #     print(t)
-        #     label = "t = " + str(t) + " y"
-        #     ax1.hist(data[:, t], alpha=0.5, bins=bins, label=label) #edgecolor='white')
-        # ax1.hist(data[:, 0], alpha=0.5, bins=bins)  # edgecolor='white')
         ax1.hist(data, alpha=0.5, bins=bins)  # edgecolor='white')
 
         ns = "N = " + str(n_samples)
         ax1.set_title(ns)
         # ax1.legend()
-        fig.savefig(os.path.join(self.work_dir, quantity.name + ".pdf"))
-        fig.savefig(os.path.join(self.work_dir, quantity.name + ".png"))
+        fig.savefig(os.path.join(self.work_dir, quant_spec.name + ".pdf"))
+        fig.savefig(os.path.join(self.work_dir, quant_spec.name + ".png"))
         # plt.show()
 
-    def plot_histogram(self, quantity: QuantitySpec, data, bins):
+    def plot_histogram(self, quant_spec: QuantitySpec, quantity: Quantity, chunk_spec: ChunkSpec, bins):
         fig, ax1 = plt.subplots()
-        ax1.set_xlabel(quantity.name + " [" + quantity.unit + "]")
+        ax1.set_xlabel(quant_spec.name + " [" + quant_spec.unit + "]")
         ax1.set_ylabel('Frequency [-]')
         ax1.tick_params(axis='y', labelcolor='black')
 
-        n_samples, ntimes = data.shape
-        times = quantity.times
+        data_chunk = quantity.samples(chunk_spec)
+        data = data_chunk.squeeze()
+
+        ntimes, n_samples = data.shape
+        times = quant_spec.times
         t_min = 0
         t_max = len(times)-1
         # t_min = times[0]
         # t_max = int(times[-1])
         # for t in [0, int((t_min + t_max)/2), t_max]:
         for t in [0, int(t_max / 2), t_max]:
-            print(t)
+            # print(t)
             label = "t = " + str(t) + " y"
-            ax1.hist(data[:, t], alpha=0.5, bins=bins, label=label) #edgecolor='white')
+            ax1.hist(data[t, :], alpha=0.5, bins=bins, label=label) #edgecolor='white')
 
         ns = "N = " + str(n_samples)
         ax1.set_title(ns)
         ax1.legend()
-        fig.savefig(os.path.join(self.work_dir, quantity.name + ".pdf"))
-        fig.savefig(os.path.join(self.work_dir, quantity.name + ".png"))
+        fig.savefig(os.path.join(self.work_dir, quant_spec.name + ".pdf"))
+        fig.savefig(os.path.join(self.work_dir, quant_spec.name + ".png"))
         # plt.show()
 
-    def plot_comparison(self, sample_storage, quantity_name, quantity_ref_name, plot_dict):
+    def plot_comparison(self, sample_storage,
+                        quant_spec: QuantitySpec, quantity: Quantity,
+                        quant_ref_spec: QuantitySpec, quantity_ref: Quantity,
+                        chunk_spec: ChunkSpec, plot_dict):
         """
         Plots comparison of quantity values and some reference values in time.
         Computes first two moment means and its variances.
@@ -329,13 +328,18 @@ class WGC2020_Process(process_base.ProcessBase):
         :param plot_dict: dictionary with several plot parameters (labels, colors...)
         :return:
         """
-        quant_vals, quant_spec \
-            = sample_storage.load_collected_values("0", quantity_name, fine_res=True)
-        quant_ref_vals, quant_ref_spec \
-            = sample_storage.load_collected_values("0", quantity_ref_name, fine_res=True)
+        data_chunk = quantity.samples(chunk_spec)
+        data_ref_chunk = quantity_ref.samples(chunk_spec)
+        data = data_chunk.squeeze()
+        data_ref = data_ref_chunk.squeeze()
 
-        moments = self.calculate_moments(sample_storage, quant_spec)
-        moments_ref = self.calculate_moments(sample_storage, quant_ref_spec)
+        # quant_vals, quant_spec \
+        #     = sample_storage.load_collected_values("0", quantity_name, fine_res=True)
+        # quant_ref_vals, quant_ref_spec \
+        #     = sample_storage.load_collected_values("0", quantity_ref_name, fine_res=True)
+
+        moments = self.calculate_moments(sample_storage, quant_spec, quantity)
+        moments_ref = self.calculate_moments(sample_storage, quant_ref_spec, quantity_ref)
 
         assert len(quant_spec.times) == len(quant_ref_spec.times)
         times = quant_spec.times
