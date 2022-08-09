@@ -115,7 +115,7 @@ class WGC2020_Process(mlmc.tool.process_base.ProcessBase):
             # Simulations run in different processes
             mlmc.sampling_pool.ProcessPool(n_processes=self.config_dict["local"]["np"], work_dir=self.work_dir)
         else:
-            return mlmc.sampling_pool.OneProcessPool(work_dir=self.work_dir, debug=True)
+            return mlmc.sampling_pool.OneProcessPool(work_dir=self.work_dir, debug=self.config_dict["debug"])
 
     def create_pbs_sampling_pool(self):
         """

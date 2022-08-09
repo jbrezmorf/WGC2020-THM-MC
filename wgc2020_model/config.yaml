@@ -2,6 +2,7 @@
 # false -> run locally, no pbs
 run_on_metacentrum: false
 
+debug: True
 # number of samples
 n_samples: 10
 task_size: 0.001
