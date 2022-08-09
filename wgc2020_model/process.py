@@ -190,6 +190,8 @@ class WGC2020_Process(mlmc.tool.process_base.ProcessBase):
 
     def get_some_results(self, sample_storage):
         print("N levels: ", sample_storage.get_n_levels())
+        print("N collected: ", sample_storage.get_n_collected()[0])
+        assert sample_storage.get_n_collected()[0] > 0
 
         # Load result format from sample storage
         result_format = sample_storage.load_result_format()
