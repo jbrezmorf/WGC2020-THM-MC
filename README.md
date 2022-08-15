@@ -28,12 +28,44 @@ Each sample takes several computation steps:
 
 
 ## Installation
-For running the simulation one has to install Python 3 and MLMC package.
-Sample computation then requires running BGEM and Flow123d inside Geomop 2.0.0 Docker container (download the image at http://geomop.github.io/).
-This obviously requires having Docker (https://www.docker.com/) or Singularity (https://apptainer.org/) installed for running the container.
+### Local
+For running the simulation locally one has have Docker (https://www.docker.com/)
+or Singularity (https://apptainer.org/) available. 
+The simulation is then simply run by command
+
+``
+./run_process_local.sh run <output_dir>
+``
+
+with Docker, or
+
+``
+./run_process_local.sh run <output_dir> sing
+``
+
+with Singularity.
+
+The Docker image `flow123d/geomop-gnu:2.0.0` will be pulled automatically, or
+it can be downloaded manually from https://hub.docker.com/r/flow123d/geomop-gnu,
+with current tag 2.0.0 (see also project webpage http://geomop.github.io/).
+
+The configuration of the model can be changes in `config.yaml`
+
+### Cluster (with PBS)
+For running the simulation one has to install Singularity, Python 3, and  MLMC package.
+The MLMC library controls the sampling and scheduling.
+Sample computation requires running BGEM and Flow123d inside `flow123d/geomop-gnu:2.0.0` container
+as mentioned above.
 
 For installing MLMC in virtual environment one can use the enclosed script `setup_python_envinroment.sh`.
 
+The simulation is then run through PBS script
+
+``
+qsub run_process_pbs.sh
+``
+
+which must be accommodated by users needs and cluster specification.
 
 ## Running the simulation
 Model can be run locally by script `run_process_local.sh` or on cluster (Metacentrum in CZ tested) by script `run_process_pbs.sh`.

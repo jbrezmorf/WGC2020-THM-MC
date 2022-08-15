@@ -970,6 +970,7 @@ class Flow123d_WGC2020(Simulation):
             cs_mech[i] = field_cs[i]
 
             if field_cs[i][0] < min_fr_cross_section:
+                # TODO: contact model in Flow123d with shear stress
                 # elem = mesh.elements[eid]
                 # type, tags, node_ids = elem
                 # frac_name = fr_reg_id_map[tags[0]]
